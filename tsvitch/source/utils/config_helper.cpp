@@ -66,6 +66,7 @@ std::unordered_map<SettingItem, ProgramOption> ProgramConfig::SETTING_MAP = {
           brls::LOCALE_ZH_HANS,
           brls::LOCALE_Ko,
           brls::LOCALE_IT,
+          brls::LOCALE_PT_BR
       },
       {},
 #if defined(__SWITCH__) || defined(__PSV__) || defined(PS4)

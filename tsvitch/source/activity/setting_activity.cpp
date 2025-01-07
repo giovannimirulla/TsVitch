@@ -437,6 +437,7 @@ void SettingActivity::onContentAvailable() {
                            "tsvitch/setting/app/others/language/chinese_s"_i18n,
                            "tsvitch/setting/app/others/language/korean"_i18n,
                            "tsvitch/setting/app/others/language/italiano"_i18n,
+                           "tsvitch/setting/app/others/language/portuguese_br"_i18n
                        },
                        langIndex, [](int data) {
                            if (langIndex == data) return false;

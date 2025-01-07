@@ -78,7 +78,8 @@
           "japanese": "日本語",
           "ryukyuan": "島言葉",
           "italiano": "Italian",
-          "korean": "Korean"
+          "korean": "Korean",
+          "portuguese_br": "Português do Brasil"
         },
         "opencc": "Automatically convert Simplified Chinese (restart required)",
         "keymap": {
