@@ -24,7 +24,8 @@
         "sleep": "Sleep timer",
         "video_codec": "Video Codec",
         "audio_quality": "Audio Quality",
-        "video_format": "Video Format"
+        "video_format": "Video Format",
+        "player": "Player"
       },
       "image": {
         "header": "Image",
@@ -39,13 +40,17 @@
       },
       "ui": {
         "header": "UI",
-        "tv_osd": "TV style OSD control"
+        "tv_osd": "TV style OSD control",
+        "window": "Player",
+        "bottom_bar": "Bottom suggestion bar"
       },
       "others": {
         "header": "Others",
         "vibration": "Gamepad vibration",
         "hide_bottom": "Hide the bottom suggestion bar",
+        "show_bottom": "Show the bottom suggestion bar",
         "hide_fps": "Hide FPS",
+        "show_fps": "Show FPS",
         "limited_fps": "Maximum frame limit",
         "limited_fps_vsync": "Vertical Sync",
         "fullscreen": "Fullscreen",
@@ -85,7 +90,8 @@
           "header": "Keymap style",
           "xbox": "Xbox",
           "ps": "PlayStation",
-          "keyboard": "Keyboard"
+          "keyboard": "Keyboard",
+          "swap": "Switch buttons"
         }
       }
     },
@@ -117,7 +123,8 @@
       "dlna_quit": "Exit the DLNA casting?",
       "up2date": "The application is up-to-date",
       "release": "Check for updates",
-      "config": "Open configuration folder"
+      "config": "Open configuration folder",
+      "config_dir": "Show configuration folder"
     }
   },
   "about": {

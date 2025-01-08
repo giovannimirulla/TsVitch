@@ -23,7 +23,8 @@
         "sleep": "Timing Spento",
         "video_codec": "Codec Video",
         "audio_quality": "Qualità audio",
-        "video_format": "Formato video"
+        "video_format": "Formato video",
+        "player": "Player"
       },
       "image": {
         "header": "Immagine",
@@ -38,13 +39,17 @@
       },
       "ui": {
         "header": "UI",
-        "tv_osd": "TV style OSD control"
+        "tv_osd": "TV style OSD control",
+        "window": "Window",
+        "bottom_bar": "Bottom suggestion bar"
       },
       "others": {
         "header": "Altri",
         "vibration": "Vibrazione del Gamepad",
         "hide_bottom": "Nascondi la barra dei suggerimenti qui sotto",
+        "show_bottom": "Show the bottom suggestion bar",
         "hide_fps": "Nascondi FPS",
+        "show_fps": "Show FPS",
         "limited_fps": "Limite massimo frame",
         "limited_fps_vsync": "Sincronizzazione Verticale",
         "fullscreen": "Schermo intero",
@@ -84,7 +89,8 @@
           "header": "Stile mappatura tasti",
           "xbox": "Xbox",
           "ps": "PlayStation",
-          "keyboard": "Tastiera"
+          "keyboard": "Tastiera",
+          "swap": "Switch buttons"
         }
       }
     },
@@ -116,7 +122,8 @@
       "dlna_quit": "Exit the DLNA casting?",
       "up2date": "L'applicazione è aggiornata",
       "release": "Controlla aggiornamenti",
-      "config": "Apri cartella di configurazione"
+      "config": "Apri cartella di configurazione",
+      "config_dir": "Show configuration folder"
     }
   },
   "about": {
