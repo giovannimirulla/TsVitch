@@ -3,25 +3,26 @@
 	url = https://github.com/xfangfang/borealis.git
 [submodule "library/QR-Code-generator"]
 	path = library/QR-Code-generator
-	url = https://github.com/nayuki/QR-Code-generator.git
+	url = https://github.com/nayuki/QR-Code-generator
+	ignore = dirty
 [submodule "library/pystring"]
 	path = library/pystring
-	url = https://github.com/imageworks/pystring.git
+	url = https://github.com/imageworks/pystring
 [submodule "library/OpenCC"]
 	path = library/OpenCC
-	url = https://github.com/xfangfang/OpenCC.git
+	url = https://github.com/xfangfang/OpenCC
 [submodule "library/lunasvg"]
 	path = library/lunasvg
-	url = https://github.com/sammycage/lunasvg.git
+	url = https://github.com/sammycage/lunasvg
 [submodule "library/cpr"]
 	path = library/cpr
-	url = https://github.com/xfangfang/cpr.git
+	url = https://github.com/xfangfang/cpr
 [submodule "library/mongoose"]
 	path = library/mongoose
-	url = https://github.com/xfangfang/mongoose.git
+	url = https://github.com/xfangfang/mongoose
 [submodule "library/libpdr"]
 	path = library/libpdr
-	url = https://github.com/xfangfang/libpdr.git
+	url = https://github.com/xfangfang/libpdr
 [submodule "library/MemoryModule"]
 	path = library/MemoryModule
-	url = https://github.com/fancycode/MemoryModule.git
+	url = https://github.com/fancycode/MemoryModule
