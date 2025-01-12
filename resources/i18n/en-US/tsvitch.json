@@ -20,7 +20,7 @@
         "auto_play_recommend": "Automatically play recommended videos",
         "auto_loop": "Loop the current video",
         "auto_no": "Pause video after playing",
-        "auto_hint": ""Automatically playing recommended video" will automatically play recommended videos after the episode is played.",
+        "auto_hint": "\"Automatically playing recommend video\" will automatically play recommended videos after the episode is played.",
         "sleep": "Sleep timer",
         "video_codec": "Video Codec",
         "audio_quality": "Audio Quality",
@@ -57,7 +57,6 @@
         "always_on_top": "Always on top",
         "tv_search": "TV-style search page",
         "clear_history": "Clear search history",
-        "clear_season": "Clear custom bangumi settings",
         "theme": {
           "header": "Theme (restart required)",
           "1": "Automatic",

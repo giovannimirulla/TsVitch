@@ -40,23 +40,22 @@
       "ui": {
         "header": "UI",
         "tv_osd": "TV style OSD control",
-        "window": "Window",
-        "bottom_bar": "Bottom suggestion bar"
+        "window": "Finestra",
+        "bottom_bar": "Barra dei suggerimenti in basso"
       },
       "others": {
         "header": "Altri",
         "vibration": "Vibrazione del Gamepad",
         "hide_bottom": "Nascondi la barra dei suggerimenti qui sotto",
-        "show_bottom": "Show the bottom suggestion bar",
+        "show_bottom": "Mostra la barra dei suggerimenti in basso",
         "hide_fps": "Nascondi FPS",
-        "show_fps": "Show FPS",
+        "show_fps": "Mostra FPS",
         "limited_fps": "Limite massimo frame",
         "limited_fps_vsync": "Sincronizzazione Verticale",
         "fullscreen": "Schermo intero",
         "always_on_top": "Always on top",
         "tv_search": "Pagina di ricerca stile TV",
         "clear_history": "Clear search history",
-        "clear_season": "Clear bangumi custom settings",
         "theme": {
           "header": "Tema (riavvio richiesto)",
           "1": "Automatico",
@@ -90,7 +89,7 @@
           "xbox": "Xbox",
           "ps": "PlayStation",
           "keyboard": "Tastiera",
-          "swap": "Switch buttons"
+          "swap": "Commuta i pulsanti"
         }
       }
     },
@@ -123,7 +122,7 @@
       "up2date": "L'applicazione è aggiornata",
       "release": "Controlla aggiornamenti",
       "config": "Apri cartella di configurazione",
-      "config_dir": "Show configuration folder"
+      "config_dir": "Mostra la cartella di configurazione"
     }
   },
   "about": {
