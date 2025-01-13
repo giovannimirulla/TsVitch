@@ -1,7 +1,3 @@
-//
-// Created by fang on 2023/12/6.
-//
-
 #pragma once
 
 const int PS4_MPV_SHADER_VERT_LENGTH = 561;
