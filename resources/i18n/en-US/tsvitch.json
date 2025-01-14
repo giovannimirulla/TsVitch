@@ -123,7 +123,6 @@
       "dlna_quit": "Exit the DLNA casting?",
       "up2date": "The application is up-to-date",
       "release": "Check for updates",
-      "checking_update": "Checking for updates...",
       "config": "Open configuration folder",
       "config_dir": "Show configuration folder"
     }

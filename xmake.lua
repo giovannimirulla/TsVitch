@@ -85,6 +85,36 @@ package("borealis")
     end)
 package_end()
 
+package("pdr")
+    set_sourcedir(path.join(os.projectdir(), "library/libpdr"))
+    add_deps("mongoose", "tinyxml2")
+    on_install(function (package)
+        io.writefile("xmake.lua", [[
+add_rules("mode.debug", "mode.release")
+
+if is_plat("windows") then
+    add_cxflags("/utf-8")
+    set_languages("c++20")
+    if is_mode("release") then
+        set_optimize("faster")
+    end
+else
+    set_languages("c++17")
+end
+
+add_requires("tinyxml2", "mongoose")
+target("pdr")
+    set_kind("$(kind)")
+    add_includedirs("include")
+    add_headerfiles("include/*.h")
+    add_files("src/*.cpp")
+    add_packages("tinyxml2", "mongoose")
+]])
+        local configs = {}
+        import("package.tools.xmake").install(package, configs)
+    end)
+package_end()
+
 package("mpv")
     if is_plat("windows", "mingw") then
         set_urls("https://github.com/zeromake/tsvitch/releases/download/v0.6.0/mpv-dev-x86_64-v3-20230514-git-9e716d6.7z")
@@ -134,6 +164,7 @@ add_requires("pystring")
 add_requires("qr-code-generator", {configs={cpp=true}})
 add_requires("webp")
 add_requires("zlib")
+add_requires("pdr")
 
 target("tsvitch")
     add_includedirs("tsvitch/include", "tsvitch/include/api")
@@ -195,6 +226,7 @@ target("tsvitch")
         "webp",
         "mongoose",
         "zlib",
+        "pdr"
     )
     if is_plat("windows", "mingw") then
         after_build(function (target) 
