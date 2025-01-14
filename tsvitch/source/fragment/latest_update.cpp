@@ -72,9 +72,8 @@ LatestUpdate::LatestUpdate(const ReleaseNote& info) {
     brls::Logger::debug("Fragment LatestUpdate: create");
 
     header->setText(info.name);
-    subtitle->setText(fmt::format("È stata rilasciata una nuova versione, ora siete su: {}", APPVersion::instance().git_tag));
-    //author->setUserInfo(info.author.avatar_url, info.author.login, info.published_at);
-    author->setUserInfo("https://avatars.githubusercontent.com/u/63824194?v=4", "giovannimirulla", info.published_at);
+    subtitle->setText(fmt::format("新版本已发布，您现在的版本是: {}", APPVersion::instance().git_tag));
+    author->setUserInfo(info.author.avatar_url, info.author.login, info.published_at);
 
     SHOW_REACTION("👍", info.reactions.plus_one);
     SHOW_REACTION("😀", info.reactions.laugh);

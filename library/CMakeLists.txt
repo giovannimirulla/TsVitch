@@ -100,5 +100,12 @@ endif ()
 # add borealis
 add_subdirectory(borealis/library)
 
+# add libpdr (不使用 pdr 项目内的 cmake 配置，因为其内的 mongoose 不支持 psv/switch)
+file(GLOB_RECURSE PDR_SRC ${CMAKE_CURRENT_SOURCE_DIR}/libpdr/src/*.cpp)
+add_library(pdr ${PDR_SRC})
+set_property(TARGET pdr PROPERTY CXX_STANDARD 17)
+target_include_directories(pdr PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/libpdr/include)
+target_link_libraries(pdr mongoose tinyxml2)
+
 add_library(wiliwiliLibExtra INTERFACE)
 target_link_libraries(wiliwiliLibExtra INTERFACE cpr::cpr qrcode)
