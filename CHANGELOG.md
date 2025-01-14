@@ -1,27 +1,20 @@
-# Changelog for TsVitch v0.1.0
+# Changelog for TsVitch v0.1.1
 
-## [0.1.0] - Initial Release
+## [0.1.1] - Portuguese and Logo fixes
 
-### Features
-- **Multimedia Streaming**: Stream IPTV channels directly on your Nintendo Switch with support for M3U playlists.
-- **Optimized UI**: User interface designed for the Nintendo Switch touchscreen and Joy-Con controls.
-- **Default Playlist**: Includes a preloaded playlist sourced from the [Free-TV/IPTV repository](https://github.com/Free-TV/IPTV).
-- **Multilanguage Support**: Offers multiple audio tracks, subtitles, and language options.
-- **Cross-Platform Development**: 
-  - Supports Nintendo Switch as the primary target platform.
-  - macOS support for desktop testing and builds.
-- **Docker Support**: Streamlined cross-compilation environment using Docker for building the Switch executable (`tsvitch.nro`).
-- **Custom Dependencies**: Incorporates advanced features through tailored libraries like ffmpeg, libmpv, and wiliwili.
+### Improvements
+- **Localization Updates**:  
+  - Fixed issues in `en-US` and `it` i18n values for improved consistency and accuracy.  
+  - Added **Portuguese (Brazilian)** localization support, thanks to contributions from [@osnipezzini](https://github.com/osnipezzini).  
 
-### Technical Additions
-- **Build Methods**:
-  - Native build environment with DevkitPro for Switch compatibility.
-  - Desktop builds supported via CMake and Homebrew on macOS.
-- **Utilities**:
-  - Option to install a desktop shortcut for streamlined app launching on the Switch.
-  - OpenGL build support.
-- **Acknowledgements**:
-  - Integrated contributions from open-source projects like Borealis (UI), FFmpeg (video processing), and multiple libraries for JSON handling, QR code generation, and SVG rendering.
+### Bug Fixes
+- **Logo Display**: Resolved issues with the channel logo image:  
+  - Fixed background rendering problems.  
+  - Adjusted logo resizing to ensure proper scaling and alignment.  
+
+---
+
+This update enhances user experience with expanded language support and polished visual elements. Special thanks to the community contributors for their valuable input! 
 
 ### Disclaimers
 - **Legal Compliance**: The app does not host or provide IPTV content. Users must ensure their playlists comply with local laws.
