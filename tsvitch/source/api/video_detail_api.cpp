@@ -57,9 +57,6 @@ nlohmann::json parse_m3u8_to_json(const std::string& m3u8_content) {
     if (!current_entry.empty() && current_entry.contains("id")) {
         json_result.push_back(current_entry);
     }
-    //print 
-    std::cout << "json_result: " << std::endl;
-    std::cout << json_result << std::endl;
 
     return json_result;
 }
