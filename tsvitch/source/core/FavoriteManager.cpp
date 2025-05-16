@@ -14,7 +14,7 @@ void FavoriteManager::toggle(const std::string& id) {
 }
 
 bool FavoriteManager::isFavorite(const std::string& id) const {
-    return set_.contains(id);
+    return set_.find(id) != set_.end();
 }
 
 void FavoriteManager::save() const {
