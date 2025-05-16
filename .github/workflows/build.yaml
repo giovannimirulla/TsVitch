@@ -2,7 +2,8 @@ name: Build tsvitch
 
 on:
   push:
-  pull_request:
+    tags:
+      - "v*" # Trigger per i tag che iniziano con "v"
   workflow_dispatch:
     inputs:
       universal_macos:

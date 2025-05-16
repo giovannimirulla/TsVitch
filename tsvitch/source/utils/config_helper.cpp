@@ -249,7 +249,7 @@ void ProgramConfig::loadHomeWindowState() {
 }
 
 void ProgramConfig::saveHomeWindowState() {
-    if (isnan(VideoContext::posX) || isnan(VideoContext::posY)) return;
+    if (std::isnan(VideoContext::posX) || std::isnan(VideoContext::posY)) return;
     auto videoContext = brls::Application::getPlatform()->getVideoContext();
 
     uint32_t width  = VideoContext::sizeW;

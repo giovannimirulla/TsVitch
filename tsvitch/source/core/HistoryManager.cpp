@@ -1,4 +1,7 @@
 #include "core/HistoryManager.hpp"
+#include <fstream>
+#include <filesystem>
+#include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
 HistoryManager::HistoryManager(const std::filesystem::path& dataDir)

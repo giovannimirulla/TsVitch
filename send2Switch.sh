@@ -1,0 +1,1 @@
+nxlink --address 192.168.1.36 cmake-build-switch/TSVitch.nro                      

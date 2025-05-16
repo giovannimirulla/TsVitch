@@ -2,6 +2,7 @@
 
 #include <borealis/views/rectangle.hpp>
 #include <utility>
+#include <tinyxml2.h>
 
 #include "view/auto_tab_frame.hpp"
 #include "view/svg_image.hpp"
