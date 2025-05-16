@@ -1,4 +1,5 @@
 #include <borealis.hpp>
+#include <filesystem>   // ← pour std::filesystem::path
 
 #ifdef __SWITCH__
 #include <switch.h>
@@ -9,11 +10,19 @@
 #include "utils/activity_helper.hpp"
 #include "view/mpv_core.hpp"
 
+/* --------  NEW : Historique & Favoris  -------- */
+#include "core/HistoryManager.hpp"
+#include "core/FavoriteManager.hpp"
+
+static HistoryManager  gHistory(std::filesystem::path("data"));
+static FavoriteManager gFavorite(std::filesystem::path("data"));
+
 #ifdef IOS
 #include <SDL2/SDL_main.h>
 #endif
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     for (int i = 1; i < argc; i++) {
         if (std::strcmp(argv[i], "-d") == 0) {
             brls::Logger::setLogLevel(brls::LogLevel::LOG_DEBUG);
@@ -49,7 +58,6 @@ int main(int argc, char* argv[]) {
     }
 
     brls::Application::getPlatform()->exitToHomeMode(true);
-
     brls::Application::createWindow("tsvitch");
     brls::Logger::info("createWindow done");
 
@@ -59,29 +67,34 @@ int main(int argc, char* argv[]) {
 
     brls::Application::getPlatform()->disableScreenDimming(false);
 
-    if (brls::Application::getPlatform()->isApplicationMode()) {
+    if (brls::Application::getPlatform()->isApplicationMode())
         Intent::openMain();
-    } else {
+    else
         Intent::openHint();
-    }
 
-    GA("open_app", {{"version", APPVersion::instance().getVersionStr()},
-                    {"language", brls::Application::getLocale()},
-                    {"window", fmt::format("{}x{}", brls::Application::windowWidth, brls::Application::windowHeight)}})
+    GA("open_app",
+       {{"version", APPVersion::instance().getVersionStr()},
+        {"language", brls::Application::getLocale()},
+        {"window", fmt::format("{}x{}", brls::Application::windowWidth,
+                               brls::Application::windowHeight)}})
+
     APPVersion::instance().checkUpdate();
 
+    /* ---------- Boucle principale ---------- */
     while (brls::Application::mainLoop()) {
+        // → Si quelque part tu lances une chaîne, ajoute :
+        // gHistory.add(channelId);
     }
 
     brls::Logger::info("mainLoop done");
-
     ProgramConfig::instance().exit(argv);
+
+    /* --------  NEW : Sauvegarde persistance  -------- */
+    gHistory.save();
+    gFavorite.save();
 
 #ifdef __SWITCH__
     if (canUseLed) hidsysExit();
-#endif
-
-#if __SWITCH__
     if (brls::Logger::getLogLevel() >= brls::LogLevel::LOG_DEBUG) {
         socketExit();
         nxlinkStdio();
