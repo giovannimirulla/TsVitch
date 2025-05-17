@@ -22,6 +22,14 @@ function main(...)
         os.vexecv("rsvg-convert", {"--width=1024", "--height=1024", "resources/svg/com.giovannimirulla.tsvitch.svg", "-o", tsvitch_png})
     end
 
+    -- Genera icon.jpg 256x256 in resources/icon
+    local icon_dir = path.join("resources", "icon")
+    if not os.exists(icon_dir) then
+        os.mkdir(icon_dir)
+    end
+    local icon_jpg = path.join(icon_dir, "icon.jpg")
+    os.vexecv("magick", {"convert", "-resize", "256x256", tsvitch_png, icon_jpg})
+
     for _, resize in ipairs(resizes) do
         local out = path.join("winrt/Assets", resize[2])
         local argv = {"convert", "-resize", resize[1], tsvitch_png, out}

@@ -1,0 +1,38 @@
+<brls:Box
+        marginLeft="8">
+
+            <HomeLive/>
+
+
+    <brls:Box
+            positionType="absolute"
+            positionRight="0"
+            positionTop="0"
+            width="340"
+            height="70"
+            alignItems="center"
+            wireframe="false">
+        <CustomButton
+                id="home/search"
+                focusable="true"
+                highlightCornerRadius="8"
+                hideHighlightBackground="true"
+                width="300"
+                height="35"
+                backgroundColor="#E3E5E7"
+                paddingLeft="15"
+                cornerRadius="6">
+            <brls:Label
+                    fontSize="14"
+                    textColor="#18191c"
+                    text="@i18n/tsvitch/home/common/search"/>
+            <HintLabel
+                    height="35"
+                    positionType="absolute"
+                    positionRight="15"
+                    fontSize="14"
+                    textColor="#18191c"
+                    text="y"/>
+        </CustomButton>
+    </brls:Box>
+</brls:Box>

@@ -9,6 +9,7 @@
         <AutoTabFrame
                 id="main/tabFrame"
                 grow="1"
+                tabBackgroundColor="@theme/color/grey_1"
                 tabItemActiveTextColor="@theme/color/tsvitch"
                 disableNavigationDown="true"
                 defaultTab="0"
@@ -18,13 +19,23 @@
                  fontSize="18"
                  icon="@res/svg/ico-home.svg"
                  iconActivate="@res/svg/ico-home-activate.svg">
-                <HomeLive/>
+                <HomeTab/>
             </Tab>
 
+            <Tab label=""
+                 fontSize="18"
+                 icon="@res/svg/ico-favorites.svg"
+                 iconActivate="@res/svg/ico-favorites-activate.svg">
+                <DynamicTab/>
+            </Tab>
 
-            
-
-
+            <Tab label=""
+                 fontSize="18"
+                 focusDown="main/inbox"
+                 icon="@res/svg/ico-history.svg"
+                 iconActivate="@res/svg/ico-history-activate.svg">
+                <MineTab/>
+            </Tab>
         </AutoTabFrame>
         <brls:Box
                 wireframe="false"
@@ -34,8 +45,18 @@
                 alignItems="center"
                 positionType="absolute"
                 positionBottom="20">
-
-                
+            <CustomButton
+                id="main/inbox"
+                focusable="true"
+                highlightCornerRadius="50"
+                cornerRadius="50"
+                marginBottom="10"
+                wireframe="false">
+                <SVGImage
+                        width="48"
+                        height="48"
+                        SVG="@res/svg/ico-inbox.svg"/>
+            </CustomButton>
 
             <CustomButton
                     id="main/setting"

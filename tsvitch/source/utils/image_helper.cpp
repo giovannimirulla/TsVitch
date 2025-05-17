@@ -1,5 +1,3 @@
-
-
 #include <borealis/core/singleton.hpp>
 #include <borealis/core/application.hpp>
 #include <borealis/core/cache_helper.hpp>
@@ -100,29 +98,47 @@ void ImageHelper::requestImage() {
     uint8_t* imageData = nullptr;
     int imageW = 0, imageH = 0;
     bool isWebp = false;
+    int n = 0;
 
 #ifdef USE_WEBP
     if (imageUrl.size() > 5 && imageUrl.substr(imageUrl.size() - 5, 5) == ".webp") {
         imageData = WebPDecodeRGBA((const uint8_t*)r.text.c_str(), (size_t)r.downloaded_bytes, &imageW, &imageH);
         isWebp    = true;
+        n = 4;
     } else {
 #endif
-        int n;
         imageData =
             stbi_load_from_memory((unsigned char*)r.text.c_str(), (int)r.downloaded_bytes, &imageW, &imageH, &n, 4);
 #ifdef USE_WEBP
     }
 #endif
 
-    brls::sync([this, r, imageData, imageW, imageH, isWebp]() {
+    // --- AGGIUNTA: crea bordo trasparente ---
+    int border = 1; // 1 pixel trasparente su ogni lato
+    uint8_t* paddedData = nullptr;
+    int paddedW = imageW + border * 2;
+    int paddedH = imageH + border * 2;
+    if (imageData) {
+        paddedData = (uint8_t*)calloc(paddedW * paddedH * 4, 1); // RGBA, già tutto trasparente
+        for (int y = 0; y < imageH; ++y) {
+            memcpy(
+                paddedData + ((y + border) * paddedW + border) * 4,
+                imageData + (y * imageW) * 4,
+                imageW * 4
+            );
+        }
+    }
+    // ----------------------------------------
+
+    brls::sync([this, r, paddedData, paddedW, paddedH, imageData, isWebp]() {
         int tex = brls::TextureCache::instance().getCache(this->imageUrl);
         if (tex > 0) {
             brls::Logger::verbose("cache hit 2: {}", this->imageUrl);
             this->imageView->innerSetImage(tex);
         } else {
             NVGcontext* vg = brls::Application::getNVGContext();
-            if (imageData) {
-                tex = nvgCreateImageRGBA(vg, imageW, imageH, 0, imageData);
+            if (paddedData) {
+                tex = nvgCreateImageRGBA(vg, paddedW, paddedH, 0, paddedData);
             } else {
                 brls::Logger::error("Failed to load image: {}", this->imageUrl);
             }
@@ -135,6 +151,8 @@ void ImageHelper::requestImage() {
                 }
             }
         }
+        if (paddedData)
+            free(paddedData);
         if (imageData) {
 #ifdef USE_WEBP
             if (isWebp)
