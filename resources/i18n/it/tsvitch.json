@@ -180,7 +180,7 @@
   "common": {
     "part": "Canale:",
     "recommend": "Raccomandato",
-    "search": "Cerca video",
+    "search": "Cerca canale",
     "switch": "Switch",
     "refresh": "Aggiorna",
     "last": "Ultimo",
@@ -194,7 +194,7 @@
     "no_login": "Non hai ancora effettuato l'accesso"
   },
   "live": {
-    "tab": "Dal vivo",
+    "tab": "Canali",
     "dialog": "Canali",
     "default": "Channel: Explore"
   },
@@ -225,7 +225,7 @@
     "hint": "Support keywords and their initial letters",
     "clear": "Clear",
     "delete": "Delete",
-    "search": "Search",
+    "search": "Cerca",
     "hots": "Hots",
     "history": "History",
     "history_clear": "Clear all",
@@ -239,7 +239,7 @@
     "dm": "Danmaku",
     "stow": "Favorite"
   },
-  "tab": "Search",
+  "tab": "Cerca",
   "t0": "History",
   "t1": "Hots",
   "t2": "Video",
