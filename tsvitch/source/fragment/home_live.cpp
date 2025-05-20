@@ -13,81 +13,90 @@
 
 using namespace brls::literals;
 
-class DynamicUserInfoView : public RecyclingGridItem {
+class DynamicGroupChannels : public RecyclingGridItem {
 public:
-    explicit DynamicUserInfoView(const std::string& xml) {
+    explicit DynamicGroupChannels(const std::string& xml) {
         this->inflateFromXMLRes(xml);
-        auto theme = brls::Application::getTheme();
+        auto theme    = brls::Application::getTheme();
         selectedColor = theme.getColor("color/tsvitch");
-        fontColor = theme.getColor("brls/text");
+        fontColor     = theme.getColor("brls/text");
     }
 
-    void setUserInfo(const std::string& avatar, const std::string& username, bool isUpdate = false) {
-        this->labelUsername->setText(username);
+    void setTitle(const std::string& title) {
+        this->labelTitle->setText(title);
     }
 
-
-
-    void setSelected(bool selected) {
-        this->labelUsername->setTextColor(selected ? selectedColor: fontColor);
-    }
-
+    void setSelected(bool selected) { this->labelTitle->setTextColor(selected ? selectedColor : fontColor); }
 
     void prepareForReuse() override {}
 
-    void cacheForReuse() override {
- 
-    }
+    void cacheForReuse() override {}
 
-    static RecyclingGridItem* create(const std::string& xml = "xml/views/user_info_dynamic.xml") {
-        return new DynamicUserInfoView(xml);
+    static RecyclingGridItem* create(const std::string& xml = "xml/views/group_channel_dynamic.xml") {
+        return new DynamicGroupChannels(xml);
     }
 
 private:
-    BRLS_BIND(brls::Label, labelUsername, "username");
+    BRLS_BIND(brls::Label, labelTitle, "title");
     NVGcolor selectedColor{};
     NVGcolor fontColor{};
 };
 
 class DataSourceUpList : public RecyclingGridDataSource {
 public:
-    explicit DataSourceUpList(std::vector<std::string>  result) : list(std::move(result)) {}
+    using OnGroupSelected = std::function<void(const std::string&)>;
+    explicit DataSourceUpList(std::vector<std::string> result, OnGroupSelected cb = nullptr)
+        : list(std::move(result)), onGroupSelected(cb) {}
+
     RecyclingGridItem* cellForRow(RecyclingGrid* recycler, size_t index) override {
+        DynamicGroupChannels* item = (DynamicGroupChannels*)recycler->dequeueReusableCell("Cell");
 
-        DynamicUserInfoView* item = (DynamicUserInfoView*)recycler->dequeueReusableCell("Cell");
-
-        auto& r = this->list[index];
-        item->setUserInfo(r,r);
+        auto& title = this->list[index];
+        item->setTitle(title);
 
         return item;
     }
 
-    size_t getItemCount() override { return list.size() ; }
+    size_t getItemCount() override { return list.size(); }
+
+    void setSelectedIndex(RecyclingGrid* recycler, size_t index) {
+        if (index >= list.size()) return;
+        selectedIndex = index;
+        auto* item     = dynamic_cast<DynamicGroupChannels*>(recycler->getGridItemByIndex(index));
+        if (!item) return;
+        item->setSelected(true);
+        
+        if (onGroupSelected) onGroupSelected(list[index]);
+    }
 
     void onItemSelected(RecyclingGrid* recycler, size_t index) override {
-        // 取消选中
+
         std::vector<RecyclingGridItem*>& items = recycler->getGridItems();
         for (auto& i : items) {
-            auto* cell = dynamic_cast<DynamicUserInfoView*>(i);
+            auto* cell = dynamic_cast<DynamicGroupChannels*>(i);
             if (cell) cell->setSelected(false);
         }
 
         selectedIndex = index;
 
+        auto* item = dynamic_cast<DynamicGroupChannels*>(recycler->getGridItemByIndex(index));
+        if (!item) return;
+        item->setSelected(true);
+
+        if (onGroupSelected) onGroupSelected(list[index]);
     }
 
     void appendData(const std::vector<std::string>& data) {
         this->list.insert(this->list.end(), data.begin(), data.end());
     }
 
-
     void clearData() override { this->list.clear(); }
 
 private:
-    std::vector<std::string>  list;
+    std::vector<std::string> list;
     size_t selectedIndex = 0;
+    OnGroupSelected onGroupSelected;
 };
-
 
 const std::string GridSubAreaCellContentXML = R"xml(
 <brls:Box
@@ -229,13 +238,14 @@ HomeLive::HomeLive() {
     brls::Logger::debug("Fragment HomeLive: create");
     recyclingGrid->registerCell("Cell", []() { return RecyclingGridItemLiveVideoCard::create(); });
 
-    upRecyclingGrid->registerCell("Cell", []() { return DynamicUserInfoView::create(); });
+    upRecyclingGrid->registerCell("Cell", []() { return DynamicGroupChannels::create(); });
 
     this->requestLiveList();
 }
 
 void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result) {
     brls::Threading::sync([this, result]() {
+        this->fullLiveList = result;
         auto* datasource = dynamic_cast<DataSourceLiveVideoList*>(recyclingGrid->getDataSource());
         if (datasource) {
             if (result.empty()) return;
@@ -250,7 +260,7 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result) {
                 recyclingGrid->setDataSource(new DataSourceLiveVideoList(result));
         }
 
-        //set list inside upRecyclingGrid of unique groupTitle inside result
+        // set list inside upRecyclingGrid of unique groupTitle inside result
         std::map<std::string, std::vector<tsvitch::LiveM3u8>> groupMap;
         for (const auto& item : result) {
             groupMap[item.groupTitle].push_back(item);
@@ -259,13 +269,32 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result) {
         for (const auto& item : groupMap) {
             groupTitles.push_back(item.first);
         }
-        upRecyclingGrid->setDataSource(new DataSourceUpList(groupTitles));
+        if (groupTitles.size() == 1) {
+            upRecyclingGrid->setVisibility(brls::Visibility::GONE);
+        } else {
+            auto* upList = new DataSourceUpList(groupTitles, [this](const std::string& group) {
+                // Filtro la lista e aggiorno recyclingGrid
+                tsvitch::LiveM3u8ListResult filtered;
+                for (const auto& item : this->fullLiveList) {
+                    if (item.groupTitle == group) filtered.push_back(item);
+                }
+                if (filtered.empty())
+                    recyclingGrid->setEmpty();
+                else
+                    recyclingGrid->setDataSource(new DataSourceLiveVideoList(filtered));
+            });
+            upRecyclingGrid->setDataSource(upList);
+
+            // Seleziona automaticamente il primo gruppo e filtra la recyclingGrid
+            if (!groupTitles.empty()) {
+                upList->setSelectedIndex(upRecyclingGrid, 0); // seleziona la prima cella visivamente
+            }
+        }
     });
 }
 
 void HomeLive::onCreate() {
-   brls::Logger::debug("Fragment HomeLive: onCreate");
-
+    brls::Logger::debug("Fragment HomeLive: onCreate");
 
     // for (int i = 0; i < 100; ++i) {
     //     // Crea la sidebar item (puoi personalizzare label e stile)
