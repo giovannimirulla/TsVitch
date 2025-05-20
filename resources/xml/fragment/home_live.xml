@@ -2,28 +2,28 @@
         axis="row"
         width="auto"
         height="auto">
-    <RecyclingGrid
-            width="270"
-            paddingLeft="10"
-            paddingRight="10"
-            marginTop="20"
-            marginBottom="8"
-            itemHeight="50"
-            preFetchLine="2"
-            spanCount="1"
-            wireframe="false"
-            lineColor="@theme/color/line"
-            lineRight="1"
-            id="dynamic/up/recyclingGrid"/>
-      <RecyclingGrid
-                                paddingLeft="20"
-                                paddingRight="20"
-                                marginTop="70"
-                                grow="1"
-                                spanCount="@style/tsvitch/grid/span/4"
-                                itemHeight="200"
-                                wireframe="false"
-                                id="home/live/recyclingGrid" />
+        <RecyclingGrid
+                width="270"
+                paddingLeft="10"
+                paddingRight="10"
+                marginTop="20"
+                marginBottom="8"
+                itemHeight="50"
+                preFetchLine="2"
+                spanCount="1"
+                wireframe="false"
+                lineColor="@theme/color/line"
+                lineRight="1"
+                id="dynamic/up/recyclingGrid" />
+        <RecyclingGrid
+                paddingLeft="20"
+                paddingRight="20"
+                marginTop="70"
+                grow="1"
+                spanCount="@style/tsvitch/grid/span/4"
+                itemHeight="200"
+                wireframe="false"
+                id="home/live/recyclingGrid" />
 
 
         <brls:Box
