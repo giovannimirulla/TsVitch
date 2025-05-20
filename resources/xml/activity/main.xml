@@ -19,7 +19,7 @@
                  fontSize="18"
                  icon="@res/svg/ico-home.svg"
                  iconActivate="@res/svg/ico-home-activate.svg">
-                <HomeTab/>
+                <HomeLive/>
             </Tab>
 
             <Tab label=""

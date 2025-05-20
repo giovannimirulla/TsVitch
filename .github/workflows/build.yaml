@@ -3,7 +3,7 @@ name: Build tsvitch
 on:
   push:
     tags:
-      - "v*" # Trigger per i tag che iniziano con "v"
+      - "v*"
   workflow_dispatch:
     inputs:
       universal_macos:
@@ -22,6 +22,12 @@ on:
         description: 'Disable unity build'
         required: false
         default: 'false'
+
+env:
+  GA_ID: ${{ secrets.GA_ID }}
+  GA_KEY: ${{ secrets.GA_KEY }}
+  AD_SERVER_URL: ${{ secrets.AD_SERVER_URL }}
+
 jobs:
   version:
     runs-on: ubuntu-latest
@@ -121,7 +127,12 @@ jobs:
 
       - name: Build Nro
         run: |
-          docker run --platform linux/amd64 --rm -v $(pwd):/data devkitpro/devkita64:20240324 bash -c "/data/scripts/build_switch${{ matrix.shuffix }}.sh"
+          docker run --platform linux/amd64 --rm \
+            -e GA_ID="${GA_ID}" \
+            -e GA_KEY="${GA_KEY}" \
+            -e AD_SERVER_URL="${AD_SERVER_URL}" \
+            -v $(pwd):/data devkitpro/devkita64:20240324 \
+            bash -c "/data/scripts/build_switch${{ matrix.shuffix }}.sh"
     
       - name: Upload dist
         uses: actions/upload-artifact@v4
@@ -172,7 +183,10 @@ jobs:
             -DMAC_${{ matrix.arch }}=ON \
             -DMAC_DOWNLOAD_DYLIB=ON \
             -DBRLS_UNITY_BUILD=${{ github.event.inputs.disable_unity_build == 'true' && 'OFF' || 'ON' }} \
-            -DCMAKE_UNITY_BUILD_BATCH_SIZE=16
+            -DCMAKE_UNITY_BUILD_BATCH_SIZE=16 \
+            -DANALYTICS=ON \
+            -DANALYTICS_ID="${GA_ID}" \
+            -DANALYTICS_KEY="${GA_KEY}"
           make -C build tsvitch.app -j$(sysctl -n hw.ncpu)
 
       - name: Name

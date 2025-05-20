@@ -1,5 +1,3 @@
-
-
 #include <borealis/core/thread.hpp>
 #include <borealis/views/dialog.hpp>
 
@@ -17,6 +15,8 @@
 #include "view/grid_dropdown.hpp"
 #include "view/qr_image.hpp"
 #include "view/mpv_core.hpp"
+
+#include "config/ad_config.h"
 
 using namespace brls::literals;
 
@@ -49,20 +49,39 @@ void LiveActivity::onContentAvailable() {
         return true;
     });
 
-    this->video->setLiveMode();
-    this->video->hideVideoProgressSlider();
-
     this->video->hideSubtitleSetting();
     this->video->hideVideoRelatedSetting();
     this->video->hideVideoSpeedButton();
     this->video->hideBottomLineSetting();
     this->video->hideHighlightLineSetting();
-
     this->video->disableCloseOnEndOfFile();
     this->video->setFullscreenIcon(true);
     this->video->setTitle(liveData.title);
-
     this->video->setStatusLabelLeft("");
+    //getAdUrlFromServer
+
+    std::string adUrl = this->getAdUrlFromServer();
+    if (!adUrl.empty()) {
+        this->startAd(adUrl);
+    } else {
+        this->startLive();
+    }
+
+    GA("open_live", {{"title", this->liveData.title}})
+}
+void LiveActivity::startAd(std::string adUrl) {
+    brls::Logger::debug("LiveActivity: adUrl: {}", adUrl);
+    this->video->setUrl(adUrl);
+    this->video->setOnEndCallback([this]() {
+        this->video->setOnEndCallback(nullptr);  // Rimuovi callback per evitare loop
+        this->startLive();
+    });
+}
+
+void LiveActivity::startLive() {
+    brls::Logger::debug("LiveActivity: start live");
+    this->video->setLiveMode();
+    this->video->hideVideoProgressSlider();
     this->video->setCustomToggleAction([this]() {
         if (MPVCore::instance().isStopped()) {
             this->onLiveData(this->liveData.url);
@@ -71,16 +90,23 @@ void LiveActivity::onContentAvailable() {
         } else {
             this->video->showOSD(false);
             MPVCore::instance().pause();
+            brls::cancelDelay(toggleDelayIter);
+            ASYNC_RETAIN
+            toggleDelayIter = brls::delay(5000, [ASYNC_TOKEN]() {
+                ASYNC_RELEASE
+                if (MPVCore::instance().isPaused()) {
+                    MPVCore::instance().stop();
+                }
+            });
         }
     });
-
-    this->requestData(liveData.url);
+    this->video->setUrl(liveData.url);
 }
 
 void LiveActivity::onLiveData(std::string url) {
     brls::Logger::debug("Live stream url: {}", url);
-
-    this->video->setUrl(url);
+    std::string adUrl = this->getAdUrlFromServer();
+    this->video->setUrl(adUrl);
     return;
 }
 
@@ -96,6 +122,11 @@ void LiveActivity::retryRequestData() {
     errorDelayIter = brls::delay(2000, [this]() {
         if (!MPVCore::instance().isPlaying()) this->requestData(liveData.url);
     });
+}
+
+std::string LiveActivity::getAdUrlFromServer() {
+    // Qui puoi implementare una chiamata HTTP per ottenere l'URL dell'ad
+    return AD_SERVER;
 }
 
 LiveActivity::~LiveActivity() {

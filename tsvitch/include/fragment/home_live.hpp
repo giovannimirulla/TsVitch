@@ -10,6 +10,7 @@ class Label;
 };
 class RecyclingGrid;
 
+
 class HomeLive : public AttachedView, public HomeLiveRequest {
 public:
     HomeLive();
@@ -26,4 +27,5 @@ public:
 
 private:
     BRLS_BIND(RecyclingGrid, recyclingGrid, "home/live/recyclingGrid");
+        BRLS_BIND(RecyclingGrid, upRecyclingGrid, "dynamic/up/recyclingGrid");
 };

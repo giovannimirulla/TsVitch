@@ -75,7 +75,7 @@ VideoProgressSlider::VideoProgressSlider() {
 
     brls::Theme theme = brls::Application::getTheme();
 
-    line->setColor(theme["brls/slider/line_filled"]);
+    line->setColor(theme["color/tsvitch"]);
     lineEmpty->setColor(theme["brls/slider/line_empty"]);
 
     pointer->addGestureRecognizer(new brls::PanGestureRecognizer(

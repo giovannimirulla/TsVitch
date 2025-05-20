@@ -1,5 +1,3 @@
-
-
 #pragma once
 
 #include <borealis/core/activity.hpp>
@@ -29,6 +27,10 @@ public:
 
     void retryRequestData();
 
+    void startLive();
+
+    void startAd(std::string adUrl);
+
     ~LiveActivity() override;
 
 protected:
@@ -43,4 +45,7 @@ protected:
     MPVEvent::Subscription tl_event_id;
 
     CustomEvent::Subscription event_id;
+
+private:
+    std::string getAdUrlFromServer();
 };
