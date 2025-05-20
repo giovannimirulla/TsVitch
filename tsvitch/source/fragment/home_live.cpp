@@ -1,9 +1,8 @@
-
-
 #include <utility>
 #include <borealis/core/touch/tap_gesture.hpp>
 #include <borealis/core/thread.hpp>
 #include <borealis/views/applet_frame.hpp>
+#include <borealis/views/tab_frame.hpp>
 
 #include "fragment/home_live.hpp"
 #include "view/recycling_grid.hpp"
@@ -13,6 +12,82 @@
 #include "utils/activity_helper.hpp"
 
 using namespace brls::literals;
+
+class DynamicUserInfoView : public RecyclingGridItem {
+public:
+    explicit DynamicUserInfoView(const std::string& xml) {
+        this->inflateFromXMLRes(xml);
+        auto theme = brls::Application::getTheme();
+        selectedColor = theme.getColor("color/tsvitch");
+        fontColor = theme.getColor("brls/text");
+    }
+
+    void setUserInfo(const std::string& avatar, const std::string& username, bool isUpdate = false) {
+        this->labelUsername->setText(username);
+    }
+
+
+
+    void setSelected(bool selected) {
+        this->labelUsername->setTextColor(selected ? selectedColor: fontColor);
+    }
+
+
+    void prepareForReuse() override {}
+
+    void cacheForReuse() override {
+ 
+    }
+
+    static RecyclingGridItem* create(const std::string& xml = "xml/views/user_info_dynamic.xml") {
+        return new DynamicUserInfoView(xml);
+    }
+
+private:
+    BRLS_BIND(brls::Label, labelUsername, "username");
+    NVGcolor selectedColor{};
+    NVGcolor fontColor{};
+};
+
+class DataSourceUpList : public RecyclingGridDataSource {
+public:
+    explicit DataSourceUpList(std::vector<std::string>  result) : list(std::move(result)) {}
+    RecyclingGridItem* cellForRow(RecyclingGrid* recycler, size_t index) override {
+
+        DynamicUserInfoView* item = (DynamicUserInfoView*)recycler->dequeueReusableCell("Cell");
+
+        auto& r = this->list[index];
+        item->setUserInfo(r,r);
+
+        return item;
+    }
+
+    size_t getItemCount() override { return list.size() ; }
+
+    void onItemSelected(RecyclingGrid* recycler, size_t index) override {
+        // 取消选中
+        std::vector<RecyclingGridItem*>& items = recycler->getGridItems();
+        for (auto& i : items) {
+            auto* cell = dynamic_cast<DynamicUserInfoView*>(i);
+            if (cell) cell->setSelected(false);
+        }
+
+        selectedIndex = index;
+
+    }
+
+    void appendData(const std::vector<std::string>& data) {
+        this->list.insert(this->list.end(), data.begin(), data.end());
+    }
+
+
+    void clearData() override { this->list.clear(); }
+
+private:
+    std::vector<std::string>  list;
+    size_t selectedIndex = 0;
+};
+
 
 const std::string GridSubAreaCellContentXML = R"xml(
 <brls:Box
@@ -154,6 +229,8 @@ HomeLive::HomeLive() {
     brls::Logger::debug("Fragment HomeLive: create");
     recyclingGrid->registerCell("Cell", []() { return RecyclingGridItemLiveVideoCard::create(); });
 
+    upRecyclingGrid->registerCell("Cell", []() { return DynamicUserInfoView::create(); });
+
     this->requestLiveList();
 }
 
@@ -172,10 +249,43 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result) {
             else
                 recyclingGrid->setDataSource(new DataSourceLiveVideoList(result));
         }
+
+        //set list inside upRecyclingGrid of unique groupTitle inside result
+        std::map<std::string, std::vector<tsvitch::LiveM3u8>> groupMap;
+        for (const auto& item : result) {
+            groupMap[item.groupTitle].push_back(item);
+        }
+        std::vector<std::string> groupTitles;
+        for (const auto& item : groupMap) {
+            groupTitles.push_back(item.first);
+        }
+        upRecyclingGrid->setDataSource(new DataSourceUpList(groupTitles));
     });
 }
 
-void HomeLive::onCreate() {}
+void HomeLive::onCreate() {
+   brls::Logger::debug("Fragment HomeLive: onCreate");
+
+
+    // for (int i = 0; i < 100; ++i) {
+    //     // Crea la sidebar item (puoi personalizzare label e stile)
+    //    auto* item = new AutoSidebarItem();
+    //         item->setTabStyle(AutoTabBarStyle::PLAIN);
+    //         item->setLabel("Tab " + std::to_string(i + 1));
+    //         item->setFontSize(18);
+
+    //     // Funzione che crea la view associata al tab
+    //        this->tabFrame->addTab(item, [this, i, item]() {
+    //         // Qui puoi restituire una view diversa per ogni tab
+    //         // Esempio: una semplice Box con un'etichetta
+    //         auto* box = new brls::Box();
+    //         auto* label = new brls::Label();
+    //         label->setText("Contenuto Tab " + std::to_string(i + 1));
+    //         box->addView(label);
+    //         return box;
+    //     });
+    // }
+}
 
 void HomeLive::onError(const std::string& error) {
     brls::sync([this, error]() { this->recyclingGrid->setError(error); });

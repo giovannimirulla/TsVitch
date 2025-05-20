@@ -911,8 +911,6 @@ void VideoView::setFullScreen(bool fs) {
     }
 }
 
-void VideoView::setSeasonAction(brls::ActionListener action) { this->seasonAction = action; }
-
 brls::View* VideoView::getDefaultFocus() {
     if (isFullscreen() && isOSDShown())
         return this->btnToggle;
@@ -1068,6 +1066,10 @@ void VideoView::registerMpvEvent() {
                 if (EXIT_FULLSCREEN_ON_END && closeOnEndOfFile && this->isFullscreen()) {
                     this->setFullScreen(false);
                 }
+
+                if (this->onEndCallback) {
+                    this->onEndCallback();
+                }
                 break;
             case MpvEventEnum::CACHE_SPEED_CHANGE:
 
@@ -1126,3 +1128,11 @@ void VideoView::onChildFocusGained(View* directChild, View* focusedView) {
 }
 
 float VideoView::getRealDuration() { return real_duration > 0 ? (float)real_duration : (float)mpvCore->duration; }
+
+void VideoView::setOnEndCallback(std::function<void()> callback) {
+    this->onEndCallback = callback;
+}
+
+void VideoView::setOSDSliderFocusable(bool state) {
+     osdSlider->setFocusable(state);
+}

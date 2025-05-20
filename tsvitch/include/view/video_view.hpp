@@ -1,5 +1,3 @@
-
-
 #pragma once
 
 #include <borealis/core/bind.hpp>
@@ -145,6 +143,8 @@ public:
 
     void setFullscreenIcon(bool fs);
 
+    void setOSDSliderFocusable(bool state);
+
     brls::View* getFullscreenIcon();
 
     void setProgress(float value);
@@ -167,8 +167,6 @@ public:
 
     void setFullScreen(bool fs);
 
-    void setSeasonAction(brls::ActionListener action);
-
     void draw(NVGcontext* vg, float x, float y, float width, float height, brls::Style style,
               brls::FrameContext* ctx) override;
 
@@ -183,6 +181,9 @@ public:
     void unRegisterMpvEvent();
 
     void buttonProcessing();
+
+
+    void setOnEndCallback(std::function<void()> callback);
 
     inline static const std::string QUALITY_CHANGE = "QUALITY_CHANGE";
     inline static const std::string SET_ONLINE_NUM = "SET_ONLINE_NUM";
@@ -304,4 +305,7 @@ private:
     void _setTvControlMode(bool state);
 
     float getRealDuration();
+
+private:
+    std::function<void()> onEndCallback = nullptr;
 };

@@ -1,9 +1,26 @@
+GA_ID=$(grep '^GA_ID=' .env | cut -d'=' -f2-)
+GA_KEY=$(grep '^GA_KEY=' .env | cut -d'=' -f2-)
+if [ -z "${GA_ID}" ] || [ -z "${GA_KEY}" ]; then
+    echo "GA_ID or GA_KEY not found in .env file"
+    exit 1
+fi
+
+AD_SERVER_URL=$(grep '^AD_SERVER_URL=' .env | cut -d'=' -f2-)
+if [ -z "${AD_SERVER_URL}" ]; then
+    echo "AD_SERVER_URL not found in .env file"
+    exit 1
+fi
+
 cmake -B build -DCPR_USE_SYSTEM_CURL=ON \
   -DCPR_USE_BOOST_FILESYSTEM=ON \
   -DCURL_INCLUDE_DIR=/opt/homebrew/opt/curl/include \
   -DCURL_LIBRARY=/opt/homebrew/opt/curl/lib/libcurl.dylib \
   -DBOOST_ROOT=/opt/homebrew/opt/boost \
   -DBoost_NO_SYSTEM_PATHS=ON \
-  -DPLATFORM_DESKTOP=ON
+  -DPLATFORM_DESKTOP=ON \
+  -DANALYTICS=ON \
+  -DANALYTICS_ID="${GA_ID}" \
+  -DANALYTICS_KEY="${GA_KEY}" \
+  -DAD_SERVER_URL="${AD_SERVER_URL}" \
 
 make -C build tsvitch -j$(sysctl -n hw.ncpu)
