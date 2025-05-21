@@ -12,6 +12,8 @@
 #include "utils/activity_helper.hpp"
 #include "view/custom_button.hpp"
 
+#include "core/HistoryManager.hpp"
+
 using namespace brls::literals;
 
 class DynamicGroupChannels : public RecyclingGridItem {
@@ -175,6 +177,7 @@ public:
     size_t getItemCount() override { return videoList.size(); }
 
     void onItemSelected(RecyclingGrid* recycler, size_t index) override {
+        HistoryManager::get()->add(videoList[index]);
         Intent::openLive(videoList[index].url, videoList[index].title, videoList[index].groupTitle);
     }
 

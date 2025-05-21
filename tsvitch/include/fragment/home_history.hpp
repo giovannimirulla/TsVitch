@@ -16,7 +16,11 @@ public:
 
     void onCreate() override;
 
+    void onShow() override;
+
     void onError(const std::string &error);
+
+    void refreshRecent();
 
 private:
     BRLS_BIND(RecyclingGrid, recyclingGrid, "home/history/recyclingGrid");

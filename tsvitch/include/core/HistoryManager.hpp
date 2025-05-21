@@ -3,23 +3,26 @@
 #include <filesystem>
 #include <string>
 #include <nlohmann/json.hpp>
+#include "api/tsvitch/result/home_live_result.h" // aggiungi questo include per LiveM3u8
 
 class HistoryManager {
 public:
     explicit HistoryManager(const std::filesystem::path& dataDir);
 
-    /// Enregistre l’ID d’une chaîne lue
-    void add(const std::string& channelId);
+    // Salva l'intero oggetto canale
+    void add(const tsvitch::LiveM3u8& channel);
 
-    /// Renvoie les X dernières chaînes (défaut : 20)
-    std::deque<std::string> recent(std::size_t limit = 20) const;
+    // Restituisce gli ultimi X canali completi (default: 20)
+    std::deque<tsvitch::LiveM3u8> recent(std::size_t limit = 20) const;
 
-    /// Sérialise vers disque (appelé à la fermeture de l’appli)
     void save() const;
-    void load();               // appelé au démarrage
+    void load();
+
+    //get istantance
+     static HistoryManager* get();
 
 private:
     std::filesystem::path file_;
-    std::deque<std::string> ring_;
-    static constexpr std::size_t MAX_ITEMS = 100;
+    std::deque<tsvitch::LiveM3u8> ring_; // cambia il tipo da string a LiveM3u8
+    static constexpr std::size_t MAX_ITEMS = 10;
 };
