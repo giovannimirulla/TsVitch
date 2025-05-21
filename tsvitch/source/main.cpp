@@ -27,8 +27,11 @@ int main(int argc, char* argv[])
         if (std::strcmp(argv[i], "-d") == 0) {
             brls::Logger::setLogLevel(brls::LogLevel::LOG_DEBUG);
         } else if (std::strcmp(argv[i], "-v") == 0) {
+            brls::Logger::setLogLevel(brls::LogLevel::LOG_VERBOSE);
+        } else if (std::strcmp(argv[i], "-dv") == 0) {
             brls::Application::enableDebuggingView(true);
-        } else if (std::strcmp(argv[i], "-t") == 0) {
+        }
+        else if (std::strcmp(argv[i], "-t") == 0) {
             MPVCore::TERMINAL = true;
         } else if (std::strcmp(argv[i], "-o") == 0) {
             const char* path = (i + 1 < argc) ? argv[++i] : "tsvitch.log";

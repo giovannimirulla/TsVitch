@@ -156,6 +156,8 @@ void RecyclingGrid::registerCell(std::string identifier, std::function<Recycling
 }
 
 void RecyclingGrid::addCellAt(size_t index, bool downSide) {
+        brls::Logger::info("addCellAt: index={}", index);
+            
     RecyclingGridItem* cell;
 
     cell = dataSource->cellForRow(this, index);
@@ -224,6 +226,7 @@ void RecyclingGrid::setDataSource(RecyclingGridDataSource* source) {
 }
 
 void RecyclingGrid::reloadData() {
+    brls::Logger::debug("RecyclingGrid reloadData");
     if (!layouted) return;
 
     auto children = this->contentBox->getChildren();
@@ -274,6 +277,7 @@ void RecyclingGrid::reloadData() {
 }
 
 void RecyclingGrid::notifyDataChanged() {
+    brls::Logger::debug("RecyclingGrid notifyDataChanged");
     if (!layouted) return;
 
     if (dataSource) {
@@ -340,57 +344,57 @@ void RecyclingGrid::itemsRecyclingLoop() {
 
     brls::Rect visibleFrame = getVisibleFrame();
 
-    while (true) {
-        RecyclingGridItem* minCell = nullptr;
-        for (auto it : contentBox->getChildren())
+    // while (true) {
+    //     RecyclingGridItem* minCell = nullptr;
+    //     for (auto it : contentBox->getChildren())
 
-            if (*((size_t*)it->getParentUserData()) == visibleMin) minCell = (RecyclingGridItem*)it;
+    //         if (*((size_t*)it->getParentUserData()) == visibleMin) minCell = (RecyclingGridItem*)it;
 
-        if (!minCell || (minCell->getDetachedPosition().y +
-                             getHeightByCellIndex(visibleMin + (preFetchLine + 1) * spanCount, visibleMin) >=
-                         visibleFrame.getMinY()))
-            break;
+    //     if (!minCell || (minCell->getDetachedPosition().y +
+    //                          getHeightByCellIndex(visibleMin + (preFetchLine + 1) * spanCount, visibleMin) >=
+    //                      visibleFrame.getMinY()))
+    //         break;
 
-        float cellHeight = estimatedRowHeight;
-        if (isFlowMode) cellHeight = cellHeightCache[visibleMin];
+    //     float cellHeight = estimatedRowHeight;
+    //     if (isFlowMode) cellHeight = cellHeightCache[visibleMin];
 
-        renderedFrame.origin.y += minCell->getIndex() % spanCount == 0 ? cellHeight + estimatedRowSpace : 0;
-        renderedFrame.size.height -= minCell->getIndex() % spanCount == 0 ? cellHeight + estimatedRowSpace : 0;
+    //     renderedFrame.origin.y += minCell->getIndex() % spanCount == 0 ? cellHeight + estimatedRowSpace : 0;
+    //     renderedFrame.size.height -= minCell->getIndex() % spanCount == 0 ? cellHeight + estimatedRowSpace : 0;
 
-        queueReusableCell(minCell);
-        this->contentBox->removeView(minCell, false);
+    //     queueReusableCell(minCell);
+    //     this->contentBox->removeView(minCell, false);
 
-        brls::Logger::verbose("Cell #{} - destroyed", visibleMin);
+    //     brls::Logger::verbose("Cell #{} - destroyed", visibleMin);
 
-        visibleMin++;
-    }
+    //     visibleMin++;
+    // }
 
-    while (true) {
-        RecyclingGridItem* maxCell = nullptr;
+    // while (true) {
+    //     RecyclingGridItem* maxCell = nullptr;
 
-        for (auto it : contentBox->getChildren())
-            if (*((size_t*)it->getParentUserData()) == visibleMax) maxCell = (RecyclingGridItem*)it;
+    //     for (auto it : contentBox->getChildren())
+    //         if (*((size_t*)it->getParentUserData()) == visibleMax) maxCell = (RecyclingGridItem*)it;
 
-        if (!maxCell || (maxCell->getDetachedPosition().y -
-                             getHeightByCellIndex(visibleMax, visibleMax - preFetchLine * spanCount) <=
-                         visibleFrame.getMaxY()))
-            break;
-        if (visibleMax == 0) {
-            break;
-        }
+    //     if (!maxCell || (maxCell->getDetachedPosition().y -
+    //                          getHeightByCellIndex(visibleMax, visibleMax - preFetchLine * spanCount) <=
+    //                      visibleFrame.getMaxY()))
+    //         break;
+    //     if (visibleMax == 0) {
+    //         break;
+    //     }
 
-        float cellHeight = estimatedRowHeight;
-        if (isFlowMode) cellHeight = cellHeightCache[visibleMax];
+    //     float cellHeight = estimatedRowHeight;
+    //     if (isFlowMode) cellHeight = cellHeightCache[visibleMax];
 
-        renderedFrame.size.height -= maxCell->getIndex() % spanCount == 0 ? cellHeight + estimatedRowSpace : 0;
+    //     renderedFrame.size.height -= maxCell->getIndex() % spanCount == 0 ? cellHeight + estimatedRowSpace : 0;
 
-        queueReusableCell(maxCell);
-        this->contentBox->removeView(maxCell, false);
+    //     queueReusableCell(maxCell);
+    //     this->contentBox->removeView(maxCell, false);
 
-        brls::Logger::verbose("Cell #{} - destroyed", visibleMax);
+    //     brls::Logger::verbose("Cell #{} - destroyed", visibleMax);
 
-        visibleMax--;
-    }
+    //     visibleMax--;
+    // }
 
     while (visibleMin - 1 < dataSource->getItemCount()) {
         if ((visibleMin) % spanCount == 0)
@@ -571,6 +575,7 @@ bool RecyclingGrid::checkWidth() {
 }
 
 void RecyclingGrid::queueReusableCell(RecyclingGridItem* cell) {
+    brls::Logger::info("queueReusableCell: index={}", cell->getIndex());
     queueMap.at(cell->reuseIdentifier)->push_back(cell);
     cell->cacheForReuse();
 }

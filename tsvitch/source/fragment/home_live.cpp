@@ -10,6 +10,7 @@
 #include "view/grid_dropdown.hpp"
 #include "utils/image_helper.hpp"
 #include "utils/activity_helper.hpp"
+#include "view/custom_button.hpp"
 
 using namespace brls::literals;
 
@@ -22,13 +23,14 @@ public:
         fontColor     = theme.getColor("brls/text");
     }
 
-    void setTitle(const std::string& title) {
-        this->labelTitle->setText(title);
-    }
+    void setTitle(const std::string& title) { this->labelTitle->setText(title); }
 
     void setSelected(bool selected) { this->labelTitle->setTextColor(selected ? selectedColor : fontColor); }
 
-    void prepareForReuse() override {}
+    void prepareForReuse() override {
+        this->labelTitle->setText("");
+        this->labelTitle->setTextColor(fontColor);
+    }
 
     void cacheForReuse() override {}
 
@@ -50,27 +52,26 @@ public:
 
     RecyclingGridItem* cellForRow(RecyclingGrid* recycler, size_t index) override {
         DynamicGroupChannels* item = (DynamicGroupChannels*)recycler->dequeueReusableCell("Cell");
-
-        auto& title = this->list[index];
-        item->setTitle(title);
-
+        item->setTitle(this->list[index]);
+        item->setSelected(index == selectedIndex); // Imposta sempre la selezione!
         return item;
     }
 
     size_t getItemCount() override { return list.size(); }
 
     void setSelectedIndex(RecyclingGrid* recycler, size_t index) {
+        brls::Logger::debug("setSelectedIndex: {}", index);
         if (index >= list.size()) return;
         selectedIndex = index;
-        auto* item     = dynamic_cast<DynamicGroupChannels*>(recycler->getGridItemByIndex(index));
+        auto* item    = dynamic_cast<DynamicGroupChannels*>(recycler->getGridItemByIndex(index));
         if (!item) return;
         item->setSelected(true);
-        
+
         if (onGroupSelected) onGroupSelected(list[index]);
     }
 
     void onItemSelected(RecyclingGrid* recycler, size_t index) override {
-
+        brls::Logger::debug("onItemSelected: {}", index);
         std::vector<RecyclingGridItem*>& items = recycler->getGridItems();
         for (auto& i : items) {
             auto* cell = dynamic_cast<DynamicGroupChannels*>(i);
@@ -96,57 +97,6 @@ private:
     std::vector<std::string> list;
     size_t selectedIndex = 0;
     OnGroupSelected onGroupSelected;
-};
-
-const std::string GridSubAreaCellContentXML = R"xml(
-<brls:Box
-        width="auto"
-        height="@style/brls/sidebar/item_height"
-        focusable="true"
-        paddingTop="12.5"
-        paddingBottom="12.5"
-        axis="column"
-        alignItems="center">
-
-    <brls:Image
-        id="area/avatar"
-        scalingType="fill"
-        cornerRadius="4"
-        width="50"
-        height="50"/>
-
-    <brls:Label
-            id="area/title"
-            width="auto"
-            height="auto"
-            grow="1"
-            fontSize="14" />
-
-</brls:Box>
-)xml";
-
-class GridSubAreaCell : public RecyclingGridItem {
-public:
-    GridSubAreaCell() { this->inflateFromXMLString(GridSubAreaCellContentXML); }
-
-    void setData(const std::string& name, const std::string& pic) {
-        title->setText(name);
-        if (pic.empty()) {
-            this->image->setImageFromRes("pictures/22_open.png");
-        } else {
-            ImageHelper::with(image)->load(pic + ImageHelper::face_ext);
-        }
-    }
-
-    void prepareForReuse() override { this->image->setImageFromRes("pictures/video-card-bg.png"); }
-
-    void cacheForReuse() override { ImageHelper::clear(this->image); }
-
-    static RecyclingGridItem* create() { return new GridSubAreaCell(); }
-
-protected:
-    BRLS_BIND(brls::Label, title, "area/title");
-    BRLS_BIND(brls::Image, image, "area/avatar");
 };
 
 const std::string GridMainAreaCellContentXML = R"xml(
@@ -182,7 +132,8 @@ public:
     GridMainAreaCell() { this->inflateFromXMLString(GridMainAreaCellContentXML); }
 
     void setData(const std::string& name, const std::string& pic) {
-        title->setText(name);
+        this->title->setText(name);
+        this->title->setTextColor(fontColor);
         if (pic.empty()) {
             this->image->setImageFromRes("pictures/22_open.png");
         } else {
@@ -192,7 +143,11 @@ public:
 
     void setSelected(bool value) { this->title->setTextColor(value ? selectedColor : fontColor); }
 
-    void prepareForReuse() override { this->image->setImageFromRes("pictures/video-card-bg.png"); }
+    void prepareForReuse() override { 
+        this->image->setImageFromRes("pictures/video-card-bg.png");
+    this->title->setText("");
+    this->title->setTextColor(fontColor);
+    }
 
     void cacheForReuse() override { ImageHelper::clear(this->image); }
 
@@ -208,11 +163,11 @@ protected:
 
 class DataSourceLiveVideoList : public RecyclingGridDataSource {
 public:
-    explicit DataSourceLiveVideoList(tsvitch::LiveM3u8ListResult result) : videoList(std::move(result)) {}
+    explicit DataSourceLiveVideoList(const tsvitch::LiveM3u8ListResult& result) : videoList(result) {}
     RecyclingGridItem* cellForRow(RecyclingGrid* recycler, size_t index) override {
-        RecyclingGridItemLiveVideoCard* item = (RecyclingGridItemLiveVideoCard*)recycler->dequeueReusableCell("Cell");
-
         tsvitch::LiveM3u8& r = this->videoList[index];
+        brls::Logger::info("cellForRow: {} [{}]", r.title, index);
+        RecyclingGridItemLiveVideoCard* item = (RecyclingGridItemLiveVideoCard*)recycler->dequeueReusableCell("Cell");
         item->setCard(r.logo, r.title, r.groupTitle, r.chno);
         return item;
     }
@@ -231,6 +186,8 @@ public:
 
 private:
     tsvitch::LiveM3u8ListResult videoList;
+    UpdateSearchEvent* updateSearchEvent = nullptr;
+    brls::Event<>* clearSearchEvent      = nullptr;
 };
 
 HomeLive::HomeLive() {
@@ -244,9 +201,20 @@ HomeLive::HomeLive() {
 }
 
 void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result) {
+    brls::Logger::debug("Fragment HomeLive: onLiveList");
+    if (result.empty()) {
+        recyclingGrid->setEmpty();
+        upRecyclingGrid->setVisibility(brls::Visibility::GONE);
+        return;
+    }
+    this->registerAction("hints/search"_i18n, brls::BUTTON_Y, [this](...) {
+        this->search();
+        return true;
+    });
+
     brls::Threading::sync([this, result]() {
         this->fullLiveList = result;
-        auto* datasource = dynamic_cast<DataSourceLiveVideoList*>(recyclingGrid->getDataSource());
+        auto* datasource   = dynamic_cast<DataSourceLiveVideoList*>(recyclingGrid->getDataSource());
         if (datasource) {
             if (result.empty()) return;
             if (!result.empty()) {
@@ -286,15 +254,77 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result) {
             upRecyclingGrid->setDataSource(upList);
 
             // Seleziona automaticamente il primo gruppo e filtra la recyclingGrid
-            if (!groupTitles.empty()) {
-                upList->setSelectedIndex(upRecyclingGrid, 0); // seleziona la prima cella visivamente
+            this->selectGroupIndex(0);
+        }
+    });
+}
+
+void HomeLive::selectGroupIndex(size_t index) {
+    auto* datasource = dynamic_cast<DataSourceUpList*>(upRecyclingGrid->getDataSource());
+    if (!datasource) return;
+    if (index >= datasource->getItemCount()) return; // <-- controllo corretto
+    this->selectedGroupIndex = index;
+    datasource->setSelectedIndex(upRecyclingGrid, index);
+}
+
+void HomeLive::search() {
+    brls::Application::getImeManager()->openForText([this](const std::string& text) { this->filter(text); },
+                                                    "tsvitch/home/common/search"_i18n, "", 32, "", 0);
+}
+
+void HomeLive::cancelSearch() {
+    this->recyclingGrid->setDataSource(new DataSourceLiveVideoList(this->fullLiveList));
+    upRecyclingGrid->setVisibility(brls::Visibility::VISIBLE);
+    this->unregisterAction(cancelSearchActionId);
+
+    this->selectGroupIndex(this->selectedGroupIndex);
+}
+
+
+void HomeLive::filter(const std::string& key) {
+    if (key.empty()) return;
+
+    this->cancelSearchActionId = this->registerAction("hints/cancel"_i18n, brls::BUTTON_B, [this](...) {
+        this->cancelSearch();
+        return true;
+    });
+
+    brls::Threading::sync([this, key]() {
+        auto* datasource = dynamic_cast<DataSourceLiveVideoList*>(recyclingGrid->getDataSource());
+        if (datasource) {
+            tsvitch::LiveM3u8ListResult filtered;
+            std::string lowerKey = key;
+            std::transform(lowerKey.begin(), lowerKey.end(), lowerKey.begin(),
+                           [](unsigned char c) { return std::tolower(c); });
+            for (const auto& item : this->fullLiveList) {
+                std::string lowerTitle = item.title;
+                std::transform(lowerTitle.begin(), lowerTitle.end(), lowerTitle.begin(),
+                               [](unsigned char c) { return std::tolower(c); });
+                std::string lowerGroupTitle = item.groupTitle;
+                std::transform(lowerGroupTitle.begin(), lowerGroupTitle.end(), lowerGroupTitle.begin(),
+                               [](unsigned char c) { return std::tolower(c); });
+                if (lowerTitle.find(lowerKey) != std::string::npos ||
+                    lowerGroupTitle.find(lowerKey) != std::string::npos)
+                    filtered.push_back(item);
             }
+            if (filtered.empty()) {
+                recyclingGrid->setEmpty();
+            } else {
+                recyclingGrid->setDataSource(new DataSourceLiveVideoList(filtered));
+            }
+            upRecyclingGrid->setVisibility(brls::Visibility::GONE);
         }
     });
 }
 
 void HomeLive::onCreate() {
     brls::Logger::debug("Fragment HomeLive: onCreate");
+
+    this->searchField->registerClickAction([this](brls::View* view) -> bool {
+        this->search();
+        return true;
+    });
+    this->searchField->addGestureRecognizer(new brls::TapGestureRecognizer(this->searchField));
 
     // for (int i = 0; i < 100; ++i) {
     //     // Crea la sidebar item (puoi personalizzare label e stile)
