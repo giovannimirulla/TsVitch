@@ -12,5 +12,5 @@
             preFetchLine="2"
             spanCount="@style/tsvitch/grid/span/4"
             wireframe="false"
-            id="home/recommends/recyclingGrid"/>
+            id="home/history/recyclingGrid"/>
 </brls:Box>

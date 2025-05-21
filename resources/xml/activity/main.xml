@@ -26,7 +26,7 @@
                  fontSize="18"
                  icon="@res/svg/ico-favorites.svg"
                  iconActivate="@res/svg/ico-favorites-activate.svg">
-                <DynamicTab/>
+                <HomeFavorites/>
             </Tab>
 
             <Tab label=""
@@ -34,7 +34,7 @@
                  focusDown="main/inbox"
                  icon="@res/svg/ico-history.svg"
                  iconActivate="@res/svg/ico-history-activate.svg">
-                <MineTab/>
+                <HomeHistory/>
             </Tab>
         </AutoTabFrame>
         <brls:Box
