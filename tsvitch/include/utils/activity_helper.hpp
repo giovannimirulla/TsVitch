@@ -21,6 +21,8 @@ public:
 
     static void openDLNA();
 
+    static void openSearch(const std::string& key);
+
     static void openActivity(const std::string& id);
 
     static void _registerFullscreen(brls::Activity* activity);

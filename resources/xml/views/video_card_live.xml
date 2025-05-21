@@ -68,7 +68,6 @@
                 <brls:Label
                  id="video/card/label/username"
                         fontSize="13"
-                        text="已关注"
                         margin="2"
                         horizontalAlign="center"
                         textColor="@theme/font/yellow_1"/>

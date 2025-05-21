@@ -11,13 +11,17 @@ using namespace brls::literals;
 
 void BaseVideoCard::prepareForReuse() { this->picture->setImageFromRes("pictures/video-card-bg.png"); }
 
-void BaseVideoCard::cacheForReuse() { ImageHelper::clear(this->picture); }
+void BaseVideoCard::cacheForReuse() {
+    ImageHelper::clear(this->picture);
+}
 
 RecyclingGridItemLiveVideoCard::RecyclingGridItemLiveVideoCard() {
     this->inflateFromXMLRes("xml/views/video_card_live.xml");
 }
 
-RecyclingGridItemLiveVideoCard::~RecyclingGridItemLiveVideoCard() { ImageHelper::clear(this->picture); }
+RecyclingGridItemLiveVideoCard::~RecyclingGridItemLiveVideoCard() {
+    ImageHelper::clear(this->picture);
+}
 
 void RecyclingGridItemLiveVideoCard::setCard(std::string pic, std::string title, std::string groupTitle,
                                              std::string chno) {
