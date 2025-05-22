@@ -13,8 +13,8 @@
 #include "utils/activity_helper.hpp"
 #include "utils/config_helper.hpp"
 
-void Intent::openLive(const std::string& url, const std::string& title, const std::string& groupTitle) {
-    auto activity = new LiveActivity(url, title, groupTitle);
+void Intent::openLive(const tsvitch::LiveM3u8& liveData, std::function<void()> onClose) {
+    auto activity = new LiveActivity(liveData, onClose);
     brls::Application::pushActivity(activity, brls::TransitionAnimation::NONE);
     registerFullscreen(activity);
 }

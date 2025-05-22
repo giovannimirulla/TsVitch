@@ -36,6 +36,12 @@ if (AD_SERVER_URL)
     list(APPEND APP_PLATFORM_OPTION -DAD_SERVER_URL="${AD_SERVER_URL}")
 endif ()
 
+# Default M3U8 URL
+option(M3U8_URL "Default M3U8 URL" "")
+if (M3U8_URL)
+    list(APPEND APP_PLATFORM_OPTION -DM3U8_URL="${M3U8_URL}")
+endif ()
+
 # Dependencies
 option(USE_SHARED_LIB "Whether to use shared libs provided by system" OFF)
 option(USE_SYSTEM_CURL "" ${USE_SHARED_LIB})

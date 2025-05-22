@@ -35,6 +35,12 @@ if [ -z "${AD_SERVER_URL}" ]; then
     exit 1
 fi
 
+M3U8_URL=$(grep -oP '(?<=M3U8_URL=).*' .env)
+if [ -z "${M3U8_URL}" ]; then
+    echo "M3U8_URL not found in .env file"
+    exit 1
+fi
+
 cmake -B ${BUILD_DIR} \
   -DCMAKE_BUILD_TYPE=Release \
   -DBUILTIN_NSP=ON \
@@ -45,5 +51,6 @@ cmake -B ${BUILD_DIR} \
   -DANALYTICS_ID="${GA_ID}" \
   -DANALYTICS_KEY="${GA_KEY}" \
   -DAD_SERVER_URL="${AD_SERVER_URL}" \
+  -DM3U8_URL="${M3U8_URL}" 
 
 make -C ${BUILD_DIR} tsvitch.nro -j$(nproc)

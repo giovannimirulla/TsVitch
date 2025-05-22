@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #include <borealis/core/activity.hpp>
 #include <borealis/core/bind.hpp>
 
@@ -12,7 +14,7 @@ class LiveActivity : public brls::Activity, public LiveDataRequest {
 public:
     CONTENT_FROM_XML_RES("activity/video_activity.xml");
 
-    explicit LiveActivity(const std::string& url = "", const std::string& name = "", const std::string& views = "");
+    explicit LiveActivity(const tsvitch::LiveM3u8& liveData, std::function<void()> onClose = nullptr);
 
     void setCommonData();
 
@@ -35,6 +37,8 @@ public:
 
 protected:
     BRLS_BIND(VideoView, video, "video");
+
+    std::function<void()> onCloseCallback;
 
     size_t toggleDelayIter = 0;
 

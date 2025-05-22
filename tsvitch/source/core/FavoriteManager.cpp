@@ -1,5 +1,7 @@
 #include "core/FavoriteManager.hpp"
+#include "utils/config_helper.hpp"
 #include <fstream>
+#include <iostream>
 
 using json = nlohmann::json;
 
@@ -8,17 +10,32 @@ FavoriteManager::FavoriteManager(const std::filesystem::path& dataDir)
     load();
 }
 
-void FavoriteManager::toggle(const std::string& id) {
-    if (!set_.erase(id))        // n’était pas présent → on l’ajoute
-        set_.insert(id);
+FavoriteManager* FavoriteManager::get() {
+    const std::string path = ProgramConfig::instance().getConfigDir();
+    static FavoriteManager instance(path);
+    return &instance;
 }
 
-bool FavoriteManager::isFavorite(const std::string& id) const {
-    return set_.find(id) != set_.end();
+void FavoriteManager::toggle(const tsvitch::LiveM3u8& channel) {
+    auto it = std::find_if(set_.begin(), set_.end(),
+        [&](const tsvitch::LiveM3u8& c){ return c.id == channel.id; });
+    if (it != set_.end()) {
+        set_.erase(it);
+    } else {
+        set_.push_back(channel);
+    }
+    save();
+}
+
+bool FavoriteManager::isFavorite(const std::string& url ) const {
+    auto it = std::find_if(set_.begin(), set_.end(),
+        [&](const tsvitch::LiveM3u8& c){ return  c.url == url; });
+    return it != set_.end();
 }
 
 void FavoriteManager::save() const {
-    std::ofstream(file_) << json(set_).dump(2);
+    json j = set_;
+    std::ofstream(file_) << j.dump(2);
 }
 
 void FavoriteManager::load() {
@@ -26,4 +43,7 @@ void FavoriteManager::load() {
         json j; in >> j;
         set_ = j.get<decltype(set_)>();
     }
+}
+std::vector<tsvitch::LiveM3u8> FavoriteManager::getFavorites() const {
+    return std::vector<tsvitch::LiveM3u8>(set_.begin(), set_.end());
 }

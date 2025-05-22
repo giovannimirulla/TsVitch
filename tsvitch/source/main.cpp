@@ -1,5 +1,5 @@
 #include <borealis.hpp>
-#include <filesystem>   // ← pour std::filesystem::path
+#include <filesystem>  
 
 #ifdef __SWITCH__
 #include <switch.h>
@@ -10,12 +10,8 @@
 #include "utils/activity_helper.hpp"
 #include "view/mpv_core.hpp"
 
-/* --------  NEW : Historique & Favoris  -------- */
 #include "core/HistoryManager.hpp"
 #include "core/FavoriteManager.hpp"
-
-static HistoryManager  gHistory(std::filesystem::path("data"));
-static FavoriteManager gFavorite(std::filesystem::path("data"));
 
 #ifdef IOS
 #include <SDL2/SDL_main.h>
@@ -47,6 +43,7 @@ int main(int argc, char* argv[])
 #endif
 
     ProgramConfig::instance().init();
+    
 
 #ifdef __SWITCH__
     bool canUseLed = false;
@@ -83,18 +80,15 @@ int main(int argc, char* argv[])
 
     APPVersion::instance().checkUpdate();
 
-    /* ---------- Boucle principale ---------- */
     while (brls::Application::mainLoop()) {
-        // → Si quelque part tu lances une chaîne, ajoute :
-        // gHistory.add(channelId);
+ 
     }
 
     brls::Logger::info("mainLoop done");
     ProgramConfig::instance().exit(argv);
 
-    /* --------  NEW : Sauvegarde persistance  -------- */
-    gHistory.save();
-    gFavorite.save();
+    HistoryManager::get()->save();
+    FavoriteManager::get()->save();
 
 #ifdef __SWITCH__
     if (canUseLed) hidsysExit();

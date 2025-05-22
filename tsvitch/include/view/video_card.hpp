@@ -23,16 +23,17 @@ public:
 
     ~RecyclingGridItemLiveVideoCard() override;
 
-    void setCard(std::string logo, std::string title, std::string groupTitle, std::string chno);
+    void setCard(std::string pic, std::string title, std::string groupTitle, std::string url,
+                                             std::string chno);
 
     static RecyclingGridItemLiveVideoCard* create();
 
 private:
     BRLS_BIND(TextBox, labelTitle, "video/card/label/title");
-    BRLS_BIND(brls::Label, labelUsername, "video/card/label/username");
-    BRLS_BIND(brls::Label, labelCount, "video/card/label/count");
-    BRLS_BIND(brls::Label, labelDuration, "video/card/label/duration");
+    BRLS_BIND(brls::Label, labelGroup, "video/card/label/group");
+    BRLS_BIND(brls::Label, labelChno, "video/card/label/chno");
     BRLS_BIND(brls::Box, boxPic, "video/card/pic_box");
     BRLS_BIND(brls::Box, boxHint, "video/card/hint");
     BRLS_BIND(SVGImage, svgUp, "video/svg/up");
+    BRLS_BIND(SVGImage, svgFavoriteIcon, "video/card/ico/favorite");
 };

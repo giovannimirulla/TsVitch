@@ -499,12 +499,11 @@ void SettingActivity::onContentAvailable() {
                                MPVCore::instance().restart();
                            });
 
-    auto m3u8Url = conf.getSettingItem(SettingItem::M3U8_URL, std::string{""});
+    auto m3u8Url = conf.getSettingItem(SettingItem::M3U8_URL_ITEM, std::string{""});
     btnM3U8Input->init(
         "tsvitch/setting/tools/m3u8/input"_i18n, m3u8Url,
         [](const std::string& data) {
             std::string m3u8Url = pystring::strip(data);
-            ProgramConfig::instance().setSettingItem(SettingItem::M3U8_URL, m3u8Url);
             ProgramConfig::instance().setM3U8Url(m3u8Url);
         },
         "tsvitch/setting/tools/m3u8/hint"_i18n, "tsvitch/setting/tools/m3u8/hint"_i18n, 255);

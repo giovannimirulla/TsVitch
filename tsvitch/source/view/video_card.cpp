@@ -5,32 +5,39 @@
 #include "view/text_box.hpp"
 #include "utils/number_helper.hpp"
 #include "utils/image_helper.hpp"
+#include "core/FavoriteManager.hpp"
 #include <pystring.h>
 
 using namespace brls::literals;
 
 void BaseVideoCard::prepareForReuse() { this->picture->setImageFromRes("pictures/video-card-bg.png"); }
 
-void BaseVideoCard::cacheForReuse() {
-    ImageHelper::clear(this->picture);
-}
+void BaseVideoCard::cacheForReuse() { ImageHelper::clear(this->picture); }
 
 RecyclingGridItemLiveVideoCard::RecyclingGridItemLiveVideoCard() {
     this->inflateFromXMLRes("xml/views/video_card_live.xml");
 }
 
-RecyclingGridItemLiveVideoCard::~RecyclingGridItemLiveVideoCard() {
-    ImageHelper::clear(this->picture);
-}
+RecyclingGridItemLiveVideoCard::~RecyclingGridItemLiveVideoCard() { ImageHelper::clear(this->picture); }
 
 void RecyclingGridItemLiveVideoCard::setCard(std::string pic, std::string title, std::string groupTitle,
-                                             std::string chno) {
-    this->labelUsername->setText(groupTitle);
+                                             std::string url, std::string chno) {
+    this->labelGroup->setText(groupTitle);
     this->labelTitle->setIsWrapping(false);
     this->labelTitle->setText(title);
     ImageHelper::with(this->picture)->load(pic);
 
-    this->labelDuration->setText(chno);
+    bool isFavorite = FavoriteManager::get()->isFavorite( url);
+
+    brls::Logger::debug("isFavorite: {}", isFavorite);
+
+    if (FavoriteManager::get()->isFavorite(url)) {
+        this->svgFavoriteIcon->setImageFromSVGRes("svg/ico-favorite-activate.svg");
+        this->svgFavoriteIcon->setVisibility(brls::Visibility::VISIBLE);
+    } else
+        this->svgFavoriteIcon->setVisibility(brls::Visibility::GONE);
+
+    this->labelChno->setText(chno);
 }
 RecyclingGridItemLiveVideoCard* RecyclingGridItemLiveVideoCard::create() {
     return new RecyclingGridItemLiveVideoCard();

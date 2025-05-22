@@ -18,14 +18,15 @@
 
 #include "config/ad_config.h"
 
+#include "core/FavoriteManager.hpp"
+
 using namespace brls::literals;
 
-LiveActivity::LiveActivity(const std::string& url, const std::string& title, const std::string& groupTitle) {
-    brls::Logger::debug("LiveActivity: create: {}", title);
-    this->liveData.url        = url;
-    this->liveData.title      = title;
-    this->liveData.groupTitle = groupTitle;
-    MPVCore::instance().reset();
+LiveActivity::LiveActivity(const tsvitch::LiveM3u8& liveData, std::function<void()> onClose)
+    : onCloseCallback(onClose)
+{
+    brls::Logger::debug("LiveActivity: create: {}", liveData.title);
+    this->liveData = liveData;
     ShaderHelper::instance().clearShader(false);
 }
 
@@ -51,14 +52,14 @@ void LiveActivity::onContentAvailable() {
 
     this->video->hideSubtitleSetting();
     this->video->hideVideoRelatedSetting();
-    this->video->hideVideoSpeedButton();
     this->video->hideBottomLineSetting();
     this->video->hideHighlightLineSetting();
     this->video->disableCloseOnEndOfFile();
     this->video->setFullscreenIcon(true);
     this->video->setTitle(liveData.title);
+    this->video->setFavoriteIcon(FavoriteManager::get()->isFavorite(liveData.url));
     this->video->setStatusLabelLeft("");
-    //getAdUrlFromServer
+    this->video->setFavoriteCallback([this](bool state) { FavoriteManager::get()->toggle(this->liveData); });
 
     std::string adUrl = this->getAdUrlFromServer();
     if (!adUrl.empty()) {
@@ -113,7 +114,6 @@ void LiveActivity::onLiveData(std::string url) {
 void LiveActivity::onError(const std::string& error) {
     brls::Logger::error("ERROR request live data: {}", error);
     this->video->showOSD(false);
-    this->video->setOnlineCount(error);
     this->retryRequestData();
 }
 
@@ -126,14 +126,14 @@ void LiveActivity::retryRequestData() {
 
 std::string LiveActivity::getAdUrlFromServer() {
     // Qui puoi implementare una chiamata HTTP per ottenere l'URL dell'ad
-    return AD_SERVER;
+    return AD_SERVER_URL_VALUE;
 }
 
 LiveActivity::~LiveActivity() {
     brls::Logger::debug("LiveActivity: delete");
-
     this->video->stop();
-
     brls::cancelDelay(toggleDelayIter);
     brls::cancelDelay(errorDelayIter);
+    if (onCloseCallback)
+        onCloseCallback();
 }

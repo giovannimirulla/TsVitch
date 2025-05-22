@@ -12,8 +12,8 @@ public:
     // Salva l'intero oggetto canale
     void add(const tsvitch::LiveM3u8& channel);
 
-    // Restituisce gli ultimi X canali completi (default: 20)
-    std::deque<tsvitch::LiveM3u8> recent(std::size_t limit = 20) const;
+    // Restituisce gli ultimi X canali completi (default: 10)
+    std::deque<tsvitch::LiveM3u8> recent(std::size_t limit = 10) const;
 
     void save() const;
     void load();

@@ -11,6 +11,12 @@ if [ -z "${AD_SERVER_URL}" ]; then
     exit 1
 fi
 
+M3U8_URL=$(grep '^M3U8_URL=' .env | cut -d'=' -f2-)
+if [ -z "${M3U8_URL}" ]; then
+    echo "M3U8_URL not found in .env file"
+    exit 1
+fi
+
 cmake -B build -DCPR_USE_SYSTEM_CURL=ON \
   -DCPR_USE_BOOST_FILESYSTEM=ON \
   -DCURL_INCLUDE_DIR=/opt/homebrew/opt/curl/include \
@@ -22,5 +28,7 @@ cmake -B build -DCPR_USE_SYSTEM_CURL=ON \
   -DANALYTICS_ID="${GA_ID}" \
   -DANALYTICS_KEY="${GA_KEY}" \
   -DAD_SERVER_URL="${AD_SERVER_URL}" \
+  -DM3U8_URL="${M3U8_URL}" \
+  
 
 make -C build tsvitch -j$(sysctl -n hw.ncpu)

@@ -20,9 +20,9 @@ public:
         : recentChannels(recent.begin(), recent.end()) {}
 
     RecyclingGridItem* cellForRow(RecyclingGrid* recycler, size_t index) override {
-        const auto& r = recentChannels[index];
+        const auto& r                        = recentChannels[index];
         RecyclingGridItemLiveVideoCard* item = (RecyclingGridItemLiveVideoCard*)recycler->dequeueReusableCell("Cell");
-        item->setCard(r.logo, r.title, r.groupTitle, r.chno);
+        item->setCard(r.logo, r.title, r.groupTitle, r.url, r.chno);
         return item;
     }
 
@@ -30,7 +30,11 @@ public:
 
     void onItemSelected(RecyclingGrid* recycler, size_t index) override {
         const auto& r = recentChannels[index];
-        Intent::openLive(r.url, r.title, r.groupTitle);
+        HistoryManager::get()->add(r);
+        Intent::openLive(r, [recycler]() {
+            auto recent = HistoryManager::get()->recent(8);
+            recycler->setDataSource(new DataSourceRecentChannels(recent));
+        });
     }
 
     void clearData() override { recentChannels.clear(); }
@@ -46,17 +50,13 @@ HomeHistory::HomeHistory() {
     recyclingGrid->registerCell("Cell", []() { return RecyclingGridItemLiveVideoCard::create(); });
 
     // Carica i canali recenti dalla cronologia
-    auto recent = HistoryManager::get()->recent(10);
+    auto recent = HistoryManager::get()->recent(8);
     recyclingGrid->setDataSource(new DataSourceRecentChannels(recent));
 }
 
-void HomeHistory::onCreate() {
-    this->refreshRecent();
-}
+void HomeHistory::onCreate() { this->refreshRecent(); }
 
-void HomeHistory::onShow() {
-    this->refreshRecent();
-}
+void HomeHistory::onShow() { this->refreshRecent(); }
 void HomeHistory::refreshRecent() {
     auto recent = HistoryManager::get()->recent(8);
     recyclingGrid->setDataSource(new DataSourceRecentChannels(recent));
