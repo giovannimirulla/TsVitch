@@ -2,6 +2,7 @@
 
 #include "fragment/home_live.hpp"
 #include "fragment/home_history.hpp"
+#include "fragment/home_favorites.hpp"
 
 #include "utils/config_helper.hpp"
 
@@ -46,10 +47,9 @@ void Register::initCustomView() {
     brls::Application::registerXMLView("SelectorCell", BiliSelectorCell::create);
     brls::Application::registerXMLView("AnimationImage", AnimationImage::create);
 
-    //     Register fragmentsate);
-
     brls::Application::registerXMLView("HomeLive", HomeLive::create);
     brls::Application::registerXMLView("HomeHistory", HomeHistory::create);
+    brls::Application::registerXMLView("HomeFavorites", HomeFavorites::create);
 }
 
 void Register::initCustomTheme() {

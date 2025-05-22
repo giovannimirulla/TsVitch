@@ -27,6 +27,8 @@
 #include "view/video_view.hpp"
 #include "view/mpv_core.hpp"
 
+#include "config/m3u8_config.h"
+
 #ifdef PS4
 #include <orbis/SystemService.h>
 #include <orbis/Sysmodule.h>
@@ -59,15 +61,8 @@ std::unordered_map<SettingItem, ProgramOption> ProgramConfig::SETTING_MAP = {
 #if defined(__SWITCH__) || defined(__PSV__) || defined(PS4)
           brls::LOCALE_AUTO,
 #endif
-          brls::LOCALE_EN_US,
-          brls::LOCALE_JA,
-          brls::LOCALE_RYU,
-          brls::LOCALE_ZH_HANT,
-          brls::LOCALE_ZH_HANS,
-          brls::LOCALE_Ko,
-          brls::LOCALE_IT,
-          brls::LOCALE_PT_BR
-      },
+          brls::LOCALE_EN_US, brls::LOCALE_JA, brls::LOCALE_RYU, brls::LOCALE_ZH_HANT, brls::LOCALE_ZH_HANS,
+          brls::LOCALE_Ko, brls::LOCALE_IT, brls::LOCALE_PT_BR},
       {},
 #if defined(__SWITCH__) || defined(__PSV__) || defined(PS4)
       0}},
@@ -180,8 +175,9 @@ std::unordered_map<SettingItem, ProgramOption> ProgramConfig::SETTING_MAP = {
     {SettingItem::ON_TOP_WINDOW_HEIGHT, {"on_top_window_height", {"270"}, {270}, 0}},
     {SettingItem::ON_TOP_MODE, {"on_top_mode", {"off", "always", "auto"}, {0, 1, 2}, 0}},
     {SettingItem::SCROLL_SPEED, {"scroll_speed", {}, {}, 0}},
-
+    {SettingItem::GROUP_SELECTED_INDEX, {"group_selected_index", {}, {}, 0}},
     {SettingItem::UP_FILTER, {"up_filter", {}, {}, 0}},
+    {SettingItem::M3U8_URL_ITEM, {"m3u8_url", {}, {}, 0}},
 };
 
 ProgramConfig::ProgramConfig() = default;
@@ -199,10 +195,7 @@ void ProgramConfig::setProgramConfig(const ProgramConfig& conf) {
     brls::Logger::info("setting: {}", conf.setting.dump());
 }
 
-std::string ProgramConfig::getUserID() {
-    return brls::Application::getPlatform()->getName();
-}
-
+std::string ProgramConfig::getUserID() { return brls::Application::getPlatform()->getName(); }
 
 std::string ProgramConfig::getClientID() {
     if (this->client.empty()) {
@@ -280,12 +273,7 @@ void ProgramConfig::load() {
         brls::Logger::info("Load config from: {}", path);
     }
 
-    const char* m3u8_url = getenv("m3u8_url");
-    if (m3u8_url) {
-        this->m3u8Url = m3u8_url;
-        brls::Logger::info("Load m3u8 url from env: {}", this->m3u8Url);
-    }
-    this->m3u8Url = getSettingItem(SettingItem::M3U8_URL, this->m3u8Url);
+    this->m3u8Url = getSettingItem(SettingItem::M3U8_URL_ITEM, this->getM3U8Url());
 
 #ifdef IOS
 #elif defined(__APPLE__) || defined(__linux__) || defined(_WIN32)
@@ -531,6 +519,7 @@ int ProgramConfig::getStringOptionIndex(SettingItem item) {
 }
 
 void ProgramConfig::save() {
+
     const std::string path = this->getConfigDir() + "/tsvitch_config.json";
 
 #ifndef IOS
@@ -760,7 +749,7 @@ std::vector<CustomTheme> ProgramConfig::getCustomThemes() { return customThemes;
 
 std::string ProgramConfig::getM3U8Url() {
     if (m3u8Url.empty())
-        return "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8";
+        return M3U8_URL_VALUE;
     else
         return this->m3u8Url;
 }
@@ -768,7 +757,11 @@ std::string ProgramConfig::getM3U8Url() {
 void ProgramConfig::setM3U8Url(const std::string& url) {
     this->m3u8Url = url;
     brls::Logger::info("setM3U8Url: {}", m3u8Url);
-    //LiveActivity::requestData(url);
+    setSettingItem(SettingItem::M3U8_URL_ITEM, m3u8Url);
+    if (m3u8Url.empty()) {
+        m3u8Url = M3U8_URL_VALUE;
+    }
+    GA("m3u8_url", {{"url", m3u8Url}});
 }
 
 void ProgramConfig::toggleFullscreen() {

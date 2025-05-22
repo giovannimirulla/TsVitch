@@ -25,6 +25,8 @@ public:
 
     void onError(const std::string &error) override;
 
+     void onShow() override;
+
      void search();
 
      void cancelSearch();
@@ -39,7 +41,7 @@ public:
 
 private:
     int selectedGroupIndex = 0;
-    tsvitch::LiveM3u8ListResult fullLiveList;
+    tsvitch::LiveM3u8ListResult channelsList;
     brls::ActionIdentifier cancelSearchActionId;
     BRLS_BIND(RecyclingGrid, recyclingGrid, "home/live/recyclingGrid");
     BRLS_BIND(RecyclingGrid, upRecyclingGrid, "dynamic/up/recyclingGrid");

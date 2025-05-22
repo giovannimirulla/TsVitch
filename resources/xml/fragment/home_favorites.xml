@@ -1,21 +1,9 @@
 <brls:Box
-        axis="row"
-        width="auto"
+        axis="column"
         marginTop="10"
+        marginBottom="8"
+        width="auto"
         height="auto">
-        <RecyclingGrid
-                width="270"
-                paddingLeft="10"
-                paddingRight="10"
-                marginTop="20"
-                marginBottom="8"
-                itemHeight="50"
-                preFetchLine="2"
-                spanCount="1"
-                wireframe="false"
-                lineColor="@theme/color/line"
-                lineRight="1"
-                id="dynamic/up/recyclingGrid" />
         <RecyclingGrid
                 paddingLeft="20"
                 paddingRight="20"
@@ -25,8 +13,7 @@
                 itemHeight="200"
                 wireframe="false"
                 preFetchLine="2"
-                id="home/live/recyclingGrid" />
-
+                id="home/favorites/recyclingGrid" />
 
         <brls:Box
                 positionType="absolute"

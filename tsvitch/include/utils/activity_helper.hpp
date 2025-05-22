@@ -2,10 +2,11 @@
 
 #pragma once
 #include <string>
+#include "api/tsvitch/result/home_live_result.h" // aggiungi questa riga
 
 class Intent {
 public:
-    static void openLive(const std::string& url, const std::string& title = "", const std::string& groupTitle = "");
+    static void openLive(const tsvitch::LiveM3u8& liveData, std::function<void()> onClose = nullptr);
 
     static void openPgcFilter(const std::string& filter);
 

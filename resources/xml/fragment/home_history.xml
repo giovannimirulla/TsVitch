@@ -4,13 +4,13 @@
         marginBottom="8"
         width="auto"
         height="auto">
-    <RecyclingGrid
-            paddingLeft="20"
-            paddingRight="20"
-            itemHeight="250"
-            grow="1"
-            preFetchLine="2"
-            spanCount="@style/tsvitch/grid/span/4"
-            wireframe="false"
-            id="home/history/recyclingGrid"/>
+        <RecyclingGrid
+                paddingLeft="20"
+                paddingRight="20"
+                grow="1"
+                spanCount="@style/tsvitch/grid/span/4"
+                itemHeight="200"
+                wireframe="false"
+                preFetchLine="2"
+                id="home/history/recyclingGrid" />
 </brls:Box>

@@ -93,10 +93,6 @@ public:
 
     void hideCenterHint();
 
-    void hideVideoQualityButton();
-
-    void hideVideoSpeedButton();
-
     void hideOSDLockButton();
 
     void disableCloseOnEndOfFile();
@@ -131,21 +127,21 @@ public:
 
     std::string getTitle();
 
-    void setQuality(const std::string& str);
-
-    std::string getQuality();
-
-    void setOnlineCount(const std::string& count);
-
     void setDuration(const std::string& value);
 
     void setPlaybackTime(const std::string& value);
 
     void setFullscreenIcon(bool fs);
 
+    void setFavoriteIcon(bool fs);
+
     void setOSDSliderFocusable(bool state);
 
     brls::View* getFullscreenIcon();
+    
+    brls::View* getFavoriteIcon();
+
+    void refreshToggleIcon();
 
     void setProgress(float value);
 
@@ -166,6 +162,10 @@ public:
     bool isFullscreen();
 
     void setFullScreen(bool fs);
+
+    void toggleFavorite();
+
+    void setFavoriteCallback(std::function<void(bool)> callback);
 
     void draw(NVGcontext* vg, float x, float y, float width, float height, brls::Style style,
               brls::FrameContext* ctx) override;
@@ -225,17 +225,19 @@ private:
 
     bool isTvControlMode = false;
 
+    bool isFavorite = false;
+
+    std::function<void(bool)> favoriteCallback = nullptr;
+
     bool showReplay = false;
     std::string bangumiTitle;
     MPVEvent::Subscription eventSubscribeID;
     CustomEvent::Subscription customEventSubscribeID;
     std::function<void()> customToggleAction = nullptr;
-    brls::ActionListener seasonAction        = nullptr;
     brls::InputManager* input;
     NVGcolor bottomBarColor = brls::Application::getTheme().getColor("color/tsvitch");
 
     BRLS_BIND(brls::Label, videoTitleLabel, "video/osd/title");
-    BRLS_BIND(brls::Label, videoOnlineCountLabel, "video/view/label/people");
     BRLS_BIND(brls::Box, osdTopBox, "video/osd/top/box");
     BRLS_BIND(brls::Box, osdBottomBox, "video/osd/bottom/box");
 
@@ -251,16 +253,13 @@ private:
     BRLS_BIND(brls::Label, leftStatusLabel, "video/left/status");
     BRLS_BIND(brls::Label, centerStatusLabel, "video/center/status");
     BRLS_BIND(brls::Label, rightStatusLabel, "video/right/status");
-    BRLS_BIND(brls::Label, videoQuality, "video/quality");
-    BRLS_BIND(brls::Label, videoSpeed, "video/speed");
-    BRLS_BIND(brls::Label, showEpisode, "show/episode");
 
-    BRLS_BIND(brls::Box, speedHintBox, "video/speed/hint/box");
     BRLS_BIND(brls::Box, btnToggle, "video/osd/toggle");
 
     BRLS_BIND(brls::Box, iconBox, "video/osd/icon/box");
     BRLS_BIND(SVGImage, btnToggleIcon, "video/osd/toggle/icon");
     BRLS_BIND(SVGImage, btnFullscreenIcon, "video/osd/fullscreen/icon");
+    BRLS_BIND(SVGImage, btnFavoriteIcon, "video/osd/favorite/icon");
 
     BRLS_BIND(SVGImage, btnVolumeIcon, "video/osd/danmaku/volume/icon");
 
