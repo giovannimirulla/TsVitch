@@ -28,22 +28,22 @@ MainActivity::~MainActivity() { brls::Logger::debug("del MainActivity"); }
 void MainActivity::onContentAvailable() {
     this->registerAction(
         "Settings", brls::ControllerButton::BUTTON_BACK,
-        [](brls::View* view) -> bool {
-            Intent::openSetting();
+        [this](brls::View* view) -> bool {
+            Intent::openSetting([this]() { this->resetSettingIcon(); });
             return true;
         },
         true);
 
     this->registerAction(
         "Settings", brls::ControllerButton::BUTTON_START,
-        [](brls::View* view) -> bool {
-            Intent::openSetting();
+        [this](brls::View* view) -> bool {
+            Intent::openSetting([this]() { this->resetSettingIcon(); });
             return true;
         },
         true);
 
-    this->settingBtn->registerClickAction([](brls::View* view) -> bool {
-        Intent::openSetting();
+    this->settingBtn->registerClickAction([this](brls::View* view) -> bool {
+        Intent::openSetting([this]() { this->resetSettingIcon(); });
         return true;
     });
 
@@ -52,24 +52,30 @@ void MainActivity::onContentAvailable() {
         if (!image) return;
         if (value) {
             image->setImageFromSVGRes("svg/ico-setting-activate.svg");
+            //wait
         } else {
             image->setImageFromSVGRes("svg/ico-setting.svg");
         }
     });
 
-
     this->settingBtn->setCustomNavigation([this](brls::FocusDirection direction) {
         if (tabFrame->getSideBarPosition() == AutoTabBarPosition::LEFT) {
             if (direction == brls::FocusDirection::RIGHT) {
                 return (brls::View*)this->tabFrame->getActiveTab();
-            } 
+            }
         } else if (tabFrame->getSideBarPosition() == AutoTabBarPosition::TOP) {
             if (direction == brls::FocusDirection::DOWN) {
                 return (brls::View*)this->tabFrame->getActiveTab();
-            } 
+            }
         }
         return (brls::View*)nullptr;
     });
     this->settingBtn->addGestureRecognizer(new brls::TapGestureRecognizer(this->settingBtn));
+}
 
+void MainActivity::resetSettingIcon() {
+    SVGImage* image = dynamic_cast<SVGImage*>(this->settingBtn->getChildren()[0]);
+    if (!image) return;
+
+    image->setImageFromSVGRes("svg/ico-setting.svg");
 }

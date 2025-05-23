@@ -19,8 +19,8 @@ void Intent::openLive(const tsvitch::LiveM3u8& liveData, std::function<void()> o
     registerFullscreen(activity);
 }
 
-void Intent::openSetting() {
-    auto activity = new SettingActivity();
+void Intent::openSetting(std::function<void()> onClose) {
+    auto activity = new SettingActivity(onClose);
     brls::Application::pushActivity(activity);
     registerFullscreen(activity);
 }

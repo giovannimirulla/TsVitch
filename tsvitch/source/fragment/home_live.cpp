@@ -63,33 +63,39 @@ public:
 
     size_t getItemCount() override { return list.size(); }
 
-    void setSelectedIndex(RecyclingGrid* recycler, size_t index) {
-        brls::Logger::debug("setSelectedIndex: {}", index);
-        if (index >= list.size()) return;
-        selectedIndex = index;
-        auto* item    = dynamic_cast<DynamicGroupChannels*>(recycler->getGridItemByIndex(index));
-        if (!item) return;
-        item->setSelected(true);
+void setSelectedIndex(RecyclingGrid* recycler, size_t index) {
+    brls::Logger::debug("setSelectedIndex: {}", index);
+    if (index >= list.size()) return;
+    selectedIndex = index;
+    auto* item    = dynamic_cast<DynamicGroupChannels*>(recycler->getGridItemByIndex(index));
+    if (!item) return;
+    item->setSelected(true);
 
-        if (onGroupSelected) onGroupSelected(list[index]);
+    // Salva l'indice selezionato
+    ProgramConfig::instance().setSettingItem(SettingItem::GROUP_SELECTED_INDEX, static_cast<int>(index));
+
+    if (onGroupSelected) onGroupSelected(list[index]);
+}
+
+void onItemSelected(RecyclingGrid* recycler, size_t index) override {
+    brls::Logger::debug("onItemSelected: {}", index);
+    std::vector<RecyclingGridItem*>& items = recycler->getGridItems();
+    for (auto& i : items) {
+        auto* cell = dynamic_cast<DynamicGroupChannels*>(i);
+        if (cell) cell->setSelected(false);
     }
 
-    void onItemSelected(RecyclingGrid* recycler, size_t index) override {
-        brls::Logger::debug("onItemSelected: {}", index);
-        std::vector<RecyclingGridItem*>& items = recycler->getGridItems();
-        for (auto& i : items) {
-            auto* cell = dynamic_cast<DynamicGroupChannels*>(i);
-            if (cell) cell->setSelected(false);
-        }
+    selectedIndex = index;
 
-        selectedIndex = index;
+    auto* item = dynamic_cast<DynamicGroupChannels*>(recycler->getGridItemByIndex(index));
+    if (!item) return;
+    item->setSelected(true);
 
-        auto* item = dynamic_cast<DynamicGroupChannels*>(recycler->getGridItemByIndex(index));
-        if (!item) return;
-        item->setSelected(true);
+    // Salva l'indice selezionato
+    ProgramConfig::instance().setSettingItem(SettingItem::GROUP_SELECTED_INDEX, static_cast<int>(index));
 
-        if (onGroupSelected) onGroupSelected(list[index]);
-    }
+    if (onGroupSelected) onGroupSelected(list[index]);
+}
 
     void appendData(const std::vector<std::string>& data) {
         this->list.insert(this->list.end(), data.begin(), data.end());
@@ -97,9 +103,16 @@ public:
 
     void clearData() override { this->list.clear(); }
 
+    const std::string& getGroupNameByIndex(size_t index) const {
+        static std::string empty;
+        if (index < list.size())
+            return list[index];
+        return empty;
+    }
+
 private:
     std::vector<std::string> list;
-    size_t selectedIndex = 0;
+    size_t selectedIndex = -1;
     OnGroupSelected onGroupSelected;
 };
 
@@ -267,8 +280,9 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result) {
             });
             upRecyclingGrid->setDataSource(upList);
 
-            // Seleziona automaticamente il primo gruppo e filtra la recyclingGrid
+ 
             int lastIndex = ProgramConfig::instance().getSettingItem(SettingItem::GROUP_SELECTED_INDEX, 0);
+            brls::Logger::debug("lastIndex: {}", lastIndex);
             this->selectGroupIndex(static_cast<size_t>(lastIndex));
         }
     });
@@ -277,11 +291,26 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result) {
 void HomeLive::selectGroupIndex(size_t index) {
     auto* datasource = dynamic_cast<DataSourceUpList*>(upRecyclingGrid->getDataSource());
     if (!datasource) return;
-    if (index >= datasource->getItemCount()) return;  // <-- controllo corretto
+    if (index >= datasource->getItemCount()) return;
     this->selectedGroupIndex = index;
     datasource->setSelectedIndex(upRecyclingGrid, index);
-    ProgramConfig::instance().setSettingItem(SettingItem::GROUP_SELECTED_INDEX, static_cast<int>(index));
-    ProgramConfig::instance().save();
+    upRecyclingGrid->selectRowAt(index, false);
+
+    // --- FILTRAGGIO IN BASE ALL'INDICE ---
+    // Recupera il nome del gruppo selezionato
+    std::string selectedGroup = datasource->getGroupNameByIndex(index);
+    tsvitch::LiveM3u8ListResult filtered;
+    for (const auto& item : this->channelsList) {
+        if (item.groupTitle == selectedGroup)
+            filtered.push_back(item);
+    }
+    if (filtered.empty())
+        recyclingGrid->setEmpty();
+    else
+        recyclingGrid->setDataSource(new DataSourceLiveVideoList(filtered));
+    // --------------------------------------
+
+    brls::Logger::debug("selectGroupIndex: {}", index);
 }
 
 void HomeLive::search() {

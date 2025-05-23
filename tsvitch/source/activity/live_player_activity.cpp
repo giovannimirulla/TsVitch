@@ -23,8 +23,7 @@
 using namespace brls::literals;
 
 LiveActivity::LiveActivity(const tsvitch::LiveM3u8& liveData, std::function<void()> onClose)
-    : onCloseCallback(onClose)
-{
+    : onCloseCallback(onClose) {
     brls::Logger::debug("LiveActivity: create: {}", liveData.title);
     this->liveData = liveData;
     ShaderHelper::instance().clearShader(false);
@@ -74,15 +73,14 @@ void LiveActivity::startAd(std::string adUrl) {
     brls::Logger::debug("LiveActivity: adUrl: {}", adUrl);
     this->video->setUrl(adUrl);
     this->video->setOnEndCallback([this]() {
-        this->video->setOnEndCallback(nullptr);  // Rimuovi callback per evitare loop
         this->startLive();
     });
 }
 
 void LiveActivity::startLive() {
-    brls::Logger::debug("LiveActivity: start live");
     this->video->setLiveMode();
     this->video->hideVideoProgressSlider();
+
     this->video->setCustomToggleAction([this]() {
         if (MPVCore::instance().isStopped()) {
             this->onLiveData(this->liveData.url);
@@ -131,9 +129,11 @@ std::string LiveActivity::getAdUrlFromServer() {
 
 LiveActivity::~LiveActivity() {
     brls::Logger::debug("LiveActivity: delete");
-    this->video->stop();
+    if (this->video) {
+        this->video->setOnEndCallback(nullptr);  // Annulla la callback per evitare crash
+        this->video->stop();
+    }
     brls::cancelDelay(toggleDelayIter);
     brls::cancelDelay(errorDelayIter);
-    if (onCloseCallback)
-        onCloseCallback();
+    if (onCloseCallback) onCloseCallback();
 }
