@@ -25,13 +25,15 @@ public:
 
     void onError(const std::string &error) override;
 
-     void onShow() override;
+    void onShow() override;
 
-     void search();
+    void search();
 
-     void cancelSearch();
+    void cancelSearch();
 
-     void selectGroupIndex(size_t index);
+    void toggleFavorite();
+
+    void selectGroupIndex(size_t index);
 
     void filter(const std::string &key);
 

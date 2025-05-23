@@ -18,7 +18,7 @@ FavoriteManager* FavoriteManager::get() {
 
 void FavoriteManager::toggle(const tsvitch::LiveM3u8& channel) {
     auto it = std::find_if(set_.begin(), set_.end(),
-        [&](const tsvitch::LiveM3u8& c){ return c.id == channel.id; });
+        [&](const tsvitch::LiveM3u8& c){ return c.url == channel.url; });
     if (it != set_.end()) {
         set_.erase(it);
     } else {
@@ -26,6 +26,7 @@ void FavoriteManager::toggle(const tsvitch::LiveM3u8& channel) {
     }
     save();
 }
+
 
 bool FavoriteManager::isFavorite(const std::string& url ) const {
     auto it = std::find_if(set_.begin(), set_.end(),

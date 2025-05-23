@@ -1,5 +1,3 @@
-
-
 #include <utility>
 #include "view/recycling_grid.hpp"
 #include "view/button_refresh.hpp"
@@ -667,3 +665,23 @@ RecyclingGridContentBox::RecyclingGridContentBox(RecyclingGrid* recycler) : Box(
 brls::View* RecyclingGridContentBox::getNextFocus(brls::FocusDirection direction, brls::View* currentView) {
     return this->recycler->getNextCellFocus(direction, currentView);
 }
+
+RecyclingGridItem* RecyclingGrid::getFocusedItem() {
+    brls::View* focused = brls::Application::getCurrentFocus();
+    if (!focused)
+        return nullptr;
+    for (auto* item : this->getGridItems()) {
+        // Cast a brls::View* per usare una lambda che controlla l'antenato
+        if (item == focused || ([](brls::View* ancestor, brls::View* child) {
+                while (child) {
+                    if (child == ancestor)
+                        return true;
+                    child = child->getParent();
+                }
+                return false;
+            })(static_cast<brls::View*>(item), focused))
+            return item;
+    }
+    return nullptr;
+}
+
