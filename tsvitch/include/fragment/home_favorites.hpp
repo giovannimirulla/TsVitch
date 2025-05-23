@@ -29,6 +29,8 @@ public:
 
     void refreshFavorites();
 
+    void toggleFavorite();
+
 private:
     tsvitch::LiveM3u8ListResult favoritesList;
     BRLS_BIND(RecyclingGrid, recyclingGrid, "home/favorites/recyclingGrid");

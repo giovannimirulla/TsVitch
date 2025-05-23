@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <string>
 #include <nlohmann/json.hpp>
-#include "api/tsvitch/result/home_live_result.h"  // aggiungi questo include per LiveM3u8
+#include "api/tsvitch/result/home_live_result.h"  
 
 class FavoriteManager {
 public:

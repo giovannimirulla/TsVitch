@@ -20,25 +20,36 @@ RecyclingGridItemLiveVideoCard::RecyclingGridItemLiveVideoCard() {
 
 RecyclingGridItemLiveVideoCard::~RecyclingGridItemLiveVideoCard() { ImageHelper::clear(this->picture); }
 
-void RecyclingGridItemLiveVideoCard::setCard(std::string pic, std::string title, std::string groupTitle,
-                                             std::string url, std::string chno) {
-    this->labelGroup->setText(groupTitle);
+void RecyclingGridItemLiveVideoCard::setChannel(tsvitch::LiveM3u8 liveData) {
+    this->liveData = liveData;
+    this->labelGroup->setText(liveData.groupTitle);
     this->labelTitle->setIsWrapping(false);
-    this->labelTitle->setText(title);
-    ImageHelper::with(this->picture)->load(pic);
+    this->labelTitle->setText(liveData.title);
+    ImageHelper::with(this->picture)->load(liveData.logo);
 
-    bool isFavorite = FavoriteManager::get()->isFavorite( url);
+    bool isFavorite = FavoriteManager::get()->isFavorite(liveData.url);
 
     brls::Logger::debug("isFavorite: {}", isFavorite);
 
-    if (FavoriteManager::get()->isFavorite(url)) {
+    if (FavoriteManager::get()->isFavorite(liveData.url)) {
         this->svgFavoriteIcon->setImageFromSVGRes("svg/ico-favorite-activate.svg");
         this->svgFavoriteIcon->setVisibility(brls::Visibility::VISIBLE);
     } else
         this->svgFavoriteIcon->setVisibility(brls::Visibility::GONE);
 
-    this->labelChno->setText(chno);
+    this->labelChno->setText(liveData.chno);
 }
+
+tsvitch::LiveM3u8 RecyclingGridItemLiveVideoCard::getChannel() { return this->liveData; }
+
+void RecyclingGridItemLiveVideoCard::setFavoriteIcon(bool isFavorite) {
+    if (isFavorite) {
+        this->svgFavoriteIcon->setImageFromSVGRes("svg/ico-favorite-activate.svg");
+        this->svgFavoriteIcon->setVisibility(brls::Visibility::VISIBLE);
+    } else
+        this->svgFavoriteIcon->setVisibility(brls::Visibility::GONE);
+}
+
 RecyclingGridItemLiveVideoCard* RecyclingGridItemLiveVideoCard::create() {
     return new RecyclingGridItemLiveVideoCard();
 }

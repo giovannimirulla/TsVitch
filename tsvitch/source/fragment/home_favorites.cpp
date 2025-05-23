@@ -26,7 +26,7 @@ public:
     RecyclingGridItem* cellForRow(RecyclingGrid* recycler, size_t index) override {
         const auto& r                        = favoriteChannels[index];
         RecyclingGridItemLiveVideoCard* item = (RecyclingGridItemLiveVideoCard*)recycler->dequeueReusableCell("Cell");
-        item->setCard(r.logo, r.title, r.groupTitle, r.url, r.chno);
+        item->setChannel(r);
         return item;
     }
 
@@ -71,6 +71,11 @@ HomeFavorites::HomeFavorites() {
             return true;
         });
     }
+
+    this->registerAction("hints/toggle_favorite"_i18n, brls::BUTTON_X, [this](...) {
+        this->toggleFavorite();
+        return true;
+    });
 }
 
 void HomeFavorites::search() {
@@ -134,6 +139,30 @@ void HomeFavorites::refreshFavorites() {
             return true;
         });
     }
+}
+
+void HomeFavorites::toggleFavorite() {
+    //get focus item
+    auto* item = dynamic_cast<RecyclingGridItemLiveVideoCard*>(this->recyclingGrid->getFocusedItem());
+    if (!item) return;
+
+    //get channel
+    tsvitch::LiveM3u8 channel = item->getChannel();
+
+    FavoriteManager::get()->toggle(channel);
+
+    if (FavoriteManager::get()->isFavorite(channel.url)) {
+        item->setFavoriteIcon(true);
+    } else {
+        item->setFavoriteIcon(false);
+        // remove the item from the list
+        auto it = std::remove_if(this->favoritesList.begin(), this->favoritesList.end(),
+                                 [&channel](const tsvitch::LiveM3u8& c) { return c.url == channel.url; });
+        this->favoritesList.erase(it, this->favoritesList.end());
+        this->recyclingGrid->setDataSource(new DataSourceFavoriteChannels(this->favoritesList));
+    }
+
+    
 }
 
 brls::View* HomeFavorites::create() { return new HomeFavorites(); }

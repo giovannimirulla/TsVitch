@@ -715,18 +715,9 @@ void VideoView::hideStatusLabel() {
 }
 
 void VideoView::setLiveMode() {
-    brls::Logger::debug("Set live mode");
-    isLiveMode = true;
-    if (!centerStatusLabel) brls::Logger::error("centerStatusLabel nullptr");
-    if (!rightStatusLabel) brls::Logger::error("rightStatusLabel nullptr");
-    if (!btnToggle) brls::Logger::error("btnToggle nullptr");
-    if (!osdSlider) brls::Logger::error("osdSlider nullptr");
-    if (!iconBox) brls::Logger::error("iconBox nullptr");
-    if (!btnVolumeIcon) brls::Logger::error("btnVolumeIcon nullptr");
-    if (!btnFullscreenIcon) brls::Logger::error("btnFullscreenIcon nullptr");
-    if (!btnFavoriteIcon) brls::Logger::error("btnFavoriteIcon nullptr");
-    if (!osdLockBox) brls::Logger::error("osdLockBox nullptr");
 
+    isLiveMode = true;
+    leftStatusLabel->setVisibility(brls::Visibility::GONE);
     centerStatusLabel->setVisibility(brls::Visibility::GONE);
     rightStatusLabel->setVisibility(brls::Visibility::GONE);
     _setTvControlMode(false);

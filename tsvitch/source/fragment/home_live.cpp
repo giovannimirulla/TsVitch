@@ -13,6 +13,7 @@
 #include "view/custom_button.hpp"
 
 #include "core/HistoryManager.hpp"
+#include "core/FavoriteManager.hpp"
 
 #include "utils/config_helper.hpp"
 
@@ -186,7 +187,7 @@ public:
         tsvitch::LiveM3u8& r = this->videoList[index];
         brls::Logger::info("cellForRow: {} [{}]", r.title, index);
         RecyclingGridItemLiveVideoCard* item = (RecyclingGridItemLiveVideoCard*)recycler->dequeueReusableCell("Cell");
-        item->setCard(r.logo, r.title, r.groupTitle, r.url, r.chno);
+        item->setChannel(r);
         return item;
     }
 
@@ -230,6 +231,11 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result) {
     }
     this->registerAction("hints/search"_i18n, brls::BUTTON_Y, [this](...) {
         this->search();
+        return true;
+    });
+
+    this->registerAction("hints/toggle_favorite"_i18n, brls::BUTTON_X, [this](...) {
+        this->toggleFavorite();
         return true;
     });
 
@@ -311,6 +317,24 @@ void HomeLive::selectGroupIndex(size_t index) {
     // --------------------------------------
 
     brls::Logger::debug("selectGroupIndex: {}", index);
+}
+
+void HomeLive::toggleFavorite(){
+    //get focus item
+    auto* item = dynamic_cast<RecyclingGridItemLiveVideoCard*>(this->recyclingGrid->getFocusedItem());
+    if (!item) return;
+
+    //get channel
+    tsvitch::LiveM3u8 channel = item->getChannel();
+
+   
+    FavoriteManager::get()->toggle(channel);
+
+    if (FavoriteManager::get()->isFavorite(channel.url)) {
+        item->setFavoriteIcon(true);
+    } else {
+        item->setFavoriteIcon(false);
+    }
 }
 
 void HomeLive::search() {

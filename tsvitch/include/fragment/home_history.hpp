@@ -22,6 +22,8 @@ public:
 
     void refreshRecent();
 
+    void toggleFavorite();
+
 private:
     BRLS_BIND(RecyclingGrid, recyclingGrid, "home/history/recyclingGrid");
 };
