@@ -222,7 +222,6 @@
                                                         focusable="true"
                                                         focusUp="video/osd/lock/box"
                                                         focusDown="video/osd/favorite/icon"
-                                                        focusRight="video/osd/favorite/icon"
                                                         hideHighlightBackground="true"
                                                         highlightCornerRadius="30"
                                                         height="30"

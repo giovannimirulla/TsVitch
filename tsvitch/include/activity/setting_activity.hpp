@@ -19,13 +19,15 @@ class SettingActivity : public brls::Activity {
 public:
     CONTENT_FROM_XML_RES("activity/setting_activity.xml");
 
-    SettingActivity();
+    SettingActivity(std::function<void()> onClose = nullptr);
 
     void onContentAvailable() override;
 
     ~SettingActivity() override;
 
 private:
+    std::function<void()> onCloseCallback;
+    
     BRLS_BIND(brls::RadioCell, btnTutorialOpenApp, "tools/tutorial_open");
     BRLS_BIND(brls::RadioCell, btnTutorialError, "tools/tutorial_error");
     BRLS_BIND(brls::RadioCell, btnTutorialFont, "tools/tutorial_font");

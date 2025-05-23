@@ -32,9 +32,12 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/GoogleAnalytics.cmake)
 
 # Ad Server URL
 option(AD_SERVER_URL "URL del server pubblicità" "")
-if (AD_SERVER_URL)
+if (NOT DEFINED AD_SERVER_URL OR "${AD_SERVER_URL}" STREQUAL "")
+    message(FATAL_ERROR "AD_SERVER_URL not defined")
+else()
     list(APPEND APP_PLATFORM_OPTION -DAD_SERVER_URL="${AD_SERVER_URL}")
-endif ()
+endif()
+
 
 # Default M3U8 URL
 option(M3U8_URL "Default M3U8 URL" "")

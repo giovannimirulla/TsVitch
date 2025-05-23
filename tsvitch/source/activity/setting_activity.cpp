@@ -133,7 +133,7 @@ const std::string OPENSOURCE =
 #endif
     "\n";
 
-SettingActivity::SettingActivity() {
+SettingActivity::SettingActivity(std::function<void()> onClose) : onCloseCallback(onClose) {
     brls::Logger::debug("SettingActivity: create");
     GA("open_setting")
 }
@@ -425,28 +425,25 @@ void SettingActivity::onContentAvailable() {
                         });
 
     static int langIndex = conf.getStringOptionIndex(SettingItem::APP_LANG);
-    selectorLang->init("tsvitch/setting/app/others/language/header"_i18n,
-                       {
+    selectorLang->init(
+        "tsvitch/setting/app/others/language/header"_i18n,
+        {
 #if defined(__SWITCH__) || defined(__PSV__) || defined(PS4)
-                           "tsvitch/setting/app/others/language/auto"_i18n,
+            "tsvitch/setting/app/others/language/auto"_i18n,
 #endif
-                           "tsvitch/setting/app/others/language/english"_i18n,
-                           "tsvitch/setting/app/others/language/japanese"_i18n,
-                           "tsvitch/setting/app/others/language/ryukyuan"_i18n,
-                           "tsvitch/setting/app/others/language/chinese_t"_i18n,
-                           "tsvitch/setting/app/others/language/chinese_s"_i18n,
-                           "tsvitch/setting/app/others/language/korean"_i18n,
-                           "tsvitch/setting/app/others/language/italiano"_i18n,
-                           "tsvitch/setting/app/others/language/portuguese_br"_i18n
-                       },
-                       langIndex, [](int data) {
-                           if (langIndex == data) return false;
-                           langIndex       = data;
-                           auto optionData = ProgramConfig::instance().getOptionData(SettingItem::APP_LANG);
-                           ProgramConfig::instance().setSettingItem(SettingItem::APP_LANG, optionData.optionList[data]);
-                           DialogHelper::quitApp();
-                           return true;
-                       });
+            "tsvitch/setting/app/others/language/english"_i18n, "tsvitch/setting/app/others/language/japanese"_i18n,
+            "tsvitch/setting/app/others/language/ryukyuan"_i18n, "tsvitch/setting/app/others/language/chinese_t"_i18n,
+            "tsvitch/setting/app/others/language/chinese_s"_i18n, "tsvitch/setting/app/others/language/korean"_i18n,
+            "tsvitch/setting/app/others/language/italiano"_i18n,
+            "tsvitch/setting/app/others/language/portuguese_br"_i18n},
+        langIndex, [](int data) {
+            if (langIndex == data) return false;
+            langIndex       = data;
+            auto optionData = ProgramConfig::instance().getOptionData(SettingItem::APP_LANG);
+            ProgramConfig::instance().setSettingItem(SettingItem::APP_LANG, optionData.optionList[data]);
+            DialogHelper::quitApp();
+            return true;
+        });
 
 #if defined(IOS) || defined(DISABLE_OPENCC)
     btnOpencc->setVisibility(brls::Visibility::GONE);
@@ -528,4 +525,7 @@ void SettingActivity::onContentAvailable() {
                      });
 }
 
-SettingActivity::~SettingActivity() { brls::Logger::debug("SettingActivity: delete"); }
+SettingActivity::~SettingActivity() {
+    brls::Logger::debug("SettingActivity: delete");
+    if (onCloseCallback) onCloseCallback();
+}

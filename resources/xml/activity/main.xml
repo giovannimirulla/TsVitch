@@ -31,7 +31,7 @@
 
             <Tab label=""
                  fontSize="18"
-                 focusDown="main/inbox"
+                 focusDown="main/setting"
                  icon="@res/svg/ico-history.svg"
                  iconActivate="@res/svg/ico-history-activate.svg">
                 <HomeHistory/>
@@ -45,18 +45,6 @@
                 alignItems="center"
                 positionType="absolute"
                 positionBottom="20">
-            <CustomButton
-                id="main/inbox"
-                focusable="true"
-                highlightCornerRadius="50"
-                cornerRadius="50"
-                marginBottom="10"
-                wireframe="false">
-                <SVGImage
-                        width="48"
-                        height="48"
-                        SVG="@res/svg/ico-inbox.svg"/>
-            </CustomButton>
 
             <CustomButton
                     id="main/setting"
