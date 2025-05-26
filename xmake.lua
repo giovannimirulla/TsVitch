@@ -87,7 +87,7 @@ package_end()
 
 package("mpv")
     if is_plat("windows", "mingw") then
-        set_urls("https://github.com/zeromake/tsvitch/releases/download/v0.6.0/mpv-dev-x86_64-v3-20230514-git-9e716d6.7z")
+        set_urls("https://github.com/zeromake/wiliwili/releases/download/v0.6.0/mpv-dev-x86_64-v3-20230514-git-9e716d6.7z")
         add_versions("20230514", "d56e3e10ea3f9362a0d9bb85ff3cd84f6e1fecfe66c87725040a82d5712b3f5f")
     end
     add_links("mpv")
@@ -135,7 +135,7 @@ add_requires("qr-code-generator", {configs={cpp=true}})
 add_requires("webp")
 add_requires("zlib")
 
-target("tsvitch")
+target("TsVitch")
     add_includedirs("tsvitch/include", "tsvitch/include/api")
     add_files("tsvitch/source/**.cpp")
     add_defines("BRLS_RESOURCES=\"./resources/\"")

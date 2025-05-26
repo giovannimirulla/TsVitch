@@ -1,5 +1,5 @@
 {
-  "title": "tsvitch",
+  "title": "TsVitch",
   "github": "https://github.com/giovannimirulla/TsVitch",
   "github_release": "https://github.com/giovannimirulla/TsVitch/releases/latest",
   "setting": {
@@ -147,7 +147,7 @@
       "font_q1": "How to set a custom font or icon",
       "font_a1": "1. Download the font or icon you want\n2. Rename the font to: font.ttf; Rename the icon to: icon.ttf\n3. Put the files in the configuration folder\n4. Restart the application",
       "font_q2": "Frequently asked questions",
-      "font_a2": "1. tsvitch prioritizes custom fonts, with built-in fonts as fallback\n2. \"Settings - Tools - Others\" offers a menu item to quickly open the configuration folder\n3. On Linux, tsvitch uses xdg-open to open the folder. If the folder does not open correctly, consider installing this tool"
+      "font_a2": "1. TsVitch prioritizes custom fonts, with built-in fonts as fallback\n2. \"Settings - Tools - Others\" offers a menu item to quickly open the configuration folder\n3. On Linux, TsVitch uses xdg-open to open the folder. If the folder does not open correctly, consider installing this tool"
     },
     "hot_keys": {
       "common_header": "Common",
@@ -171,8 +171,8 @@
   "hints": {
     "hint1": "Select a game from the home screen",
     "hint2": "Hold  and press  to enter hbmenu",
-    "hint3": "In hbmenu, select tsvitch",
-    "hint4": "Optional: use the provided NSP forwarder (Put tsvitch.nro in /switch/tsvitch.nro)",
+    "hint3": "In hbmenu, select TsVitch",
+    "hint4": "Optional: use the provided NSP forwarder (Put TsVitch.nro in /switch/TsVitch.nro)",
     "hint_nsp": "Press  to install the NSP forwarder",
     "hint_confirm": "Installing the NSP forwarder may cause a ban\nDo you confirm?",
     "hint_right": "Images are from the Internet, copyright belongs to Nintendo Co., Ltd"
