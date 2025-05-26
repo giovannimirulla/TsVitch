@@ -1,5 +1,3 @@
-
-
 #include <borealis/views/rectangle.hpp>
 #include <borealis/core/application.hpp>
 #include <borealis/core/touch/pan_gesture.hpp>
@@ -27,6 +25,58 @@ VideoProgressSlider::VideoProgressSlider() {
 
     lineEmpty->setHeight(7);
     lineEmpty->setCornerRadius(3.5f);
+
+    this->registerBoolXMLAttribute("disabledPointerGesture", [this](bool value) {
+        brls::Logger::debug("VideoProgressSlider: disabledPointerGesture = {}", value);
+
+        this->disabledPointerGesture = value;
+        if (!value) {
+            pointer->addGestureRecognizer(new brls::PanGestureRecognizer(
+                [this](brls::PanGestureStatus status, brls::Sound* soundToPlay) {
+                    brls::Application::giveFocus(pointer);
+
+                    static float lastProgress = progress;
+
+                    if (status.state == brls::GestureState::UNSURE) {
+                        *soundToPlay = brls::SOUND_FOCUS_CHANGE;
+                        return;
+                    }
+
+                    else if (status.state == brls::GestureState::INTERRUPTED ||
+                             status.state == brls::GestureState::FAILED) {
+                        *soundToPlay = brls::SOUND_TOUCH_UNFOCUS;
+                        return;
+                    }
+
+                    else if (status.state == brls::GestureState::START) {
+                        lastProgress = progress;
+                    }
+
+                    float paddingWidth = getWidth() - pointer->getWidth();
+                    float delta        = status.position.x - status.startPosition.x;
+
+                    setProgress(lastProgress + delta / paddingWidth);
+                    progressEvent.fire(this->progress);
+
+                    if (status.state == brls::GestureState::END) {
+                        brls::Application::getPlatform()->getAudioPlayer()->play(brls::SOUND_SLIDER_RELEASE);
+                        progressSetEvent.fire(this->progress);
+                        brls::Application::giveFocus(this->getParentActivity()->getContentView());
+                    }
+                },
+                brls::PanAxis::HORIZONTAL));
+
+            this->addGestureRecognizer(
+                new brls::TapGestureRecognizer([this](brls::TapGestureStatus status, brls::Sound* soundToPlay) {
+                    if (status.state != brls::GestureState::END) return;
+                    float paddingWidth = getWidth() - pointer->getWidth();
+                    float delta        = status.position.x - pointer->getWidth() / 2 - pointer->getX();
+                    setProgress(progress + delta / paddingWidth);
+                    progressSetEvent.fire(this->progress);
+                    brls::Application::giveFocus(this->getParentActivity()->getContentView());
+                }));
+        }
+    });
 
     pointer->setDimensions(60, 60);
     pointer->setFocusable(true);
@@ -77,50 +127,6 @@ VideoProgressSlider::VideoProgressSlider() {
 
     line->setColor(theme["color/tsvitch"]);
     lineEmpty->setColor(theme["brls/slider/line_empty"]);
-
-    pointer->addGestureRecognizer(new brls::PanGestureRecognizer(
-        [this](brls::PanGestureStatus status, brls::Sound* soundToPlay) {
-            brls::Application::giveFocus(pointer);
-
-            static float lastProgress = progress;
-
-            if (status.state == brls::GestureState::UNSURE) {
-                *soundToPlay = brls::SOUND_FOCUS_CHANGE;
-                return;
-            }
-
-            else if (status.state == brls::GestureState::INTERRUPTED || status.state == brls::GestureState::FAILED) {
-                *soundToPlay = brls::SOUND_TOUCH_UNFOCUS;
-                return;
-            }
-
-            else if (status.state == brls::GestureState::START) {
-                lastProgress = progress;
-            }
-
-            float paddingWidth = getWidth() - pointer->getWidth();
-            float delta        = status.position.x - status.startPosition.x;
-
-            setProgress(lastProgress + delta / paddingWidth);
-            progressEvent.fire(this->progress);
-
-            if (status.state == brls::GestureState::END) {
-                brls::Application::getPlatform()->getAudioPlayer()->play(brls::SOUND_SLIDER_RELEASE);
-                progressSetEvent.fire(this->progress);
-                brls::Application::giveFocus(this->getParentActivity()->getContentView());
-            }
-        },
-        brls::PanAxis::HORIZONTAL));
-
-    this->addGestureRecognizer(
-        new brls::TapGestureRecognizer([this](brls::TapGestureStatus status, brls::Sound* soundToPlay) {
-            if (status.state != brls::GestureState::END) return;
-            float paddingWidth = getWidth() - pointer->getWidth();
-            float delta        = status.position.x - pointer->getWidth() / 2 - pointer->getX();
-            setProgress(progress + delta / paddingWidth);
-            progressSetEvent.fire(this->progress);
-            brls::Application::giveFocus(this->getParentActivity()->getContentView());
-        }));
 
     progress     = 0;
     lastProgress = 0;

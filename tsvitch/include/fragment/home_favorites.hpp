@@ -19,12 +19,6 @@ public:
 
     void onError(const std::string &error);
 
-    void search();
-
-    void cancelSearch();
-
-    void filter(const std::string &key);
-
     void refreshRecent();
 
     void refreshFavorites();
@@ -32,7 +26,7 @@ public:
     void toggleFavorite();
 
 private:
+    bool isSearchActive = false;
     tsvitch::LiveM3u8ListResult favoritesList;
     BRLS_BIND(RecyclingGrid, recyclingGrid, "home/favorites/recyclingGrid");
-    BRLS_BIND(CustomButton, searchField, "home/search");
 };

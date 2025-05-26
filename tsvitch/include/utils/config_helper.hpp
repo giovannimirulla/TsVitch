@@ -139,9 +139,10 @@ public:
     void setProgramConfig(const ProgramConfig& conf);
 
     std::string getClientID();
-    std::string getUserID();
 
     std::string getDeviceID();
+
+    void setDeviceID(const std::string& deviceId);
 
     void loadHomeWindowState();
     void saveHomeWindowState();

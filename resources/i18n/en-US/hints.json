@@ -8,6 +8,7 @@
   "delete": "Delete",
   "save": "Save",
   "search": "Search",
+  "toggle_favorite": "Toggle Favorite",
   "submit": "Submit",
   "input": "Please input...",
   "preset": "Preset",
@@ -16,5 +17,7 @@
   "success": "Success",
   "failed": "Failed",
   "exit_hint": "Are you going to exit the application?",
-  "loading": "Loading"
+  "loading": "Loading",
+  "live_error": "Error: Live is not available",
+  "network_error": "Network Error"
 }

@@ -44,7 +44,7 @@ void Register::initCustomView() {
 
     brls::Application::registerXMLView("ButtonClose", ButtonClose::create);
     brls::Application::registerXMLView("CheckBox", BiliCheckBox::create);
-    brls::Application::registerXMLView("SelectorCell", BiliSelectorCell::create);
+    brls::Application::registerXMLView("SelectorCell", TsVitchSelectorCell::create);
     brls::Application::registerXMLView("AnimationImage", AnimationImage::create);
 
     brls::Application::registerXMLView("HomeLive", HomeLive::create);

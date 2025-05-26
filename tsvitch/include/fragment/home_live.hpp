@@ -43,8 +43,8 @@ public:
 
 private:
     int selectedGroupIndex = 0;
+    bool isSearchActive = false;
     tsvitch::LiveM3u8ListResult channelsList;
-    brls::ActionIdentifier cancelSearchActionId;
     BRLS_BIND(RecyclingGrid, recyclingGrid, "home/live/recyclingGrid");
     BRLS_BIND(RecyclingGrid, upRecyclingGrid, "dynamic/up/recyclingGrid");
     BRLS_BIND(CustomButton, searchField, "home/search");

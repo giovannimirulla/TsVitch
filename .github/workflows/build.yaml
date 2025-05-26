@@ -26,7 +26,8 @@ on:
 env:
   GA_ID: ${{ secrets.GA_ID }}
   GA_KEY: ${{ secrets.GA_KEY }}
-  AD_SERVER_URL: ${{ secrets.AD_SERVER_URL }}
+  SERVER_URL: ${{ secrets.SERVER_URL }}
+  SERVER_TOKEN: ${{ secrets.SERVER_TOKEN }}
   M3U8_URL: ${{ secrets.M3U8_URL }}
 
 jobs:
@@ -131,7 +132,8 @@ jobs:
           docker run --platform linux/amd64 --rm \
             -e GA_ID="${GA_ID}" \
             -e GA_KEY="${GA_KEY}" \
-            -e AD_SERVER_URL="${AD_SERVER_URL}" \
+            -e SERVER_URL="${SERVER_URL}" \
+            -e SERVER_TOKEN="${SERVER_TOKEN}" \
             -e M3U8_URL="${M3U8_URL}" \
             -v $(pwd):/data devkitpro/devkita64:20240324 \
             bash -c "/data/scripts/build_switch${{ matrix.shuffix }}.sh"

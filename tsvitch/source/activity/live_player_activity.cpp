@@ -7,6 +7,8 @@
 #include <vector>
 #include <chrono>
 
+#include "tsvitch.h"
+
 #include "utils/shader_helper.hpp"
 #include "utils/config_helper.hpp"
 
@@ -16,16 +18,17 @@
 #include "view/qr_image.hpp"
 #include "view/mpv_core.hpp"
 
-#include "config/ad_config.h"
+#include "config/server_config.h"
 
 #include "core/FavoriteManager.hpp"
 
 using namespace brls::literals;
 
-LiveActivity::LiveActivity(const tsvitch::LiveM3u8& liveData, std::function<void()> onClose)
-    : onCloseCallback(onClose) {
+LiveActivity::LiveActivity(const std::vector<tsvitch::LiveM3u8>& channels, size_t startIndex,
+                           std::function<void()> onClose)
+    : onCloseCallback(onClose), channelList(channels), currentChannelIndex(startIndex) {
+    this->liveData = channelList[currentChannelIndex];
     brls::Logger::debug("LiveActivity: create: {}", liveData.title);
-    this->liveData = liveData;
     ShaderHelper::instance().clearShader(false);
 }
 
@@ -49,6 +52,72 @@ void LiveActivity::onContentAvailable() {
         return true;
     });
 
+    this->video->registerAction("hints/toggle_favorite"_i18n, brls::BUTTON_X, [this](...) {
+        this->video->toggleFavorite();
+        return true;
+    });
+
+    //Button R go to next channel
+    this->video->registerAction("hints/next_channel"_i18n, brls::BUTTON_RB, [this](...) {
+        if (!this->isAd) {
+            if (this->video->isOSDLock()) {
+                this->video->toggleOSD();
+            } else {
+                if (currentChannelIndex + 1 < channelList.size()) {
+                    this->video->stop();
+
+                    currentChannelIndex++;
+                    this->liveData = channelList[currentChannelIndex];
+                    this->video->setTitle(liveData.title);
+                    this->video->setFavoriteIcon(FavoriteManager::get()->isFavorite(liveData.url));
+                    this->getAdUrlFromServer([&](const std::string& adUrl) {
+                        brls::Logger::debug("LiveActivity: adUrl: {}", adUrl);
+                        if (!adUrl.empty()) {
+                            this->startAd(adUrl);
+                        } else {
+                            this->startLive();
+                        }
+                    });
+                } else {
+                    //exit live
+                    brls::Logger::debug("exit live");
+                    brls::Application::popActivity();
+                }
+            }
+        }
+        return true;
+    });
+    //Button L go to previous channel
+    this->video->registerAction("hints/previous_channel"_i18n, brls::BUTTON_LB, [this](...) {
+        if (!this->isAd) {
+            if (this->video->isOSDLock()) {
+                this->video->toggleOSD();
+            } else {
+                if (currentChannelIndex > 0) {
+                    this->video->stop();
+
+                    currentChannelIndex--;
+                    this->liveData = channelList[currentChannelIndex];
+                    this->video->setTitle(liveData.title);
+                    this->video->setFavoriteIcon(FavoriteManager::get()->isFavorite(liveData.url));
+                    this->getAdUrlFromServer([&](const std::string& adUrl) {
+                        brls::Logger::debug("LiveActivity: adUrl: {}", adUrl);
+                        if (!adUrl.empty()) {
+                            this->startAd(adUrl);
+                        } else {
+                            this->startLive();
+                        }
+                    });
+                } else {
+                    //exit live
+                    brls::Logger::debug("exit live");
+                    brls::Application::popActivity();
+                }
+            }
+        }
+        return true;
+    });
+
     this->video->hideSubtitleSetting();
     this->video->hideVideoRelatedSetting();
     this->video->hideBottomLineSetting();
@@ -60,24 +129,29 @@ void LiveActivity::onContentAvailable() {
     this->video->setStatusLabelLeft("");
     this->video->setFavoriteCallback([this](bool state) { FavoriteManager::get()->toggle(this->liveData); });
 
-    std::string adUrl = this->getAdUrlFromServer();
-    if (!adUrl.empty()) {
-        this->startAd(adUrl);
-    } else {
-        this->startLive();
-    }
+    this->getAdUrlFromServer([&](const std::string& adUrl) {
+        brls::Logger::debug("LiveActivity: adUrl: {}", adUrl);
+        if (!adUrl.empty()) {
+            this->startAd(adUrl);
+        } else {
+            this->startLive();
+        }
+    });
 
     GA("open_live", {{"title", this->liveData.title}})
 }
 void LiveActivity::startAd(std::string adUrl) {
     brls::Logger::debug("LiveActivity: adUrl: {}", adUrl);
+    this->isAd = true;
+    this->video->setVideoMode();
+    this->video->showVideoProgressSlider();
     this->video->setUrl(adUrl);
-    this->video->setOnEndCallback([this]() {
-        this->startLive();
-    });
+
+    this->video->setOnEndCallback([this]() { this->startLive(); });
 }
 
 void LiveActivity::startLive() {
+    this->isAd = false;
     this->video->setLiveMode();
     this->video->hideVideoProgressSlider();
 
@@ -104,8 +178,14 @@ void LiveActivity::startLive() {
 
 void LiveActivity::onLiveData(std::string url) {
     brls::Logger::debug("Live stream url: {}", url);
-    std::string adUrl = this->getAdUrlFromServer();
-    this->video->setUrl(adUrl);
+    this->getAdUrlFromServer([&](const std::string& adUrl) {
+        brls::Logger::debug("LiveActivity: adUrl: {}", adUrl);
+        if (!adUrl.empty()) {
+            this->video->setUrl(adUrl);
+        } else {
+            this->startLive();
+        }
+    });
     return;
 }
 
@@ -122,9 +202,21 @@ void LiveActivity::retryRequestData() {
     });
 }
 
-std::string LiveActivity::getAdUrlFromServer() {
-    // Qui puoi implementare una chiamata HTTP per ottenere l'URL dell'ad
-    return AD_SERVER_URL_VALUE;
+void LiveActivity::getAdUrlFromServer(std::function<void(const std::string&)> callback) {
+    CLIENT::get_ad(
+        [callback](const std::string& adUrl, int statusCode) {
+            if (statusCode == 200 && !adUrl.empty()) {
+                brls::Logger::debug("LiveActivity: adUrl: {}", adUrl);
+                if (callback) callback(adUrl);
+            } else {
+                brls::Logger::error("LiveActivity: Failed to get ad URL, status code: {}", statusCode);
+                if (callback) callback("");
+            }
+        },
+        [callback](const std::string& error, int statusCode) {
+            brls::Logger::error("LiveActivity: Error getting ad URL: {}, status code: {}", error, statusCode);
+            if (callback) callback("");
+        });
 }
 
 LiveActivity::~LiveActivity() {

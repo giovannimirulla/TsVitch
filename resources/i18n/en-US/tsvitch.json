@@ -1,58 +1,57 @@
-
 {
   "title": "tsvitch",
   "github": "https://github.com/giovannimirulla/TsVitch",
   "github_release": "https://github.com/giovannimirulla/TsVitch/releases/latest",
   "setting": {
-    "quit_hint": "You are about to exit the application. Settings will take effect after the next startup",
+    "quit_hint": "You are about to exit the application. Settings will take effect after the next launch",
     "app": {
       "tab": "App",
       "playback": {
         "header": "Playback",
-        "report": "Upload history playback record",
-        "player_bar": "Always show the progress bar",
-        "low_quality": "Low-quality decoding (less CPU usage)",
+        "report": "Load playback history",
+        "player_bar": "Always show progress bar",
+        "low_quality": "Low quality decoding (Lower CPU usage)",
         "in_memory_cache": "In-memory cache",
         "hwdec": "Hardware decoding",
         "exit_fullscreen": "Exit fullscreen at the end of playback",
-        "play_strategy": "Play strategy",
-        "auto_play_next_part": "Automatically play the next part",
+        "play_strategy": "Playback strategy",
+        "auto_play_next_part": "Automatically play next part",
         "auto_play_recommend": "Automatically play recommended videos",
-        "auto_loop": "Loop the current video",
-        "auto_no": "Pause video after playing",
-        "auto_hint": "\"Automatically playing recommend video\" will automatically play recommended videos after the episode is played.",
-        "sleep": "Sleep timer",
-        "video_codec": "Video Codec",
-        "audio_quality": "Audio Quality",
-        "video_format": "Video Format",
+        "auto_loop": "Repeat current video",
+        "auto_no": "Pause after playback",
+        "auto_hint": "\"Automatically play recommended videos\" will automatically play recommended videos after the episode.",
+        "sleep": "Scheduled shutdown",
+        "video_codec": "Video codec",
+        "audio_quality": "Audio quality",
+        "video_format": "Video format",
         "player": "Player"
       },
       "image": {
         "header": "Image",
-        "texture": "Number of picture texture caches",
+        "texture": "Number of image texture caches",
         "threads": "Number of image loading threads"
       },
       "network": {
         "header": "Network",
-        "tls": "TLS verify",
+        "tls": "TLS verification",
         "proxy": "Proxy",
         "proxy_hint": "example: http://127.0.0.1:7890"
       },
       "ui": {
         "header": "UI",
-        "tv_osd": "TV style OSD control",
-        "window": "Player",
-        "bottom_bar": "Bottom suggestion bar"
+        "tv_osd": "TV-style OSD control",
+        "window": "Window",
+        "bottom_bar": "Bottom hints bar"
       },
       "others": {
         "header": "Others",
         "vibration": "Gamepad vibration",
-        "hide_bottom": "Hide the bottom suggestion bar",
-        "show_bottom": "Show the bottom suggestion bar",
+        "hide_bottom": "Hide the hints bar below",
+        "show_bottom": "Show the bottom hints bar",
         "hide_fps": "Hide FPS",
         "show_fps": "Show FPS",
         "limited_fps": "Maximum frame limit",
-        "limited_fps_vsync": "Vertical Sync",
+        "limited_fps_vsync": "Vertical sync",
         "fullscreen": "Fullscreen",
         "always_on_top": "Always on top",
         "tv_search": "TV-style search page",
@@ -64,10 +63,10 @@
           "3": "Dark"
         },
         "custom_theme": {
-          "header": "Custom Layout (restart required)"
+          "header": "Custom layout (restart required)"
         },
         "scale": {
-          "header": "UI Scale (restart required)",
+          "header": "UI scale (restart required)",
           "544p": "544p",
           "720p": "720p",
           "900p": "900p",
@@ -79,19 +78,19 @@
           "chinese_s": "Simplified Chinese",
           "chinese_t": "Traditional Chinese",
           "english": "English",
-          "japanese": "日本語",
-          "ryukyuan": "島言葉",
+          "japanese": "Japanese",
+          "ryukyuan": "Ryukyuan",
           "italiano": "Italian",
           "korean": "Korean",
-          "portuguese_br": "Português do Brasil"
+          "portuguese_br": "Brazilian Portuguese"
         },
         "opencc": "Automatically convert Simplified Chinese (restart required)",
         "keymap": {
-          "header": "Keymap style",
+          "header": "Key mapping style",
           "xbox": "Xbox",
           "ps": "PlayStation",
           "keyboard": "Keyboard",
-          "swap": "Switch buttons"
+          "swap": "Swap buttons"
         }
       }
     },
@@ -102,92 +101,87 @@
         "input": "Custom playlist",
         "hint": "http://example.com/playlist.m3u8"
       },
-    "tutorial": {
-      "header": "Guide",
-      "intro": "Software introduction (online video; Chinese)",
-      "wiki": "Access our wiki to get more information",
-      "open": "How to install desktop icon",
-      "error": "If you encounter a bug",
-      "hot_key": "Hotkeys",
-      "font": "Set custom font"
+      "tutorial": {
+        "header": "Guide",
+        "intro": "Software introduction (online video; Chinese)",
+        "wiki": "Access our wiki for more information",
+        "open": "How to install the icon on the desktop",
+        "error": "If you encounter a bug",
+        "hot_key": "Hotkeys",
+        "font": "Set custom font"
+      },
+      "test": {
+        "header": "Diagnostics",
+        "net": "Network diagnostics",
+        "vibration": "Vibration test"
+      },
+      "others": {
+        "header": "Others",
+        "dlna": "DLNA Renderer",
+        "dlna_waiting": "Waiting for DLNA casting...",
+        "dlna_quit": "Exit DLNA casting?",
+        "up2date": "The application is up to date",
+        "checking_update": "Checking for updates...",
+        "release": "Check for updates",
+        "config": "Open configuration folder",
+        "config_dir": "Show configuration folder"
+      }
     },
-    "test": {
-      "header": "Diagnostics",
-      "net": "Network diagnostics",
-      "vibration": "Vibration test"
+    "about": {
+      "tab": "About",
+      "brief_header": "Introduction",
+      "repository": "Repository",
+      "brief": "TV finally on Switch",
+      "repo_header": "Repository",
+      "author_header": "Author's note",
+      "author": "How nice it is to watch TV in the bathroom"
     },
-    "others": {
-      "header": "Others",
-      "dlna": "DLNA Renderer",
-      "dlna_waiting": "Waiting for DLNA casting...",
-      "dlna_quit": "Exit the DLNA casting?",
-      "up2date": "The application is up-to-date",
-      "release": "Check for updates",
-      "config": "Open configuration folder",
-      "config_dir": "Show configuration folder"
-    }
-  },
-  "about": {
-    "tab": "About",
-    "brief_header": "Introduction",
-    "repository": "Repository",
-    "brief": "TV finally on Switch",
-    "repo_header": "Repository",
-    "author_header": "Author's statement",
-    "author": "一 Watching TV in the bathroom is awesome"
-  },
-  "opensource": {
-    "tab": "Open Source"
-  },
+    "opensource": {
+      "tab": "Opensource"
+    },
     "tutorial": {
       "error_q1": "Unable to access the network",
-      "error_a1": "1. Ensure the atmosphere and system firmware are up to date\n2. Confirm that the system time is correct\n3. Restore the default network settings, including IP, DNS, etc\n4.Using in China",
-      "error_q2": "Exits with random error",
-      "error_a2": "1. Using a Fat32 format memory card\n2. Ensure the atmosphere and system firmware are up to date\n3. Waiting for developers to repair",
-      "font_q1": "How to set custom font or keymap icon",
-      "font_a1": "1. Download the font or icon font you want\n2. Rename font to: font.ttf; Rename icon to: icon.ttf\n3. Place font files in the config directory\n4. Restart the application",
-      "font_q2": "FAQ",
-      "font_a2": "1. tsvitch prioritizes the display of custom fonts, with built-in fonts as a fallback\n2. \"Settings - Tools - Others\" provides a menu item to quickly open the config directory\n3. On Linux, tsvitch uses xdg-open to open the directory. If the configuration directory cannot be opened correctly, you can consider installing this tool"
+      "error_a1": "1. Make sure atmosphere and system firmware are up to date\n2. Check that the system time is correct\n3. Restore default network settings, including IP, DNS, etc.",
+      "error_q2": "Random error exit",
+      "error_a2": "1. Use a Fat32 formatted memory card\n2. Make sure atmosphere and system firmware are up to date\n3. Wait for the developers to fix it",
+      "font_q1": "How to set a custom font or icon",
+      "font_a1": "1. Download the font or icon you want\n2. Rename the font to: font.ttf; Rename the icon to: icon.ttf\n3. Put the files in the configuration folder\n4. Restart the application",
+      "font_q2": "Frequently asked questions",
+      "font_a2": "1. tsvitch prioritizes custom fonts, with built-in fonts as fallback\n2. \"Settings - Tools - Others\" offers a menu item to quickly open the configuration folder\n3. On Linux, tsvitch uses xdg-open to open the folder. If the folder does not open correctly, consider installing this tool"
     },
     "hot_keys": {
       "common_header": "Common",
-      "common_content": "\uE0A4 / \uE0A5 Switch the primary page\n\uE0A6 / \uE0A7 Switch the secondary page",
+      "common_content": " /  Switch main page\n /  Switch secondary page",
       "player_header": "Player",
-      "player_content": "\uE0C5 Speed up，double click \uE0C5 to lock\n\uE0A3 + \uE0A5 Seek forward\n\uE0A3 Toggle player OSD \n\uE0A2 Toggle danmaku"
+      "player_content": " Increase speed, double click  to lock\n +  Forward\n Show/hide OSD\n Show/hide danmaku"
     },
     "net": {
       "test": {
-        "header": "Access Network",
-        "feed": "Test to get recommended videos"
-      },
-      "time": {
-        "header": "Time",
-        "subtitle": "Incorrect system time may cause network access failure",
-        "sys": "Current system time",
-        "net": "Get network time"
+        "header": "Network access",
+        "feed": "Request to get playlist"
       },
       "profile": {
         "header": "Network",
         "subtitle": "Restoring network settings can also solve some problems",
-        "ip": "IP Address",
-        "dns": "DNS Address"
+        "ip": "IP address",
+        "dns": "DNS address"
       }
     }
   },
   "hints": {
-    "hint1": "Select a game from home screen",
-    "hint2": "Hold the \uE0E5 key and click \uE0E0 to enter hbmenu",
-    "hint3": "In the hbmenu, select tsvitch",
-    "hint4": "Optional: Using provided tsvitch NSP forwarder (Please place tsvitch.nro in /switch/tsvitch.nro)",
-    "hint_nsp": "Click \uE0E0 to install NSP forwarder",
-    "hint_confirm": "Installing NSP forwarder may result in a ban\nPlease confirm again",
-    "hint_right": "The pictures are from the Internet, and the copyright belongs to Nintendo Co., Ltd"
+    "hint1": "Select a game from the home screen",
+    "hint2": "Hold  and press  to enter hbmenu",
+    "hint3": "In hbmenu, select tsvitch",
+    "hint4": "Optional: use the provided NSP forwarder (Put tsvitch.nro in /switch/tsvitch.nro)",
+    "hint_nsp": "Press  to install the NSP forwarder",
+    "hint_confirm": "Installing the NSP forwarder may cause a ban\nDo you confirm?",
+    "hint_right": "Images are from the Internet, copyright belongs to Nintendo Co., Ltd"
   },
   "home": {
     "common": {
-      "part": "Channel: ",
-      "recommend": "Recommend",
-      "search": "Search for videos",
+      "part": "Channel:",
+      "recommend": "Recommended",
+      "search": "Search channel",
       "switch": "Switch",
       "refresh": "Refresh",
       "last": "Last",
@@ -201,7 +195,7 @@
       "no_login": "You are not logged in yet"
     },
     "live": {
-      "tab": "Live",
+      "tab": "Channels",
       "dialog": "Channels",
       "default": "Channel: Explore"
     },
@@ -209,9 +203,9 @@
       "tab": "Explore"
     },
     "hots": {
-      "tab": "Hots",
-      "t1": "Hots",
-      "t2": "Rank",
+      "tab": "Popular",
+      "t1": "Popular",
+      "t2": "Ranking",
       "t3": "Weekly",
       "t4": "History"
     },
@@ -227,9 +221,74 @@
     "video": "Video",
     "article": "Activity"
   },
+  "search": {
+    "tv": {
+      "hint": "Supports keywords and their initials",
+      "clear": "Clear",
+      "delete": "Delete",
+      "search": "Search",
+      "hots": "Popular",
+      "history": "History",
+      "history_clear": "Clear all",
+      "history_delete": "Delete",
+      "suggest": "Suggest"
+    },
+    "order": {
+      "all": "All",
+      "click": "Click",
+      "pubdate": "Publish date",
+      "dm": "Danmaku",
+      "stow": "Favorite"
+    },
+    "tab": "Search",
+    "t0": "History",
+    "t1": "Popular",
+    "t2": "Video",
+    "t3": "Bangumi",
+    "t4": "Cinema"
+  },
   "activity": {
     "all": "All activities",
     "refresh": "Refresh list"
+  },
+  "mine": {
+    "login": {
+      "check": "Checking login information...",
+      "success": "Login successful",
+      "refresh": "Refresh",
+      "click": "Click here to log in",
+      "logout": "Log out of the current account \n(the app will close)",
+      "scan": "Scan the QR code to log in",
+      "loading": "Loading QR code...",
+      "hint": "Use the TsVitch client to scan the QR code",
+      "network_error": "Network error, please try again",
+      "qr_not_available": "Invalid QR code, re-enter the dialog",
+      "need_confirm": "Waiting for confirmation",
+      "need_scan": "Waiting for QR code scan"
+    },
+    "later": "Watch later",
+    "history": "History",
+    "collection": "Favorites",
+    "subscription": "Subscriptions",
+    "anime": "Anime",
+    "series": "Series",
+    "refresh_history": "Refresh history",
+    "refresh_collection": "Refresh favorites",
+    "refresh_subscription": "Refresh subscriptions",
+    "refresh_later": "Refresh Watch Later",
+    "refresh_anime": "Refresh anime",
+    "refresh_series": "Refresh series",
+    "coin": "Coins",
+    "following": "Following",
+    "follower": "Follower",
+    "activity": "Activity",
+    "public": "Public",
+    "private": "Private",
+    "num": " contents",
+    "pub": "Created on",
+    "creator": "Author",
+    "done": "Completed",
+    "article": "Open with browser:"
   },
   "player": {
     "intro": "Introduction",
@@ -237,47 +296,47 @@
     "ugc_season": "Playlist",
     "related": "Related",
     "series": "Series",
-    "recommend": "Recommend",
+    "recommend": "Recommended",
     "uploaded": "Others",
-    "qr": "Scan QR code to watch/share",
+    "qr": "Scan the QR to watch/share",
     "clipboard": "Copied to clipboard",
     "comment": "Comment",
     "current": " people are watching",
     "share": "Share",
-    "rights": "Reprint prohibited",
+    "rights": "Reposting prohibited",
     "fs": "Fullscreen",
     "quality": "Quality",
     "speed": "Speed",
     "replay": "Replay",
-    "current_speed": "Current speed {}",
-    "not_follow": "Cancel following?",
+    "current_speed": "Current speed: {0}",
+    "not_follow": "Unfollow?",
     "coin": {
-      "title": "Coin",
-      "hint": "Choose your coin num",
+      "title": "Coins",
+      "hint": "Choose the number of coins",
       "like": "Like at the same time",
-      "own": "You can't give yourself a coin",
-      "run_out": "The number of coins for this video has been used up",
+      "own": "You can't give coins to yourself",
+      "run_out": "The number of coins for this video is exhausted",
       "exp": "Experience + {}（Today {}/50）",
-      "exp_full": "The experience gained today is full (50/50) \uE87D ！",
-      "pcs": "{} pcs"
+      "exp_full": "Maximum daily experience reached (50/50)  ！",
+      "pcs": "{} pieces"
     },
     "season_part": {
-      "ascend": "Ascend",
-      "descend": "Descend"
+      "ascend": "Ascending",
+      "descend": "Descending"
     },
     "comment_sort": {
-      "sort_top": "Sort by heat",
+      "sort_top": "Sort by popularity",
       "sort_new": "Sort by newest",
-      "top": "Top Comments",
-      "new": "Newest Comments"
+      "top": "Top comments",
+      "new": "Newest comments"
     },
     "collection": {
-      "type": "Favorite",
+      "type": "Favorites",
       "title": "Select Favorites"
     },
     "setting": {
       "subtitle": {
-        "header": "Subtitle"
+        "header": "Subtitles"
       },
       "equalizer": {
         "header": "Equalizer",
@@ -290,24 +349,24 @@
       },
       "common": {
         "header": "Common",
-        "mirror": "Horizontally flip",
-        "highlight": "Always show hotspots",
+        "mirror": "Mirror",
+        "highlight": "Always show hotspot",
         "skip_opening_credits": "Skip opening credits",
-        "skip_hint1": "Automatically skip the opening credits from next video",
-        "skip_hint2": "Turn off skip opening credits from next video",
-        "skip_hint3": "Use custom opening credits from next video",
-        "skip_hint4": "Disable custom opening credits from next video",
-        "wiki": "Access our wiki to learn how shader works"
+        "skip_hint1": "Automatically skip the opening from the next video",
+        "skip_hint2": "Disable skip opening from the next video",
+        "skip_hint3": "Use custom opening from the next video",
+        "skip_hint4": "Disable custom opening from the next video",
+        "wiki": "Access our wiki to learn how shaders work"
       },
       "season": {
-        "aspect": "Custom video aspect",
-        "clip": "Custom opening credits",
-        "clip_start": "Intro length",
-        "clip_end": "Outro length",
+        "aspect": "Custom video aspect ratio",
+        "clip": "Custom opening",
+        "clip_start": "Intro duration",
+        "clip_end": "Outro duration",
         "unit": "Unit: seconds"
       },
       "aspect": {
-        "header": "Video aspect",
+        "header": "Video aspect ratio",
         "crop": "Crop",
         "stretch": "Stretch",
         "auto": "Auto"
@@ -323,15 +382,15 @@
       "cast_to_renderer": "Casting to renderer...",
       "casting": "Casting...",
       "cancel": "Cancel video casting",
-      "err_connect": "Unable to connect to the DLNA renderer",
-      "err_url": "Failed to obtain the video link",
+      "err_connect": "Unable to connect to DLNA renderer",
+      "err_url": "Unable to get video link",
       "countdown": "Search countdown"
     },
     "danmaku": {
-      "header": "Danmaku setting",
+      "header": "Danmaku settings",
       "send": {
         "action": "Send",
-        "hint": "Say something nice"
+        "hint": "Write something nice"
       },
       "performance": {
         "header": "Performance",
@@ -350,19 +409,19 @@
       },
       "style": {
         "header": "Danmaku style",
-        "font": "Stroke Style",
-        "font_stroke": "Stroke",
-        "font_incline": "Incline",
+        "font": "Border style",
+        "font_stroke": "Border",
+        "font_incline": "Inclined",
         "font_shadow": "Shadow",
         "font_pure": "Pure",
         "area": "Display area",
         "area_1_4": "1/4 Screen",
         "area_2_4": "1/2 Screen",
         "area_3_4": "3/4 Screen",
-        "area_4_4": "Fullscreen",
+        "area_4_4": "Full screen",
         "alpha": "Alpha",
-        "fontsize": "Fontsize",
-        "line_height": "Line Height",
+        "fontsize": "Font size",
+        "line_height": "Line height",
         "speed": "Speed",
         "speed_slow_plus": "Extremely slow",
         "speed_slow": "Slow",
@@ -373,14 +432,14 @@
     },
     "single_comment": {
       "detail": "Details",
-      "hint": "Say something nice",
-      "related": "{} replies in total",
-      "end": "No more comments",
+      "hint": "Write something nice",
+      "related": "{} total replies",
+      "end": "No more comments.",
       "delete": "After deleting the comment, all replies under the comment will be deleted\n\nDo you want to continue?"
     }
   },
   "dialog": {
-    "not_supported": "Not Supported",
-    "quit_hint": "Exiting app..."
+    "not_supported": "Not supported",
+    "quit_hint": "Exiting the app..."
   }
 }

@@ -14,7 +14,8 @@ class LiveActivity : public brls::Activity, public LiveDataRequest {
 public:
     CONTENT_FROM_XML_RES("activity/video_activity.xml");
 
-    explicit LiveActivity(const tsvitch::LiveM3u8& liveData, std::function<void()> onClose = nullptr);
+    explicit LiveActivity(const std::vector<tsvitch::LiveM3u8>& channels, size_t startIndex,
+                          std::function<void()> onClose = nullptr);
 
     void setCommonData();
 
@@ -40,9 +41,14 @@ protected:
 
     std::function<void()> onCloseCallback;
 
+    std::vector<tsvitch::LiveM3u8> channelList;
+    size_t currentChannelIndex = 0;
+
     size_t toggleDelayIter = 0;
 
     size_t errorDelayIter = 0;
+
+    bool isAd = false;
 
     tsvitch::LiveM3u8 liveData;
 
@@ -51,5 +57,5 @@ protected:
     CustomEvent::Subscription event_id;
 
 private:
-    std::string getAdUrlFromServer();
+   void getAdUrlFromServer(std::function<void(const std::string&)> callback = nullptr);
 };

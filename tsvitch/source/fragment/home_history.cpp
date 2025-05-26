@@ -30,9 +30,8 @@ public:
     size_t getItemCount() override { return recentChannels.size(); }
 
     void onItemSelected(RecyclingGrid* recycler, size_t index) override {
-        const auto& r = recentChannels[index];
-        HistoryManager::get()->add(r);
-        Intent::openLive(r, [recycler]() {
+        HistoryManager::get()->add(recentChannels[index]);
+        Intent::openLive(recentChannels, index, [recycler]() {
             auto recent = HistoryManager::get()->recent(8);
             recycler->setDataSource(new DataSourceRecentChannels(recent));
         });
@@ -58,6 +57,7 @@ HomeHistory::HomeHistory() {
         this->toggleFavorite();
         return true;
     });
+    
 }
 
 void HomeHistory::toggleFavorite(){

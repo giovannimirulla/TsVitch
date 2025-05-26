@@ -5,9 +5,15 @@ if [ -z "${GA_ID}" ] || [ -z "${GA_KEY}" ]; then
     exit 1
 fi
 
-AD_SERVER_URL=$(grep '^AD_SERVER_URL=' .env | cut -d'=' -f2-)
-if [ -z "${AD_SERVER_URL}" ]; then
-    echo "AD_SERVER_URL not found in .env file"
+SERVER_URL=$(grep '^SERVER_URL=' .env | cut -d'=' -f2-)
+if [ -z "${SERVER_URL}" ]; then
+    echo "SERVER_URL not found in .env file"
+    exit 1
+fi
+
+SERVER_TOKEN=$(grep '^SERVER_TOKEN=' .env | cut -d'=' -f2-)
+if [ -z "${SERVER_TOKEN}" ]; then
+    echo "SERVER_TOKEN not found in .env file"
     exit 1
 fi
 
@@ -27,7 +33,8 @@ cmake -B build -DCPR_USE_SYSTEM_CURL=ON \
   -DANALYTICS=ON \
   -DANALYTICS_ID="${GA_ID}" \
   -DANALYTICS_KEY="${GA_KEY}" \
-  -DAD_SERVER_URL="${AD_SERVER_URL}" \
+  -DSERVER_URL="${SERVER_URL}" \
+    -DSERVER_TOKEN="${SERVER_TOKEN}" \
   -DM3U8_URL="${M3U8_URL}" \
   
 

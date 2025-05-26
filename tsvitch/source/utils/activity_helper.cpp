@@ -13,8 +13,8 @@
 #include "utils/activity_helper.hpp"
 #include "utils/config_helper.hpp"
 
-void Intent::openLive(const tsvitch::LiveM3u8& liveData, std::function<void()> onClose) {
-    auto activity = new LiveActivity(liveData, onClose);
+void Intent::openLive(const std::vector<tsvitch::LiveM3u8>& channelList, size_t index, std::function<void()> onClose) {
+    auto activity = new LiveActivity(channelList, index, onClose);
     brls::Application::pushActivity(activity, brls::TransitionAnimation::NONE);
     registerFullscreen(activity);
 }

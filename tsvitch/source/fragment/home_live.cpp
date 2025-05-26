@@ -1,5 +1,6 @@
 #include <utility>
 #include <borealis/core/touch/tap_gesture.hpp>
+#include <borealis/views/dialog.hpp>
 #include <borealis/core/thread.hpp>
 #include <borealis/views/applet_frame.hpp>
 #include <borealis/views/tab_frame.hpp>
@@ -64,39 +65,39 @@ public:
 
     size_t getItemCount() override { return list.size(); }
 
-void setSelectedIndex(RecyclingGrid* recycler, size_t index) {
-    brls::Logger::debug("setSelectedIndex: {}", index);
-    if (index >= list.size()) return;
-    selectedIndex = index;
-    auto* item    = dynamic_cast<DynamicGroupChannels*>(recycler->getGridItemByIndex(index));
-    if (!item) return;
-    item->setSelected(true);
+    void setSelectedIndex(RecyclingGrid* recycler, size_t index) {
+        brls::Logger::debug("setSelectedIndex: {}", index);
+        if (index >= list.size()) return;
+        selectedIndex = index;
+        auto* item    = dynamic_cast<DynamicGroupChannels*>(recycler->getGridItemByIndex(index));
+        if (!item) return;
+        item->setSelected(true);
 
-    // Salva l'indice selezionato
-    ProgramConfig::instance().setSettingItem(SettingItem::GROUP_SELECTED_INDEX, static_cast<int>(index));
+        // Salva l'indice selezionato
+        ProgramConfig::instance().setSettingItem(SettingItem::GROUP_SELECTED_INDEX, static_cast<int>(index));
 
-    if (onGroupSelected) onGroupSelected(list[index]);
-}
-
-void onItemSelected(RecyclingGrid* recycler, size_t index) override {
-    brls::Logger::debug("onItemSelected: {}", index);
-    std::vector<RecyclingGridItem*>& items = recycler->getGridItems();
-    for (auto& i : items) {
-        auto* cell = dynamic_cast<DynamicGroupChannels*>(i);
-        if (cell) cell->setSelected(false);
+        if (onGroupSelected) onGroupSelected(list[index]);
     }
 
-    selectedIndex = index;
+    void onItemSelected(RecyclingGrid* recycler, size_t index) override {
+        brls::Logger::debug("onItemSelected: {}", index);
+        std::vector<RecyclingGridItem*>& items = recycler->getGridItems();
+        for (auto& i : items) {
+            auto* cell = dynamic_cast<DynamicGroupChannels*>(i);
+            if (cell) cell->setSelected(false);
+        }
 
-    auto* item = dynamic_cast<DynamicGroupChannels*>(recycler->getGridItemByIndex(index));
-    if (!item) return;
-    item->setSelected(true);
+        selectedIndex = index;
 
-    // Salva l'indice selezionato
-    ProgramConfig::instance().setSettingItem(SettingItem::GROUP_SELECTED_INDEX, static_cast<int>(index));
+        auto* item = dynamic_cast<DynamicGroupChannels*>(recycler->getGridItemByIndex(index));
+        if (!item) return;
+        item->setSelected(true);
 
-    if (onGroupSelected) onGroupSelected(list[index]);
-}
+        // Salva l'indice selezionato
+        ProgramConfig::instance().setSettingItem(SettingItem::GROUP_SELECTED_INDEX, static_cast<int>(index));
+
+        if (onGroupSelected) onGroupSelected(list[index]);
+    }
 
     void appendData(const std::vector<std::string>& data) {
         this->list.insert(this->list.end(), data.begin(), data.end());
@@ -106,8 +107,7 @@ void onItemSelected(RecyclingGrid* recycler, size_t index) override {
 
     const std::string& getGroupNameByIndex(size_t index) const {
         static std::string empty;
-        if (index < list.size())
-            return list[index];
+        if (index < list.size()) return list[index];
         return empty;
     }
 
@@ -152,7 +152,7 @@ public:
     void setData(const std::string& name, const std::string& pic) {
         this->title->setText(name);
         this->title->setTextColor(fontColor);
-        
+
         if (pic.empty()) {
             this->image->setImageFromRes("pictures/22_open.png");
         } else {
@@ -193,12 +193,10 @@ public:
 
     size_t getItemCount() override { return videoList.size(); }
 
-void onItemSelected(RecyclingGrid* recycler, size_t index) override {
-    HistoryManager::get()->add(videoList[index]);
-    Intent::openLive(videoList[index], [recycler]() {
-        recycler->reloadData();
-    });
-}
+    void onItemSelected(RecyclingGrid* recycler, size_t index) override {
+        HistoryManager::get()->add(videoList[index]);
+        Intent::openLive(videoList, index, [recycler]() { recycler->reloadData(); });
+    }
 
     void appendData(const tsvitch::LiveM3u8ListResult& data) {
         this->videoList.insert(this->videoList.end(), data.begin(), data.end());
@@ -222,6 +220,19 @@ HomeLive::HomeLive() {
     this->requestLiveList();
 }
 
+void HomeLive::onError(const std::string& error) {
+    brls::Logger::error("Fragment HomeLive: onError: {}", error);
+    brls::sync([this, error]() {
+        this->recyclingGrid->setError(error);
+        this->upRecyclingGrid->setVisibility(brls::Visibility::GONE);
+    });
+
+    //dialog to show error
+    auto dialog = new brls::Dialog("hints/network_error"_i18n);
+    dialog->addButton("hints/back"_i18n, []() {});
+    dialog->open();
+}
+
 void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result) {
     brls::Logger::debug("Fragment HomeLive: onLiveList");
     if (result.empty()) {
@@ -229,6 +240,20 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result) {
         upRecyclingGrid->setVisibility(brls::Visibility::GONE);
         return;
     }
+
+    this->registerAction("hints/back"_i18n, brls::BUTTON_B, [this](...) {
+        if (isSearchActive) {
+            this->cancelSearch();
+        } else {
+            //exits the app
+            auto dialog = new brls::Dialog("hints/exit_hint"_i18n);
+            dialog->addButton("hints/cancel"_i18n, []() {});
+            dialog->addButton("hints/ok"_i18n, []() { brls::Application::quit(); });
+            dialog->open();
+        }
+        return true;
+    });
+
     this->registerAction("hints/search"_i18n, brls::BUTTON_Y, [this](...) {
         this->search();
         return true;
@@ -238,12 +263,6 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result) {
         this->toggleFavorite();
         return true;
     });
-
-    this->searchField->registerClickAction([this](brls::View* view) -> bool {
-        this->search();
-        return true;
-    });
-    this->searchField->addGestureRecognizer(new brls::TapGestureRecognizer(this->searchField));
 
     brls::Threading::sync([this, result]() {
         this->channelsList = result;
@@ -286,7 +305,6 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result) {
             });
             upRecyclingGrid->setDataSource(upList);
 
- 
             int lastIndex = ProgramConfig::instance().getSettingItem(SettingItem::GROUP_SELECTED_INDEX, 0);
             brls::Logger::debug("lastIndex: {}", lastIndex);
             this->selectGroupIndex(static_cast<size_t>(lastIndex));
@@ -307,8 +325,7 @@ void HomeLive::selectGroupIndex(size_t index) {
     std::string selectedGroup = datasource->getGroupNameByIndex(index);
     tsvitch::LiveM3u8ListResult filtered;
     for (const auto& item : this->channelsList) {
-        if (item.groupTitle == selectedGroup)
-            filtered.push_back(item);
+        if (item.groupTitle == selectedGroup) filtered.push_back(item);
     }
     if (filtered.empty())
         recyclingGrid->setEmpty();
@@ -319,7 +336,7 @@ void HomeLive::selectGroupIndex(size_t index) {
     brls::Logger::debug("selectGroupIndex: {}", index);
 }
 
-void HomeLive::toggleFavorite(){
+void HomeLive::toggleFavorite() {
     //get focus item
     auto* item = dynamic_cast<RecyclingGridItemLiveVideoCard*>(this->recyclingGrid->getFocusedItem());
     if (!item) return;
@@ -327,7 +344,6 @@ void HomeLive::toggleFavorite(){
     //get channel
     tsvitch::LiveM3u8 channel = item->getChannel();
 
-   
     FavoriteManager::get()->toggle(channel);
 
     if (FavoriteManager::get()->isFavorite(channel.url)) {
@@ -343,20 +359,16 @@ void HomeLive::search() {
 }
 
 void HomeLive::cancelSearch() {
+    isSearchActive = false;
     this->recyclingGrid->setDataSource(new DataSourceLiveVideoList(this->channelsList));
     upRecyclingGrid->setVisibility(brls::Visibility::VISIBLE);
-    this->unregisterAction(cancelSearchActionId);
-
     this->selectGroupIndex(this->selectedGroupIndex);
 }
 
 void HomeLive::filter(const std::string& key) {
     if (key.empty()) return;
 
-    this->cancelSearchActionId = this->registerAction("hints/cancel"_i18n, brls::BUTTON_B, [this](...) {
-        this->cancelSearch();
-        return true;
-    });
+    isSearchActive = true;
 
     brls::Threading::sync([this, key]() {
         auto* datasource = dynamic_cast<DataSourceLiveVideoList*>(recyclingGrid->getDataSource());
@@ -413,10 +425,6 @@ void HomeLive::onCreate() {
     //         return box;
     //     });
     // }
-}
-
-void HomeLive::onError(const std::string& error) {
-    brls::sync([this, error]() { this->recyclingGrid->setError(error); });
 }
 
 HomeLive::~HomeLive() { brls::Logger::debug("Fragment HomeLiveActivity: delete"); }

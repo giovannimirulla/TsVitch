@@ -8,6 +8,7 @@
   "delete": "Excluir",
   "save": "Salvar",
   "search": "Pesquisar",
+  "toggle_favorite": "Adicionar/Remover dos favoritos",
   "submit": "Enviar",
   "input": "Por favor digite...",
   "preset": "Predefinir",
@@ -16,5 +17,7 @@
   "success": "Sucesso",
   "failed": "Falhou",
   "exit_hint": "Deseja sair do aplicativo ?",
-  "loading": "Carregando"
+  "loading": "Carregando",
+  "live_error": "Erro: A transmissão ao vivo não está disponível",
+  "network_error": "Erro de rede"
 }
