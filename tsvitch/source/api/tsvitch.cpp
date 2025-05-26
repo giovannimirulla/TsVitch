@@ -91,6 +91,8 @@ void TsVitchClient::check_user_id(const std::function<void(const std::string&, i
     }
     auto url = std::string(SERVER_URL_VALUE) + "/functions/v1/check-user";
 
+    brls::Logger::debug("Checking user ID with URL: {}", url);
+
     nlohmann::json json_body = {{"user_id", user_id}};
     std::string json_str     = json_body.dump();
     cpr::Body body{json_str};
@@ -160,6 +162,8 @@ void TsVitchClient::get_ad(const std::function<void(const std::string&, int)>& c
     std::string app_version = APPVersion::instance().git_tag.empty() ? "v" + APPVersion::instance().getVersionStr()
                                                                      : APPVersion::instance().git_tag;
     auto url                = std::string(SERVER_URL_VALUE) + "/functions/v1/get-ad";
+
+    brls::Logger::debug("Getting ad with URL: {}", url);
 
     nlohmann::json json_body = {
         {"user_id", user_id}, {"language", lang}, {"platform", platform}, {"app_version", app_version}};

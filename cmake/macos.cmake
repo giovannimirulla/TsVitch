@@ -5,7 +5,7 @@
 
 if (APPLE)
 
-    if (MAC_IntelChip OR MAC_IntelChip_Old)
+    if (MAC_IntelChip)
         set(MAC_OS_ARCH x86_64)
     elseif (MAC_AppleSilicon)
         set(MAC_OS_ARCH arm64)
@@ -15,16 +15,8 @@ if (APPLE)
 
     set(MACOS_PREBUILD_LINK)
     set(MACOS_WEBP_VERSION "7.1.8")
-    if (MAC_IntelChip_Old)
-        set(MACOS_PREBUILD_LINK "https://github.com/xfangfang/wiliwili/releases/download/v0.1.0/macos_dylib_ffmpeg61_mpv36_old.tar.gz")
-        list(APPEND APP_PLATFORM_LIB
-                ${CMAKE_BINARY_DIR}/deps/lib/libboost_filesystem-mt.dylib
-                ${CMAKE_BINARY_DIR}/deps/lib/libssl.3.dylib
-                ${CMAKE_BINARY_DIR}/deps/lib/libcrypto.3.dylib)
-    else ()
-        set(MACOS_PREBUILD_LINK "https://github.com/xfangfang/wiliwili/releases/download/v0.1.0/macos_dylib_ffmpeg71_mpv39_${MAC_OS_ARCH}.tar.gz")
-        set(MACOS_WEBP_VERSION "7.1.9")
-    endif ()
+    set(MACOS_PREBUILD_LINK "https://github.com/xfangfang/wiliwili/releases/download/v0.1.0/macos_dylib_ffmpeg71_mpv39_${MAC_OS_ARCH}.tar.gz")
+    set(MACOS_WEBP_VERSION "7.1.9")
 
     if (NOT DISABLE_WEBP)
         list(APPEND APP_PLATFORM_OPTION -DUSE_WEBP)
