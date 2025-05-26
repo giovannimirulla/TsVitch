@@ -5,9 +5,9 @@
 #include <borealis/views/cells/cell_selector.hpp>
 #include "view/grid_dropdown.hpp"
 
-class BiliSelectorCell : public brls::SelectorCell {
+class TsVitchSelectorCell : public brls::SelectorCell {
 public:
-    BiliSelectorCell() {
+    TsVitchSelectorCell() {
         detail->setTextColor(brls::Application::getTheme()["brls/list/listItem_value_color"]);
 
         this->registerClickAction([this](View* view) {
@@ -17,5 +17,5 @@ public:
         });
     }
 
-    static View* create() { return new BiliSelectorCell(); }
+    static View* create() { return new TsVitchSelectorCell(); }
 };

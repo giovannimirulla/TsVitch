@@ -1,7 +1,7 @@
 [Desktop Entry]
-Name=tsvitch
+Name=TsVitch
 Comment=TV finally on your Switch
-Exec=tsvitch
+Exec=TsVitch
 Icon=com.giovannimirulla.tsvitch
 Terminal=false
 Type=Application

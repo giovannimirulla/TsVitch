@@ -1,15 +1,16 @@
-
-
 #pragma once
 #include <string>
+#include <borealis/core/event.hpp> // aggiungi questa riga
+#include "api/tsvitch/result/home_live_result.h" // aggiungi questa riga
 
 class Intent {
 public:
-    static void openLive(const std::string& url, const std::string& title = "", const std::string& groupTitle = "");
+
+    static void openLive(const std::vector<tsvitch::LiveM3u8>& channelList, size_t index, std::function<void()> onClose);
 
     static void openPgcFilter(const std::string& filter);
 
-    static void openSetting();
+    static void openSetting(std::function<void()> onClose = nullptr);
 
     static void openInbox();
 
@@ -20,6 +21,8 @@ public:
     static void openGallery(const std::vector<std::string>& data);
 
     static void openDLNA();
+
+    static void openSearch(const std::string& key);
 
     static void openActivity(const std::string& id);
 
@@ -35,3 +38,6 @@ public:
 #else
 #define registerFullscreen(activity) (void)activity
 #endif
+
+// Evento globale per notificare il cambio M3U8
+inline brls::Event<> OnM3U8UrlChanged;

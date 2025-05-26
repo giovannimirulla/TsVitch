@@ -1,16 +1,63 @@
 <brls:Box
-        wireframe="false"
-        axis="column"
+        axis="row"
         width="auto"
+        marginTop="10"
         height="auto">
+        <RecyclingGrid
+                width="270"
+                paddingLeft="10"
+                paddingRight="10"
+                marginTop="20"
+                marginBottom="8"
+                itemHeight="50"
+                preFetchLine="2"
+                spanCount="1"
+                wireframe="false"
+                lineColor="@theme/color/line"
+                lineRight="1"
+                id="dynamic/up/recyclingGrid" />
+        <RecyclingGrid
+                paddingLeft="20"
+                paddingRight="20"
+                marginTop="70"
+                grow="1"
+                spanCount="@style/tsvitch/grid/span/4"
+                itemHeight="200"
+                wireframe="false"
+                preFetchLine="2"
+                id="home/live/recyclingGrid" />
 
-    <RecyclingGrid
-            marginTop="20"
-            paddingLeft="20"
-            paddingRight="20"
-            grow="1"
-            spanCount="@style/tsvitch/grid/span/4"
-            itemHeight="200"
-            wireframe="false"
-            id="home/live/recyclingGrid"/>
+
+        <brls:Box
+                positionType="absolute"
+                positionRight="0"
+                positionTop="0"
+                width="340"
+                height="70"
+                alignItems="center"
+                wireframe="false">
+                <CustomButton
+                        id="home/search"
+                        focusable="true"
+                        highlightCornerRadius="8"
+                        hideHighlightBackground="true"
+                        width="300"
+                        height="35"
+                        backgroundColor="#E3E5E7"
+                        paddingLeft="15"
+                        cornerRadius="6">
+                        <brls:Label
+                                fontSize="14"
+                                textColor="#18191c"
+                                text="@i18n/tsvitch/home/common/search" />
+                        <HintLabel
+                                height="35"
+                                positionType="absolute"
+                                positionRight="15"
+                                fontSize="14"
+                                textColor="#18191c"
+                                text="y" />
+                </CustomButton>
+        </brls:Box>
+
 </brls:Box>

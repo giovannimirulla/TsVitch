@@ -1,4 +1,3 @@
-
 #include <pystring.h>
 #include <borealis/core/i18n.hpp>
 #include <borealis/core/application.hpp>
@@ -30,110 +29,65 @@
 
 using namespace brls::literals;
 
-const std::string OPENSOURCE =
-    "--------------------------------\n"
-    "FFmpeg\n"
-    "--------------------------------\n"
-    "Official site:    https://www.ffmpeg.org\n\n"
-    "Copyright (c) FFmpeg developers and contributors.\n\n"
-    "Licensed under LGPLv2.1 or later\n\n\n"
-    "--------------------------------\n"
-    "mpv\n"
-    "--------------------------------\n"
-    "Official site:    https://mpv.io\n\n"
-    "Copyright (c) mpv developers and contributors.\n\n"
-    "Licensed under GPL-2.0 or LGPLv2.1\n\n\n"
-    "--------------------------------\n"
-    "borealis\n"
-    "--------------------------------\n"
-    "https://github.com/natinusala/borealis\n\n"
-    "Modifications for touch and recycler list support:\n"
-    "https://github.com/XITRIX/borealis\n\n"
-    "Modified version for more system support:\n"
-    "https://github.com/giovannimirulla/borealis\n\n"
-    "Copyright (c) 2019-2022, natinusala and contributors.\n"
-    "Copyright (c) XITRIX.\n\n"
-    "Licensed under Apache-2.0 license\n\n\n"
-    "--------------------------------\n"
-    "OpenCC\n"
-    "--------------------------------\n"
-    "https://github.com/BYVoid/OpenCC\n\n"
-    "Copyright (c) Carbo Kuo and contributors.\n\n"
-    "Modified version: https://github.com/giovannimirulla/OpenCC\n\n"
-    "Licensed under Apache-2.0 license\n\n\n"
-    "--------------------------------\n"
-    "pystring\n"
-    "--------------------------------\n"
-    "https://github.com/imageworks/pystring\n\n"
-    "Copyright (c) imageworks and contributors.\n\n"
-    "Licensed under BCD-3-Clause license\n\n\n"
-    "--------------------------------\n"
-    "QR-Code-generator\n"
-    "--------------------------------\n"
-    "Official site: https://www.nayuki.io/page/qr-code-generator-library\n"
-    "https://github.com/nayuki/QR-Code-generator\n\n"
-    "Copyright © 2020 Project Nayuki.\n\nLicensed under MIT license\n\n\n"
-    "--------------------------------\n"
-    "lunasvg\n"
-    "--------------------------------\n"
-    "https://github.com/sammycage/lunasvg\n\n"
-    "Copyright (c) 2020 Nwutobo Samuel Ugochukwu.\n\n"
-    "Licensed under MIT license\n\n\n"
-    "--------------------------------\n"
-    "cpr\n"
-    "--------------------------------\n"
-    "Official site: https://docs.libcpr.org\n"
-    "https://github.com/libcpr/cpr\n\n"
-    "Copyright (c) 2017-2021 Huu Nguyen.\n"
-    "Copyright (c) 2022 libcpr and many other contributors.\n\n"
-    "Licensed under MIT license\n\n\n"
-    "--------------------------------\n"
+const std::map<std::string, std::map<std::string, std::string>> OPENSOURCE = {
+    {"FFmpeg",
+     {{"Official site", "https://www.ffmpeg.org"},
+      {"Notes", "Copyright (c) FFmpeg developers and contributors.\nLicensed under LGPLv2.1 or later"}}},
+    {"mpv",
+     {{"Official site", "https://mpv.io"},
+      {"Notes", "Copyright (c) mpv developers and contributors.\nLicensed under GPL-2.0 or LGPLv2.1"}}},
+    {"borealis",
+     {{"Official site", "https://github.com/xfangfang/borealis"},
+      {"Notes",
+       "Copyright (c) 2019-2022, natinusala and contributors.\nCopyright (c) xfangfang.\nLicensed under Apache-2.0 "
+       "license"}}},
+    {"OpenCC",
+     {{"Official site", "https://github.com/xfangfang/OpenCC"},
+      {"Notes", "Copyright (c) Carbo Kuo and contributors.\nLicensed under Apache-2.0 license"}}},
+    {"pystring",
+     {{"Official site", "https://github.com/imageworks/pystring"},
+      {"Notes", "Copyright (c) imageworks and contributors.\nLicensed under BCD-3-Clause license"}}},
+    {"QR-Code-generator",
+     {{"Official site", "https://www.nayuki.io/page/qr-code-generator-library"},
+      {"GitHub", "https://github.com/nayuki/QR-Code-generator"},
+      {"Notes", "Copyright © 2020 Project Nayuki.\nLicensed under MIT license"}}},
+    {"lunasvg",
+     {{"Official site", "https://github.com/sammycage/lunasvg"},
+      {"Notes", "Copyright (c) 2020 Nwutobo Samuel Ugochukwu.\nLicensed under MIT license"}}},
+    {"cpr",
+     {{"Official site", "https://docs.libcpr.org"},
+      {"GitHub", "https://github.com/libcpr/cpr"},
+      {"Notes",
+       "Copyright (c) 2017-2021 Huu Nguyen.\nCopyright (c) 2022 libcpr and many other contributors.\nLicensed under "
+       "MIT license"}}},
 #ifdef USE_WEBP
-    "--------------------------------\n"
-    "libwebp\n"
-    "--------------------------------\n"
-    "https://chromium.googlesource.com/webm/libwebp\n\n"
-    "Copyright (c) Google Inc. All Rights Reserved.\n\n"
-    "Licensed under BSD 3-Clause \"New\" or \"Revised\" License\n\n\n"
+    {"libwebp",
+     {{"Official site", "https://chromium.googlesource.com/webm/libwebp"},
+      {"Notes",
+       "Copyright (c) Google Inc. All Rights Reserved.\nLicensed under BSD 3-Clause \"New\" or \"Revised\" License"}}},
 #endif
 #ifdef __SWITCH__
-    "--------------------------------\n"
-    "nx\n"
-    "--------------------------------\n"
-    "https://github.com/switchbrew/libnx\n\n"
-    "Copyright 2017-2018 libnx Authors.\n\nPublic domain\n\n\n"
-    "--------------------------------\n"
-    "devkitPro\n"
-    "--------------------------------\n"
-    "https://devkitpro.org\n\n"
-    "Copyright devkitPro Authors.\n\n"
-    "Public domain\n"
+    {"nx",
+     {{"Official site", "https://github.com/switchbrew/libnx"},
+      {"Notes", "Copyright 2017-2018 libnx Authors.\nPublic domain"}}},
+    {"devkitPro",
+     {{"Official site", "https://devkitpro.org"}, {"Notes", "Copyright devkitPro Authors.\nPublic domain"}}},
 #endif
 #ifdef __PSV__
-    "--------------------------------\n"
-    "vitasdk\n"
-    "--------------------------------\n"
-    "https://github.com/vitasdk\n\n"
-    "Copyright vitasdk Authors.\n\n"
-    "Public domain\n"
+    {"vitasdk",
+     {{"Official site", "https://github.com/vitasdk"}, {"Notes", "Copyright vitasdk Authors.\nPublic domain"}}},
 #endif
 #ifdef PS4
-    "--------------------------------\n"
-    "pacbrew\n"
-    "--------------------------------\n"
-    "https://github.com/PacBrew/pacbrew-packages\n\n"
-    "Copyright PacBrew Authors.\n\n"
-    "Public domain\n\n\n"
-    "--------------------------------\n"
-    "OpenOrbis-PS4-Toolchain\n"
-    "--------------------------------\n"
-    "https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain\n\n"
-    "Copyright OpenOrbis Authors.\n\n"
-    "Licensed under GPL-3.0\n"
+    {"pacbrew",
+     {{"Official site", "https://github.com/PacBrew/pacbrew-packages"},
+      {"Notes", "Copyright PacBrew Authors.\nPublic domain"}}},
+    {"OpenOrbis-PS4-Toolchain",
+     {{"Official site", "https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain"},
+      {"Notes", "Copyright OpenOrbis Authors.\nLicensed under GPL-3.0"}}},
 #endif
-    "\n";
+};
 
-SettingActivity::SettingActivity() {
+SettingActivity::SettingActivity(std::function<void()> onClose) : onCloseCallback(onClose) {
     brls::Logger::debug("SettingActivity: create");
     GA("open_setting")
 }
@@ -238,7 +192,42 @@ void SettingActivity::onContentAvailable() {
                                + " (D3D11)"
 #endif
     );
-    labelOpensource->setText(OPENSOURCE);
+
+    //for every key in OPENSOURCE add this:
+    //  <brls:Header
+    //             title="@i18n/tsvitch/setting/about/brief_header"
+    //             marginBottom="@style/tsvitch/margin/20"/>
+
+    //     <brls:Label
+    //             marginLeft="20"
+    //             marginBottom="@style/tsvitch/margin/20"
+    //             text="@i18n/tsvitch/setting/about/brief"/>
+    //     <brls:Header
+    //             title="@i18n/tsvitch/setting/about/repo_header"
+    //             marginBottom="@style/tsvitch/margin/20"/>
+    //     <brls:Label
+    //             textColor="#6693B6"
+    //             marginLeft="20"
+    //             marginBottom="@style/tsvitch/margin/20"
+    //             text="@i18n/tsvitch/github"/>
+    // in box
+
+    for (const auto& [name, data] : OPENSOURCE) {
+        auto* header = new brls::Header();
+        header->setTitle(name);
+        header->setMarginBottom(20);
+        this->boxOpensource->addView(header);
+
+        for (const auto& [key, value] : data) {
+            auto* label = new brls::Label();
+            std::string text = key + ": " + value;
+            label->setText(text);
+            label->setMarginLeft(20);
+            label->setMarginBottom(20);
+             this->boxOpensource->addView(label);
+            
+        }
+    }
 
 #ifdef IOS
     btnQuit->setVisibility(brls::Visibility::GONE);
@@ -425,28 +414,25 @@ void SettingActivity::onContentAvailable() {
                         });
 
     static int langIndex = conf.getStringOptionIndex(SettingItem::APP_LANG);
-    selectorLang->init("tsvitch/setting/app/others/language/header"_i18n,
-                       {
+    selectorLang->init(
+        "tsvitch/setting/app/others/language/header"_i18n,
+        {
 #if defined(__SWITCH__) || defined(__PSV__) || defined(PS4)
-                           "tsvitch/setting/app/others/language/auto"_i18n,
+            "tsvitch/setting/app/others/language/auto"_i18n,
 #endif
-                           "tsvitch/setting/app/others/language/english"_i18n,
-                           "tsvitch/setting/app/others/language/japanese"_i18n,
-                           "tsvitch/setting/app/others/language/ryukyuan"_i18n,
-                           "tsvitch/setting/app/others/language/chinese_t"_i18n,
-                           "tsvitch/setting/app/others/language/chinese_s"_i18n,
-                           "tsvitch/setting/app/others/language/korean"_i18n,
-                           "tsvitch/setting/app/others/language/italiano"_i18n,
-                           "tsvitch/setting/app/others/language/portuguese_br"_i18n
-                       },
-                       langIndex, [](int data) {
-                           if (langIndex == data) return false;
-                           langIndex       = data;
-                           auto optionData = ProgramConfig::instance().getOptionData(SettingItem::APP_LANG);
-                           ProgramConfig::instance().setSettingItem(SettingItem::APP_LANG, optionData.optionList[data]);
-                           DialogHelper::quitApp();
-                           return true;
-                       });
+            "tsvitch/setting/app/others/language/english"_i18n, "tsvitch/setting/app/others/language/japanese"_i18n,
+            "tsvitch/setting/app/others/language/ryukyuan"_i18n, "tsvitch/setting/app/others/language/chinese_t"_i18n,
+            "tsvitch/setting/app/others/language/chinese_s"_i18n, "tsvitch/setting/app/others/language/korean"_i18n,
+            "tsvitch/setting/app/others/language/italiano"_i18n,
+            "tsvitch/setting/app/others/language/portuguese_br"_i18n},
+        langIndex, [](int data) {
+            if (langIndex == data) return false;
+            langIndex       = data;
+            auto optionData = ProgramConfig::instance().getOptionData(SettingItem::APP_LANG);
+            ProgramConfig::instance().setSettingItem(SettingItem::APP_LANG, optionData.optionList[data]);
+            DialogHelper::quitApp();
+            return true;
+        });
 
 #if defined(IOS) || defined(DISABLE_OPENCC)
     btnOpencc->setVisibility(brls::Visibility::GONE);
@@ -499,13 +485,13 @@ void SettingActivity::onContentAvailable() {
                                MPVCore::instance().restart();
                            });
 
-    auto m3u8Url = conf.getSettingItem(SettingItem::M3U8_URL, std::string{""});
+    auto m3u8Url = conf.getSettingItem(SettingItem::M3U8_URL_ITEM, std::string{""});
     btnM3U8Input->init(
         "tsvitch/setting/tools/m3u8/input"_i18n, m3u8Url,
         [](const std::string& data) {
             std::string m3u8Url = pystring::strip(data);
-            ProgramConfig::instance().setSettingItem(SettingItem::M3U8_URL, m3u8Url);
             ProgramConfig::instance().setM3U8Url(m3u8Url);
+            OnM3U8UrlChanged.fire(); // Notifica tutte le view interessate
         },
         "tsvitch/setting/tools/m3u8/hint"_i18n, "tsvitch/setting/tools/m3u8/hint"_i18n, 255);
 
@@ -529,4 +515,7 @@ void SettingActivity::onContentAvailable() {
                      });
 }
 
-SettingActivity::~SettingActivity() { brls::Logger::debug("SettingActivity: delete"); }
+SettingActivity::~SettingActivity() {
+    brls::Logger::debug("SettingActivity: delete");
+    if (onCloseCallback) onCloseCallback();
+}

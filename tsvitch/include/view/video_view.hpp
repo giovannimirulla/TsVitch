@@ -1,5 +1,3 @@
-
-
 #pragma once
 
 #include <borealis/core/bind.hpp>
@@ -40,7 +38,8 @@ public:
 #define VIDEO_CANCEL_SEEKING 0
 #define VIDEO_SEEK_IMMEDIATELY 0
 
-class VideoView : public brls::Box {
+class VideoView : public brls::Box
+{
 public:
     VideoView();
 
@@ -95,10 +94,6 @@ public:
 
     void hideCenterHint();
 
-    void hideVideoQualityButton();
-
-    void hideVideoSpeedButton();
-
     void hideOSDLockButton();
 
     void disableCloseOnEndOfFile();
@@ -115,9 +110,13 @@ public:
 
     void hideVideoProgressSlider();
 
+    void showVideoProgressSlider();
+
     void hideStatusLabel();
 
     void setLiveMode();
+
+    void setVideoMode();
 
     void setTvControlMode(bool state);
 
@@ -133,19 +132,19 @@ public:
 
     std::string getTitle();
 
-    void setQuality(const std::string& str);
-
-    std::string getQuality();
-
-    void setOnlineCount(const std::string& count);
-
     void setDuration(const std::string& value);
 
     void setPlaybackTime(const std::string& value);
 
     void setFullscreenIcon(bool fs);
 
+    void setFavoriteIcon(bool fs);
+
     brls::View* getFullscreenIcon();
+
+    brls::View* getFavoriteIcon();
+
+    void refreshToggleIcon();
 
     void setProgress(float value);
 
@@ -167,7 +166,9 @@ public:
 
     void setFullScreen(bool fs);
 
-    void setSeasonAction(brls::ActionListener action);
+    void toggleFavorite();
+
+    void setFavoriteCallback(std::function<void(bool)> callback);
 
     void draw(NVGcontext* vg, float x, float y, float width, float height, brls::Style style,
               brls::FrameContext* ctx) override;
@@ -183,6 +184,12 @@ public:
     void unRegisterMpvEvent();
 
     void buttonProcessing();
+
+    void setOnEndCallback(std::function<void()> callback);
+
+    void setOnLiveBehindChanged(std::function<void(bool)> cb);
+    void goLive();
+    bool isLiveBehind() const;
 
     inline static const std::string QUALITY_CHANGE = "QUALITY_CHANGE";
     inline static const std::string SET_ONLINE_NUM = "SET_ONLINE_NUM";
@@ -205,6 +212,8 @@ public:
     inline static bool HIGHLIGHT_PROGRESS_BAR = false;
 
 private:
+    bool disabledSliderGesture = false;
+
     bool allowFullscreen  = true;
     bool registerMPVEvent = false;
 
@@ -224,17 +233,20 @@ private:
 
     bool isTvControlMode = false;
 
+    bool isFavorite = false;
+
+    std::function<void(bool)> favoriteCallback = nullptr;
+
     bool showReplay = false;
     std::string bangumiTitle;
     MPVEvent::Subscription eventSubscribeID;
     CustomEvent::Subscription customEventSubscribeID;
     std::function<void()> customToggleAction = nullptr;
-    brls::ActionListener seasonAction        = nullptr;
     brls::InputManager* input;
-    NVGcolor bottomBarColor = brls::Application::getTheme().getColor("color/tsvitch");
+    std::function<void()> onEndCallback = nullptr;
+    NVGcolor bottomBarColor             = brls::Application::getTheme().getColor("color/tsvitch");
 
     BRLS_BIND(brls::Label, videoTitleLabel, "video/osd/title");
-    BRLS_BIND(brls::Label, videoOnlineCountLabel, "video/view/label/people");
     BRLS_BIND(brls::Box, osdTopBox, "video/osd/top/box");
     BRLS_BIND(brls::Box, osdBottomBox, "video/osd/bottom/box");
 
@@ -250,16 +262,13 @@ private:
     BRLS_BIND(brls::Label, leftStatusLabel, "video/left/status");
     BRLS_BIND(brls::Label, centerStatusLabel, "video/center/status");
     BRLS_BIND(brls::Label, rightStatusLabel, "video/right/status");
-    BRLS_BIND(brls::Label, videoQuality, "video/quality");
-    BRLS_BIND(brls::Label, videoSpeed, "video/speed");
-    BRLS_BIND(brls::Label, showEpisode, "show/episode");
 
-    BRLS_BIND(brls::Box, speedHintBox, "video/speed/hint/box");
     BRLS_BIND(brls::Box, btnToggle, "video/osd/toggle");
 
     BRLS_BIND(brls::Box, iconBox, "video/osd/icon/box");
     BRLS_BIND(SVGImage, btnToggleIcon, "video/osd/toggle/icon");
     BRLS_BIND(SVGImage, btnFullscreenIcon, "video/osd/fullscreen/icon");
+    BRLS_BIND(SVGImage, btnFavoriteIcon, "video/osd/favorite/icon");
 
     BRLS_BIND(SVGImage, btnVolumeIcon, "video/osd/danmaku/volume/icon");
 
@@ -285,7 +294,7 @@ private:
 
     MPVCore* mpvCore;
     brls::Rect oldRect = brls::Rect(-1, -1, -1, -1);
-    
+
     void requestSeeking(int seek, int delay = 400);
 
     bool is_seeking     = false;

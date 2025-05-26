@@ -1,13 +1,19 @@
 #include <borealis.hpp>
+#include <filesystem>
 
 #ifdef __SWITCH__
 #include <switch.h>
 #include <sys/socket.h>
 #endif
 
+#include "tsvitch.h"
+
 #include "utils/config_helper.hpp"
 #include "utils/activity_helper.hpp"
 #include "view/mpv_core.hpp"
+
+#include "core/HistoryManager.hpp"
+#include "core/FavoriteManager.hpp"
 
 #ifdef IOS
 #include <SDL2/SDL_main.h>
@@ -18,6 +24,8 @@ int main(int argc, char* argv[]) {
         if (std::strcmp(argv[i], "-d") == 0) {
             brls::Logger::setLogLevel(brls::LogLevel::LOG_DEBUG);
         } else if (std::strcmp(argv[i], "-v") == 0) {
+            brls::Logger::setLogLevel(brls::LogLevel::LOG_VERBOSE);
+        } else if (std::strcmp(argv[i], "-dv") == 0) {
             brls::Application::enableDebuggingView(true);
         } else if (std::strcmp(argv[i], "-t") == 0) {
             MPVCore::TERMINAL = true;
@@ -49,7 +57,6 @@ int main(int argc, char* argv[]) {
     }
 
     brls::Application::getPlatform()->exitToHomeMode(true);
-
     brls::Application::createWindow("tsvitch");
     brls::Logger::info("createWindow done");
 
@@ -59,29 +66,59 @@ int main(int argc, char* argv[]) {
 
     brls::Application::getPlatform()->disableScreenDimming(false);
 
-    if (brls::Application::getPlatform()->isApplicationMode()) {
+    if (brls::Application::getPlatform()->isApplicationMode())
         Intent::openMain();
-    } else {
+    else
         Intent::openHint();
+
+    //check if user_id is set, if not register a new user
+    if (ProgramConfig::instance().getDeviceID().empty()) {
+        brls::Logger::info("No user ID found, registering a new user...");
+    
+        CLIENT::register_user(
+            [](const std::string& user_id, int status) {
+                if (status == 200) {
+                    brls::Logger::info("Registered new user ID: {}", user_id);
+                } else {
+                    brls::Logger::error("Failed to register user ID: {}", status);
+                }
+            },
+            [](const std::string& error, int status) {
+                brls::Logger::error("Error registering user ID: {} (status: {})", error, status);
+            });
+    } else {
+        brls::Logger::info("User ID already exists: {}", ProgramConfig::instance().getDeviceID());
+
+        CLIENT::check_user_id(
+            [](const std::string& exists, int status) {
+                if (status == 200) {
+                    brls::Logger::info("User ID exists: {}", exists);
+                } else {
+                    brls::Logger::error("Failed to check user ID: {}", status);
+                }
+            },
+            [](const std::string& error, int status) {
+                brls::Logger::error("Error checking user ID: {} (status: {})", error, status);
+            });
     }
 
     GA("open_app", {{"version", APPVersion::instance().getVersionStr()},
                     {"language", brls::Application::getLocale()},
                     {"window", fmt::format("{}x{}", brls::Application::windowWidth, brls::Application::windowHeight)}})
+
     APPVersion::instance().checkUpdate();
 
     while (brls::Application::mainLoop()) {
     }
 
     brls::Logger::info("mainLoop done");
-
     ProgramConfig::instance().exit(argv);
+
+    HistoryManager::get()->save();
+    FavoriteManager::get()->save();
 
 #ifdef __SWITCH__
     if (canUseLed) hidsysExit();
-#endif
-
-#if __SWITCH__
     if (brls::Logger::getLogLevel() >= brls::LogLevel::LOG_DEBUG) {
         socketExit();
         nxlinkStdio();

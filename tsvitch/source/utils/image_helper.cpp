@@ -1,5 +1,3 @@
-
-
 #include <borealis/core/singleton.hpp>
 #include <borealis/core/application.hpp>
 #include <borealis/core/cache_helper.hpp>
@@ -63,9 +61,6 @@ void ImageHelper::load(std::string url) {
     int tex = brls::TextureCache::instance().getCache(this->imageUrl);
     if (tex > 0) {
         brls::Logger::verbose("cache hit: {}", this->imageUrl);
-        //tex is logo, put at center of 16:9 white image and set in innerSetImage
-
-        //tex = whiteImage;
         this->imageView->innerSetImage(tex);
         this->clean();
         return;
@@ -103,74 +98,47 @@ void ImageHelper::requestImage() {
     uint8_t* imageData = nullptr;
     int imageW = 0, imageH = 0;
     bool isWebp = false;
+    int n = 0;
 
 #ifdef USE_WEBP
     if (imageUrl.size() > 5 && imageUrl.substr(imageUrl.size() - 5, 5) == ".webp") {
         imageData = WebPDecodeRGBA((const uint8_t*)r.text.c_str(), (size_t)r.downloaded_bytes, &imageW, &imageH);
         isWebp    = true;
+        n = 4;
     } else {
 #endif
-        int n;
         imageData =
             stbi_load_from_memory((unsigned char*)r.text.c_str(), (int)r.downloaded_bytes, &imageW, &imageH, &n, 4);
 #ifdef USE_WEBP
     }
 #endif
 
-    brls::sync([this, r, imageData, imageW, imageH, isWebp]() {
+    // --- AGGIUNTA: crea bordo trasparente ---
+    int border = 1; // 1 pixel trasparente su ogni lato
+    uint8_t* paddedData = nullptr;
+    int paddedW = imageW + border * 2;
+    int paddedH = imageH + border * 2;
+    if (imageData) {
+        paddedData = (uint8_t*)calloc(paddedW * paddedH * 4, 1); // RGBA, già tutto trasparente
+        for (int y = 0; y < imageH; ++y) {
+            memcpy(
+                paddedData + ((y + border) * paddedW + border) * 4,
+                imageData + (y * imageW) * 4,
+                imageW * 4
+            );
+        }
+    }
+    // ----------------------------------------
+
+    brls::sync([this, r, paddedData, paddedW, paddedH, imageData, isWebp]() {
         int tex = brls::TextureCache::instance().getCache(this->imageUrl);
         if (tex > 0) {
             brls::Logger::verbose("cache hit 2: {}", this->imageUrl);
             this->imageView->innerSetImage(tex);
         } else {
             NVGcontext* vg = brls::Application::getNVGContext();
-            if (imageData) {
-                int sourceW = imageW;
-                int sourceH = imageH;
-
-                // Desired aspect ratio (16:9)
-                float targetAspect = 16.0f / 9.0f;
-
-                // Minimum image dimensions with border adjustment
-                int minImageW = 720 - 20;  // Subtract 10-pixel border on each side
-                int minImageH = 360 - 20;  // Subtract 10-pixel border on each side
-
-                // Calculate the new image dimensions maintaining 16:9 aspect ratio
-                int imageW, imageH;
-
-                if ((float)sourceW / sourceH > targetAspect) {
-                    // Source is wider than 16:9; scale height based on width
-                    imageW = sourceW;
-                    imageH = (int)(sourceW / targetAspect);
-                } else {
-                    // Source is taller or matches 16:9; scale width based on height
-                    imageH = sourceH;
-                    imageW = (int)(sourceH * targetAspect);
-                }
-
-                // Ensure the image meets the minimum size
-                if (imageW < minImageW) {
-                    imageH = (minImageW * 9) / 16;
-                    imageW = minImageW;
-                }
-                if (imageH < minImageH) {
-                    imageW = (minImageH * 16) / 9;
-                    imageH = minImageH;
-                }
-
-                // Add the 10-pixel margin back to the total image size
-                imageW += 20;
-                imageH += 20;
-
-                unsigned char* bgData =
-                    createBackground(imageData, sourceW, sourceH, imageW, imageH);
-
-                // Create the NanoVG image with the centered data
-                tex = nvgCreateImageRGBA(vg, imageW, imageH, 0, bgData);
-
-                // Don't forget to free the temporary buffer
-                free(bgData);
-
+            if (paddedData) {
+                tex = nvgCreateImageRGBA(vg, paddedW, paddedH, 0, paddedData);
             } else {
                 brls::Logger::error("Failed to load image: {}", this->imageUrl);
             }
@@ -179,11 +147,12 @@ void ImageHelper::requestImage() {
                 brls::TextureCache::instance().addCache(this->imageUrl, tex);
                 if (!this->isCancel) {
                     brls::Logger::verbose("load image: {}", this->imageUrl);
-
                     this->imageView->innerSetImage(tex);
                 }
             }
         }
+        if (paddedData)
+            free(paddedData);
         if (imageData) {
 #ifdef USE_WEBP
             if (isWebp)
@@ -194,40 +163,6 @@ void ImageHelper::requestImage() {
         }
         this->clean();
     });
-}
-
-// Function to calculate the primary luminance and determine background color
-unsigned char* ImageHelper::createBackground(unsigned char* imageData, int sourceW, int sourceH,
-                                                              int imageW, int imageH) {
-
-
-    // Create a background filled with the chosen color
-unsigned char* bgData = (unsigned char*)malloc(imageW * imageH * 4);
-int bgCol = 255;  // Background color (0-255)
-memset(bgData, bgCol, imageW * imageH * 4); // Set all pixels to white (255)
-
-    // Calculate centering offsets, accounting for the margin
-    int offsetX = (imageW - 20 - sourceW) / 2 + 10;  // Adjust for margin
-    int offsetY = (imageH - 20 - sourceH) / 2 + 10;  // Adjust for margin
-
-   // Copy the original image data to the center of the white background
-for (int y = 0; y < sourceH; y++) {
-        for (int x = 0; x < sourceW; x++) {
-            int srcIdx = (y * sourceW + x) * 4;
-            int dstIdx = ((y + offsetY) * imageW + (x + offsetX)) * 4;
-
-            unsigned char alpha = imageData[srcIdx + 3];
-            if (alpha > 0) {
-                // Blend with the background color if transparency exists
-                bgData[dstIdx + 0] = (imageData[srcIdx + 0] * alpha + bgCol * (255 - alpha)) / 255;
-                bgData[dstIdx + 1] = (imageData[srcIdx + 1] * alpha + bgCol * (255 - alpha)) / 255;
-                bgData[dstIdx + 2] = (imageData[srcIdx + 2] * alpha + bgCol * (255 - alpha)) / 255;
-                bgData[dstIdx + 3] = 255;  // Fully opaque
-            }
-        }
-    }
-
-    return bgData;
 }
 
 void ImageHelper::clean() {

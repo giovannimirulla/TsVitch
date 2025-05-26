@@ -6,6 +6,7 @@
 #include <codecvt>
 #include <locale>
 #include <borealis/core/application.hpp>
+#include <yoga/Yoga.h>
 
 #include "view/text_box.hpp"
 

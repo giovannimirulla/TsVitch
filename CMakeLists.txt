@@ -4,7 +4,7 @@ set(BOREALIS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/library/borealis)
 set(BOREALIS_LIBRARY ${BOREALIS_DIR}/library)
 
 # Include Platform common options
-# tsvitch only support PLATFORM_DESKTOP and PLATFORM_SWITCH
+# TsVitch only support PLATFORM_DESKTOP and PLATFORM_SWITCH
 # example: cmake -B build -DPLATFORM_DESKTOP=ON
 include(${BOREALIS_LIBRARY}/cmake/commonOption.cmake)
 
@@ -29,6 +29,28 @@ option(DEBUG_SANITIZER "Turn on sanitizers (only available in debug build)" OFF)
 
 # Google Analytics
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/GoogleAnalytics.cmake)
+
+# Server URL
+option(SERVER_URL "URL del server" "")
+if (NOT DEFINED SERVER_URL OR "${SERVER_URL}" STREQUAL "")
+    message(FATAL_ERROR "SERVER_URL not defined")
+else()
+    list(APPEND APP_PLATFORM_OPTION -DSERVER_URL="${SERVER_URL}")
+endif()
+
+# Server Token
+option(SERVER_TOKEN "Token del server" "")
+if (NOT DEFINED SERVER_TOKEN OR "${SERVER_TOKEN}" STREQUAL "")
+    message(FATAL_ERROR "SERVER_TOKEN not defined")
+else()
+    list(APPEND APP_PLATFORM_OPTION -DSERVER_TOKEN="${SERVER_TOKEN}")
+endif()
+
+# Default M3U8 URL
+option(M3U8_URL "Default M3U8 URL" "")
+if (M3U8_URL)
+    list(APPEND APP_PLATFORM_OPTION -DM3U8_URL="${M3U8_URL}")
+endif ()
 
 # Dependencies
 option(USE_SHARED_LIB "Whether to use shared libs provided by system" OFF)
@@ -58,7 +80,7 @@ if (MPV_NO_FB)
     list(APPEND APP_PLATFORM_OPTION -DMPV_NO_FB)
 endif()
 
-# Bundle mpv.dll into tsvitch.exe (Windows only)
+# Bundle mpv.dll into TsVitch.exe (Windows only)
 cmake_dependent_option(MPV_BUNDLE_DLL "Bundle mpv.dll" OFF "USE_LIBROMFS;WIN32" OFF)
 if (MPV_BUNDLE_DLL)
     list(APPEND APP_PLATFORM_OPTION -DMPV_BUNDLE_DLL)
@@ -78,10 +100,10 @@ list(APPEND APP_PLATFORM_OPTION -DBUILD_TAG_VERSION=${GIT_TAG_VERSION} -DBUILD_T
 add_definitions(-DFONS_HASH_LUT_SIZE=4096)
 
 # Project Info
-project(tsvitch)
+project(TsVitch)
 set(VERSION_MAJOR "0")
-set(VERSION_MINOR "1")
-set(VERSION_REVISION "1")
+set(VERSION_MINOR "2")
+set(VERSION_REVISION "0")
 if (NOT VERSION_BUILD)
     set(VERSION_BUILD "0")
 endif ()
@@ -89,7 +111,7 @@ set(PROJECT_AUTHOR "giovannimirulla")
 set(PACKAGE_NAME com.giovannimirulla.tsvitch)
 set(VITA_TITLEID "TSVITCH0")
 set(PSN_TITLE_ID "TVSI00000")
-set(VITA_VERSION "00.10")
+set(VITA_VERSION "00.20")
 set(PROJECT_ICON ${CMAKE_CURRENT_SOURCE_DIR}/resources/icon/icon.jpg)
 set(PROJECT_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/resources)
 set(APP_VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_REVISION}")
@@ -97,6 +119,9 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 
 find_package(Threads REQUIRED)
 list(APPEND APP_PLATFORM_LIB ${CMAKE_THREAD_LIBS_INIT})
+
+add_subdirectory(library/nlohmann_json)
+list(APPEND APP_PLATFORM_LIB nlohmann_json)
 
 # Find libmpv and libwebp
 if (MAC_DOWNLOAD_DYLIB)
@@ -275,7 +300,7 @@ elseif (PLATFORM_PS4)
     add_pkg(${PROJECT_NAME}
             ${CMAKE_BINARY_DIR}/ps4
             ${PSN_TITLE_ID}
-            "tsvitch"
+            "TsVitch"
             ${VITA_VERSION}
             8388608
     )

@@ -9,6 +9,9 @@
 
 #include "tsvitch/util/md5.hpp"
 #include "utils/number_helper.hpp"
+
+#include "config/server_config.h"
+
 #include <pystring.h>
 
 namespace tsvitch {
@@ -38,21 +41,32 @@ public:
     static cpr::Response get(const std::string& url, const cpr::Parameters& parameters = {}, int timeout = 10000);
 
     static void __cpr_post(const std::string& url, const cpr::Parameters& parameters = {},
-                           const cpr::Payload& payload                               = {},
-                           const std::function<void(const cpr::Response&)>& callback = nullptr,
-                           const ErrorCallback& error                                = nullptr) {
+                       const cpr::Body& body = cpr::Body{""},
+                       const std::function<void(const cpr::Response&)>& callback = nullptr,
+                       const ErrorCallback& error = nullptr) {
+        auto headers_with_content_type = HTTP::HEADERS;
+        headers_with_content_type["Content-Type"] = "application/json";
+        headers_with_content_type["Authorization"] = std::string("Bearer ") + SERVER_TOKEN_VALUE;
         cpr::PostCallback(
             [callback, error](const cpr::Response& r) {
                 if (r.error) {
                     ERROR_MSG(r.error.message, -1);
                     return;
                 } else if (r.status_code != 200) {
-                    ERROR_MSG("Network error. [Status code: " + std::to_string(r.status_code) + " ]", r.status_code);
+                    ERROR_MSG("Network error. [Status code: " + std::to_string(r.status_code) + " ] - " + r.text, r.status_code);
                     return;
                 }
                 callback(r);
             },
-            cpr::Url{url}, parameters, payload, CPR_HTTP_BASE);
+            cpr::Url{url},
+            parameters,
+            body,
+            cpr::HttpVersion{cpr::HttpVersionCode::VERSION_2_0_TLS},
+            cpr::Timeout{HTTP::TIMEOUT},
+            headers_with_content_type,
+            HTTP::COOKIES,
+            HTTP::PROXIES,
+            HTTP::VERIFY);
     }
 
     static void __cpr_get(const std::string& url, const cpr::Parameters& parameters = {},

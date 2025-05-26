@@ -2,7 +2,7 @@
 
 set -e
 
-export CMAKE_PREFIX_PATH=/opt/tsvitch
+export CMAKE_PREFIX_PATH=/opt/TsVitch
 export PKG_CONFIG_PATH=$CMAKE_PREFIX_PATH/lib/pkgconfig
 export LD_LIBRARY_PATH=$CMAKE_PREFIX_PATH/lib:/usr/lib/aarch64-linux-gnu/tegra
 
@@ -45,7 +45,7 @@ LIBDIR=$CMAKE_PREFIX_PATH/lib RPATH=$CMAKE_PREFIX_PATH/lib ./waf configure --pre
 ./waf install
 
 cd /opt
-mkdir -p /tmp/deb/DEBIAN /tmp/deb/usr /tmp/deb/opt/tsvitch/lib
+mkdir -p /tmp/deb/DEBIAN /tmp/deb/usr /tmp/deb/opt/TsVitch/lib
 
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$CMAKE_PREFIX_PATH -DPLATFORM_DESKTOP=ON \
   -DUSE_SYSTEM_CURL=ON -DUSE_SYSTEM_GLFW=ON -DHOMEBREW_MPV=$CMAKE_PREFIX_PATH \
@@ -53,8 +53,8 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$CMAKE_PREFIX_P
 cmake --build build -j$(nproc)
 DESTDIR="/tmp/deb" cmake --install build
 
-cp -d /opt/tsvitch/lib/*.so.* /tmp/deb/opt/tsvitch/lib
-mv /tmp/deb/opt/tsvitch/share /tmp/deb/usr
-sed -i 's|Exec=tsvitch|Exec=/opt/tsvitch/bin/tsvitch|' /tmp/deb/usr/share/applications/com.giovannimirulla.tsvitch.desktop
+cp -d /opt/TsVitch/lib/*.so.* /tmp/deb/opt/TsVitch/lib
+mv /tmp/deb/opt/TsVitch/share /tmp/deb/usr
+sed -i 's|Exec=TsVitch|Exec=/opt/TsVitch/bin/TsVitch|' /tmp/deb/usr/share/applications/com.giovannimirulla.TsVitch.desktop
 cp scripts/deb/switchroot-bionic/control /tmp/deb/DEBIAN
-dpkg --build /tmp/deb tsvitch-Linux-aarch64-switchroot-ubuntu.deb
+dpkg --build /tmp/deb TsVitch-Linux-aarch64-switchroot-ubuntu.deb

@@ -100,5 +100,7 @@ endif ()
 # add borealis
 add_subdirectory(borealis/library)
 
+target_link_libraries(mongoose tinyxml2)
+
 add_library(wiliwiliLibExtra INTERFACE)
 target_link_libraries(wiliwiliLibExtra INTERFACE cpr::cpr qrcode)

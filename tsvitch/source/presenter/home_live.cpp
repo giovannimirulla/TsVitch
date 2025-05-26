@@ -10,6 +10,10 @@ using namespace brls::literals;
 
 void HomeLiveRequest::onLiveList(const tsvitch::LiveM3u8ListResult& result) {}
 
+void HomeLiveRequest::onError(const std::string& error) {
+    brls::Logger::error("HomeLiveRequest: Error: {}", error);
+}
+
 void HomeLiveRequest::requestLiveList() {
     CLIENT::get_file_m3u8(
         [this](const auto& result) {
@@ -18,5 +22,7 @@ void HomeLiveRequest::requestLiveList() {
             tsvitch::LiveM3u8ListResult res = result;
             this->onLiveList(res);
         },
-        [this](CLIENT_ERR) { UNSET_REQUEST });
+        [this](CLIENT_ERR) { 
+            this->onError("Failed to fetch live list");
+            UNSET_REQUEST });
 }

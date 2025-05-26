@@ -9,6 +9,7 @@
         <AutoTabFrame
                 id="main/tabFrame"
                 grow="1"
+                tabBackgroundColor="@theme/color/grey_1"
                 tabItemActiveTextColor="@theme/color/tsvitch"
                 disableNavigationDown="true"
                 defaultTab="0"
@@ -21,10 +22,20 @@
                 <HomeLive/>
             </Tab>
 
+            <Tab label=""
+                 fontSize="18"
+                 icon="@res/svg/ico-favorites.svg"
+                 iconActivate="@res/svg/ico-favorites-activate.svg">
+                <HomeFavorites/>
+            </Tab>
 
-            
-
-
+            <Tab label=""
+                 fontSize="18"
+                 focusDown="main/setting"
+                 icon="@res/svg/ico-history.svg"
+                 iconActivate="@res/svg/ico-history-activate.svg">
+                <HomeHistory/>
+            </Tab>
         </AutoTabFrame>
         <brls:Box
                 wireframe="false"
@@ -34,8 +45,6 @@
                 alignItems="center"
                 positionType="absolute"
                 positionBottom="20">
-
-                
 
             <CustomButton
                     id="main/setting"

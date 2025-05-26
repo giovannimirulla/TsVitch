@@ -1,10 +1,11 @@
-
 #pragma once
 #include <string>
 #include <borealis/core/singleton.hpp>
 #include <borealis/core/event.hpp>
 
 typedef enum MpvEventEnum {
+
+    
     MPV_LOADED,
     MPV_PAUSE,
     MPV_RESUME,
@@ -21,7 +22,7 @@ typedef enum MpvEventEnum {
 
     CACHE_SPEED_CHANGE,
 
-   
+
     VIDEO_SPEED_CHANGE,
 
 
@@ -31,7 +32,6 @@ typedef enum MpvEventEnum {
 
 
     RESET,
-
 
      RESTART,
 } MpvEventEnum;
@@ -43,10 +43,13 @@ class EventHelper : public brls::Singleton<EventHelper> {
 public:
     MPVEvent *getMpvEvent();
 
+
+
     CustomEvent *getCustomEvent();
 
     CustomEvent *getSearchEvent();
 
+    
     CustomEvent customEvent;
     CustomEvent searchEvent;
 };
