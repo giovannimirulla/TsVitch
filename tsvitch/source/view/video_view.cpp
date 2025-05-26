@@ -248,7 +248,7 @@ VideoView::VideoView() {
     this->btnFavoriteIcon->getParent()->addGestureRecognizer(
         new brls::TapGestureRecognizer(this->btnFavoriteIcon->getParent()));
 
-    this->btnSettingIcon->getParent()->registerClickAction([this](...) {
+    this->btnSettingIcon->getParent()->registerClickAction([](...) {
         auto setting = new PlayerSetting();
 
         brls::Application::pushActivity(new brls::Activity(setting));
