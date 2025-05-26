@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="resources/svg/com.giovannimirulla.tsvitch.svg" alt="logo" height="128" width="128"/>
+    <img src="resources/icon/icon.png" alt="logo" height="128" width="128"/>
 </p>
 <p align="center">
   TV finally on Switch
