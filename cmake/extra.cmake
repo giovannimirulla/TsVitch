@@ -16,7 +16,7 @@ if (APPLE AND PLATFORM_DESKTOP)
             OUTPUT_VARIABLE MACOS_VERSION
             OUTPUT_STRIP_TRAILING_WHITESPACE)
     message(STATUS "compiling on macOS: ${MACOS_VERSION}")
-    elseif(MAC_IntelChip)
+    if(MAC_IntelChip)
         message(STATUS "CMAKE_OSX_ARCHITECTURES: x86_64")
         message(STATUS "CMAKE_OSX_DEPLOYMENT_TARGET: 10.15")
         set(CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "" FORCE)
