@@ -1,5 +1,3 @@
-
-
 #include <limits>
 
 #include <borealis/views/label.hpp>
@@ -8,6 +6,7 @@
 #include <borealis/core/thread.hpp>
 #include <borealis/views/slider.hpp>
 #include <borealis/views/applet_frame.hpp>
+#include <borealis/views/dialog.hpp>
 #include <pystring.h>
 
 #include "utils/number_helper.hpp"
@@ -30,6 +29,8 @@
 #ifdef __SWITCH__
 #include <switch.h>
 #endif
+using namespace brls::literals;
+
 enum ClickState { IDLE = 0, PRESS = 1, FAST_RELEASE = 3, FAST_PRESS = 4, CLICK_DOUBLE = 5 };
 
 #define CHECK_OSD(shake)                                                              \
@@ -64,6 +65,26 @@ VideoView::VideoView() {
                     return true;
                 },
                 true);
+        }
+    });
+
+    this->registerBoolXMLAttribute("disabledSliderGesture", [this](bool value) {
+        this->disabledSliderGesture = value;
+        if (!this->disabledSliderGesture) {
+            osdSlider->getProgressSetEvent()->subscribe([this](float progress) {
+                brls::Logger::verbose("Set progress: {}", progress);
+                this->showOSD(true);
+                if (real_duration > 0) {
+                    mpvCore->seek((float)real_duration * progress);
+                } else {
+                    mpvCore->seekPercent(progress);
+                }
+            });
+
+            osdSlider->getProgressEvent()->subscribe([this](float progress) {
+                this->showOSD(false);
+                leftStatusLabel->setText(tsvitch::sec2Time(getRealDuration() * progress));
+            });
         }
     });
 
@@ -106,21 +127,6 @@ VideoView::VideoView() {
 
     this->registerMpvEvent();
 
-    osdSlider->getProgressSetEvent()->subscribe([this](float progress) {
-        brls::Logger::verbose("Set progress: {}", progress);
-        this->showOSD(true);
-        if (real_duration > 0) {
-            mpvCore->seek((float)real_duration * progress);
-        } else {
-            mpvCore->seekPercent(progress);
-        }
-    });
-
-    osdSlider->getProgressEvent()->subscribe([this](float progress) {
-        this->showOSD(false);
-        leftStatusLabel->setText(tsvitch::sec2Time(getRealDuration() * progress));
-    });
-
     this->addGestureRecognizer(new OsdGestureRecognizer([this](OsdGestureStatus status) {
         switch (status.osdGestureType) {
             case OsdGestureType::TAP:
@@ -134,16 +140,16 @@ VideoView::VideoView() {
                 this->togglePlay();
                 break;
             case OsdGestureType::HORIZONTAL_PAN_START:
-                if (is_osd_lock) break;
+                if (is_osd_lock || this->disabledSliderGesture) break;
                 this->showCenterHint();
                 this->setCenterHintIcon("svg/arrow-left-right.svg");
                 break;
             case OsdGestureType::HORIZONTAL_PAN_UPDATE:
-                if (is_osd_lock) break;
+                if (is_osd_lock || this->disabledSliderGesture) break;
                 this->requestSeeking(fmin(120.0f, getRealDuration()) * status.deltaX);
                 break;
             case OsdGestureType::HORIZONTAL_PAN_CANCEL:
-                if (is_osd_lock) break;
+                if (is_osd_lock || this->disabledSliderGesture) break;
 
                 this->requestSeeking(VIDEO_CANCEL_SEEKING, VIDEO_SEEK_IMMEDIATELY);
                 break;
@@ -152,7 +158,7 @@ VideoView::VideoView() {
                     this->toggleOSD();
                     break;
                 }
-
+                if (this->disabledSliderGesture) break;
                 this->requestSeeking(fmin(120.0f, getRealDuration()) * status.deltaX, VIDEO_SEEK_IMMEDIATELY);
                 break;
             case OsdGestureType::LEFT_VERTICAL_PAN_START:
@@ -235,8 +241,8 @@ VideoView::VideoView() {
     this->btnFullscreenIcon->getParent()->addGestureRecognizer(
         new brls::TapGestureRecognizer(this->btnFullscreenIcon->getParent()));
 
-        this->btnFavoriteIcon->getParent()->registerClickAction([this](...) {
-            this->toggleFavorite();
+    this->btnFavoriteIcon->getParent()->registerClickAction([this](...) {
+        this->toggleFavorite();
         return true;
     });
     this->btnFavoriteIcon->getParent()->addGestureRecognizer(
@@ -525,7 +531,6 @@ void VideoView::drawHighlightProgress(NVGcontext* vg, float x, float y, float wi
 #else
         if (fabs(lastY - pointY) < 3) {
 #endif
-
             nvgLineTo(vg, pointX, pointY);
         } else {
             nvgBezierTo(vg, cx, lastY, cx, pointY, pointX, pointY);
@@ -715,12 +720,19 @@ void VideoView::hideStatusLabel() {
 }
 
 void VideoView::setLiveMode() {
-
     isLiveMode = true;
     leftStatusLabel->setVisibility(brls::Visibility::GONE);
     centerStatusLabel->setVisibility(brls::Visibility::GONE);
     rightStatusLabel->setVisibility(brls::Visibility::GONE);
     _setTvControlMode(false);
+}
+
+void VideoView::setVideoMode() {
+    isLiveMode = false;
+    leftStatusLabel->setVisibility(brls::Visibility::VISIBLE);
+    centerStatusLabel->setVisibility(brls::Visibility::VISIBLE);
+    rightStatusLabel->setVisibility(brls::Visibility::VISIBLE);
+    _setTvControlMode(isTvControlMode && !isLiveMode);
 }
 
 void VideoView::setTvControlMode(bool state) {
@@ -760,6 +772,8 @@ void VideoView::hideHighlightLineSetting() { showHighlightLineSetting = false; }
 
 void VideoView::hideVideoProgressSlider() { osdSlider->setVisibility(brls::Visibility::GONE); }
 
+void VideoView::showVideoProgressSlider() { osdSlider->setVisibility(brls::Visibility::VISIBLE); }
+
 void VideoView::setTitle(const std::string& title) { this->videoTitleLabel->setText(title); }
 
 std::string VideoView::getTitle() { return this->videoTitleLabel->getFullText(); }
@@ -792,9 +806,7 @@ void VideoView::setFavoriteIcon(bool fs) {
     isFavorite = fs;
 }
 
-void VideoView::setFavoriteCallback(std::function<void(bool)> callback) {
-    this->favoriteCallback = callback;
-}
+void VideoView::setFavoriteCallback(std::function<void(bool)> callback) { this->favoriteCallback = callback; }
 
 void VideoView::toggleFavorite() {
     if (favoriteCallback) {
@@ -952,13 +964,22 @@ void VideoView::registerMpvEvent() {
                 this->hideLoading();
                 this->showOSD(false);
                 break;
+
+            case MpvEventEnum::MPV_FILE_ERROR: {
+                this->hideLoading();
+                this->showOSD(false);
+                auto dialog = new brls::Dialog("hints/live_error"_i18n);
+                dialog->addButton("hints/back"_i18n,
+                                  []() { brls::Application::popActivity(brls::TransitionAnimation::NONE); });
+                dialog->open();
+                break;
+            }
             case MpvEventEnum::MPV_LOADED:
                 this->setPlaybackTime(tsvitch::sec2Time(this->mpvCore->video_progress));
                 if (lastPlayedPosition <= 0) break;
                 if (abs(getRealDuration() - lastPlayedPosition) <= 5) {
                     mpvCore->seek(0);
                 } else {
-                    this->showHint(fmt::format("已为您定位至: {}", tsvitch::sec2Time(lastPlayedPosition)));
                     mpvCore->seek(lastPlayedPosition);
                     brls::Logger::info("Restore video position: {}", lastPlayedPosition);
                 }
@@ -1042,5 +1063,3 @@ void VideoView::onChildFocusGained(View* directChild, View* focusedView) {
 float VideoView::getRealDuration() { return real_duration > 0 ? (float)real_duration : (float)mpvCore->duration; }
 
 void VideoView::setOnEndCallback(std::function<void()> callback) { this->onEndCallback = callback; }
-
-void VideoView::setOSDSliderFocusable(bool state) { osdSlider->setFocusable(state); }

@@ -5,6 +5,7 @@
 #include <utility>
 #include <borealis/core/touch/tap_gesture.hpp>
 #include <borealis/core/thread.hpp>
+#include <borealis/views/dialog.hpp>
 #include "view/recycling_grid.hpp"
 #include "view/video_card.hpp"
 #include "view/custom_button.hpp"
@@ -33,9 +34,8 @@ public:
     size_t getItemCount() override { return favoriteChannels.size(); }
 
     void onItemSelected(RecyclingGrid* recycler, size_t index) override {
-        const auto& r = favoriteChannels[index];
-        HistoryManager::get()->add(r);
-        Intent::openLive(r, [recycler]() {
+        HistoryManager::get()->add(favoriteChannels[index]);
+        Intent::openLive(favoriteChannels, index, [recycler]() {
             auto favorites = FavoriteManager::get()->getFavorites();
             recycler->setDataSource(new DataSourceFavoriteChannels(favorites));
         });
@@ -57,70 +57,12 @@ HomeFavorites::HomeFavorites() {
     this->favoritesList = FavoriteManager::get()->getFavorites();
     recyclingGrid->setDataSource(new DataSourceFavoriteChannels(this->favoritesList));
 
-    this->searchField->registerClickAction([this](brls::View* view) -> bool {
-        this->search();
-        return true;
-    });
-    this->searchField->addGestureRecognizer(new brls::TapGestureRecognizer(this->searchField));
-
-    if (this->favoritesList.empty()) {
-        this->searchField->setVisibility(brls::Visibility::GONE);
-    } else {
-        this->registerAction("hints/search"_i18n, brls::BUTTON_Y, [this](...) {
-            this->search();
-            return true;
-        });
-    }
-
     this->registerAction("hints/toggle_favorite"_i18n, brls::BUTTON_X, [this](...) {
         this->toggleFavorite();
         return true;
     });
 }
 
-void HomeFavorites::search() {
-    brls::Application::getImeManager()->openForText([this](const std::string& text) { this->filter(text); },
-                                                    "tsvitch/home/common/search"_i18n, "", 32, "", 0);
-    this->registerAction("hints/cancel"_i18n, brls::BUTTON_B, [this](...) {
-        this->cancelSearch();
-        return true;
-    });
-}
-
-void HomeFavorites::cancelSearch() {
-    this->recyclingGrid->setDataSource(new DataSourceFavoriteChannels(this->favoritesList));
-    this->unregisterAction(brls::BUTTON_B);
-}
-
-void HomeFavorites::filter(const std::string& key) {
-    if (key.empty()) return;
-
-    brls::Threading::sync([this, key]() {
-        auto* datasource = dynamic_cast<DataSourceFavoriteChannels*>(recyclingGrid->getDataSource());
-        if (datasource) {
-            tsvitch::LiveM3u8ListResult filtered;
-            std::string lowerKey = key;
-            std::transform(lowerKey.begin(), lowerKey.end(), lowerKey.begin(),
-                           [](unsigned char c) { return std::tolower(c); });
-            for (const auto& item : this->favoritesList) {
-                std::string lowerTitle = item.title;
-                std::transform(lowerTitle.begin(), lowerTitle.end(), lowerTitle.begin(),
-                               [](unsigned char c) { return std::tolower(c); });
-                std::string lowerGroupTitle = item.groupTitle;
-                std::transform(lowerGroupTitle.begin(), lowerGroupTitle.end(), lowerGroupTitle.begin(),
-                               [](unsigned char c) { return std::tolower(c); });
-                if (lowerTitle.find(lowerKey) != std::string::npos ||
-                    lowerGroupTitle.find(lowerKey) != std::string::npos)
-                    filtered.push_back(item);
-            }
-            if (filtered.empty()) {
-                recyclingGrid->setEmpty();
-            } else {
-                recyclingGrid->setDataSource(new DataSourceFavoriteChannels(filtered));
-            }
-        }
-    });
-}
 
 void HomeFavorites::onCreate() { this->refreshFavorites(); }
 
@@ -129,25 +71,15 @@ void HomeFavorites::onShow() { this->refreshFavorites(); }
 void HomeFavorites::refreshFavorites() {
     this->favoritesList = FavoriteManager::get()->getFavorites();
     recyclingGrid->setDataSource(new DataSourceFavoriteChannels(this->favoritesList));
-    if (this->favoritesList.empty()) {
-        this->searchField->setVisibility(brls::Visibility::GONE);
-        this->unregisterAction(brls::BUTTON_Y);
-    } else {
-        this->searchField->setVisibility(brls::Visibility::VISIBLE);
-        this->registerAction("hints/search"_i18n, brls::BUTTON_Y, [this](...) {
-            this->search();
-            return true;
-        });
-    }
 }
 
 void HomeFavorites::toggleFavorite() {
-    //get focus item
     auto* item = dynamic_cast<RecyclingGridItemLiveVideoCard*>(this->recyclingGrid->getFocusedItem());
     if (!item) return;
 
-    //get channel
     tsvitch::LiveM3u8 channel = item->getChannel();
+
+    brls::Logger::debug("toggleFavorite: {}", channel.title);
 
     FavoriteManager::get()->toggle(channel);
 
@@ -155,14 +87,28 @@ void HomeFavorites::toggleFavorite() {
         item->setFavoriteIcon(true);
     } else {
         item->setFavoriteIcon(false);
-        // remove the item from the list
+        // rimuovi l'item dalla lista
         auto it = std::remove_if(this->favoritesList.begin(), this->favoritesList.end(),
                                  [&channel](const tsvitch::LiveM3u8& c) { return c.url == channel.url; });
+        size_t removedIndex = std::distance(this->favoritesList.begin(), it);
         this->favoritesList.erase(it, this->favoritesList.end());
         this->recyclingGrid->setDataSource(new DataSourceFavoriteChannels(this->favoritesList));
-    }
 
-    
+        if (!this->favoritesList.empty()) {
+            size_t newFocus = removedIndex;
+            if (newFocus >= this->favoritesList.size() && newFocus > 0)
+                newFocus = this->favoritesList.size() - 1;
+
+            // Dai focus alla griglia e poi alla cella, con un piccolo delay per sicurezza
+            brls::Application::giveFocus(this->recyclingGrid);
+            brls::delay(10, [this, newFocus]() {
+                this->recyclingGrid->setDefaultCellFocus(newFocus);
+            });
+        }else {
+           //focus sidebar
+            brls::Application::giveFocus(this->getTabBar());
+        }
+    }
 }
 
 brls::View* HomeFavorites::create() { return new HomeFavorites(); }

@@ -105,6 +105,8 @@ void TsVitchClient::get_file_m3u8(const std::function<void(LiveM3u8ListResult)>&
                 CALLBACK(result);
             } catch (const std::exception&) {
                 ERROR_MSG("cannot get file m3u8", -1);
+                //return error
+                error("Failed to parse m3u8 content", -1);
             }
         },
         error);

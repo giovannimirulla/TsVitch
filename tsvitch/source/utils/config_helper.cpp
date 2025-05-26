@@ -195,8 +195,6 @@ void ProgramConfig::setProgramConfig(const ProgramConfig& conf) {
     brls::Logger::info("setting: {}", conf.setting.dump());
 }
 
-std::string ProgramConfig::getUserID() { return brls::Application::getPlatform()->getName(); }
-
 std::string ProgramConfig::getClientID() {
     if (this->client.empty()) {
         this->client = fmt::format("{}.{}", tsvitch::getRandomNumber(), tsvitch::getUnixTime());
@@ -206,12 +204,12 @@ std::string ProgramConfig::getClientID() {
 }
 
 std::string ProgramConfig::getDeviceID() {
-    if (this->device.empty()) {
-        this->device = fmt::format("{}-{}-{}-{}-{}", tsvitch::getRandomHex(8), tsvitch::getRandomHex(4),
-                                   tsvitch::getRandomHex(4), tsvitch::getRandomHex(4), tsvitch::getRandomHex(12));
-        this->save();
-    }
     return this->device;
+}
+
+void ProgramConfig::setDeviceID(const std::string& deviceId) {
+    this->device = deviceId;
+    this->save();
 }
 
 void ProgramConfig::loadHomeWindowState() {
@@ -519,7 +517,6 @@ int ProgramConfig::getStringOptionIndex(SettingItem item) {
 }
 
 void ProgramConfig::save() {
-
     const std::string path = this->getConfigDir() + "/tsvitch_config.json";
 
 #ifndef IOS

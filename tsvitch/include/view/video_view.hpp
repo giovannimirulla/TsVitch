@@ -38,7 +38,8 @@ public:
 #define VIDEO_CANCEL_SEEKING 0
 #define VIDEO_SEEK_IMMEDIATELY 0
 
-class VideoView : public brls::Box {
+class VideoView : public brls::Box
+{
 public:
     VideoView();
 
@@ -109,9 +110,13 @@ public:
 
     void hideVideoProgressSlider();
 
+    void showVideoProgressSlider();
+
     void hideStatusLabel();
 
     void setLiveMode();
+
+    void setVideoMode();
 
     void setTvControlMode(bool state);
 
@@ -135,10 +140,8 @@ public:
 
     void setFavoriteIcon(bool fs);
 
-    void setOSDSliderFocusable(bool state);
-
     brls::View* getFullscreenIcon();
-    
+
     brls::View* getFavoriteIcon();
 
     void refreshToggleIcon();
@@ -182,8 +185,11 @@ public:
 
     void buttonProcessing();
 
-
     void setOnEndCallback(std::function<void()> callback);
+
+    void setOnLiveBehindChanged(std::function<void(bool)> cb);
+    void goLive();
+    bool isLiveBehind() const;
 
     inline static const std::string QUALITY_CHANGE = "QUALITY_CHANGE";
     inline static const std::string SET_ONLINE_NUM = "SET_ONLINE_NUM";
@@ -206,6 +212,8 @@ public:
     inline static bool HIGHLIGHT_PROGRESS_BAR = false;
 
 private:
+    bool disabledSliderGesture = false;
+
     bool allowFullscreen  = true;
     bool registerMPVEvent = false;
 
@@ -235,7 +243,8 @@ private:
     CustomEvent::Subscription customEventSubscribeID;
     std::function<void()> customToggleAction = nullptr;
     brls::InputManager* input;
-    NVGcolor bottomBarColor = brls::Application::getTheme().getColor("color/tsvitch");
+    std::function<void()> onEndCallback = nullptr;
+    NVGcolor bottomBarColor             = brls::Application::getTheme().getColor("color/tsvitch");
 
     BRLS_BIND(brls::Label, videoTitleLabel, "video/osd/title");
     BRLS_BIND(brls::Box, osdTopBox, "video/osd/top/box");
@@ -285,7 +294,7 @@ private:
 
     MPVCore* mpvCore;
     brls::Rect oldRect = brls::Rect(-1, -1, -1, -1);
-    
+
     void requestSeeking(int seek, int delay = 400);
 
     bool is_seeking     = false;
@@ -304,7 +313,4 @@ private:
     void _setTvControlMode(bool state);
 
     float getRealDuration();
-
-private:
-    std::function<void()> onEndCallback = nullptr;
 };

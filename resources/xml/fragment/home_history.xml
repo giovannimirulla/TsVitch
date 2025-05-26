@@ -1,6 +1,6 @@
 <brls:Box
         axis="column"
-        marginTop="10"
+        marginTop="20"
         marginBottom="8"
         width="auto"
         height="auto">

@@ -6,7 +6,8 @@
 
 class Intent {
 public:
-    static void openLive(const tsvitch::LiveM3u8& liveData, std::function<void()> onClose = nullptr);
+
+    static void openLive(const std::vector<tsvitch::LiveM3u8>& channelList, size_t index, std::function<void()> onClose);
 
     static void openPgcFilter(const std::string& filter);
 
