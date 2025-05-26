@@ -3,11 +3,11 @@
     <id>com.giovannimirulla.tsvitch</id>
     <metadata_license>CC0-1.0</metadata_license>
     <project_license>GPL-3.0-only</project_license>
-    <name>tsvitch</name>
+    <name>TsVitch</name>
     <developer_name>giovannimirulla</developer_name>
     <summary>TV finally on your Switch</summary>
     <launchable type="desktop-id">com.giovannimirulla.tsvitch.desktop</launchable>
-    <translation type="gettext">tsvitch</translation>
+    <translation type="gettext">TsVitch</translation>
     <content_rating type="oars-1.1">
         <content_attribute id="social-info">mild</content_attribute>
     </content_rating>
@@ -15,7 +15,7 @@
         <p>TV finally on your Switch</p>
     </description>
     <releases>
-        <release date="2024-10-24" version="0.1.0">
+        <release date="2025-05-26" version="0.2.0">
             <description>
                 <p>
                     Please See Official Changelog at github.com/giovannimirulla/TsVitch/releases
@@ -25,11 +25,11 @@
     </releases>
     <screenshots>
         <screenshot type="default">
-            <image>https://giovannimirulla.github.io/tsvitch/docs/images/screenshot-3.jpg</image>
+            <image>https://giovannimirulla.github.io/TsVitch/docs/images/screenshot-3.jpg</image>
             <caption>Light theme</caption>
         </screenshot>
         <screenshot>
-            <image>https://giovannimirulla.github.io/tsvitch/docs/images/screenshot-4.jpg</image>
+            <image>https://giovannimirulla.github.io/TsVitch/docs/images/screenshot-4.jpg</image>
             <caption>Dark theme</caption>
         </screenshot>
     </screenshots>

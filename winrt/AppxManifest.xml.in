@@ -20,10 +20,10 @@
     <Resource Language="EN-US" />
   </Resources>
   <Applications>
-    <Application Id="App" Executable="tsvitch.exe" EntryPoint="TsVitch.App">
-      <uap:VisualElements DisplayName="tsvitch" Square150x150Logo="Assets\Square150x150Logo.png"
+    <Application Id="App" Executable="TsVitch.exe" EntryPoint="TsVitch.App">
+      <uap:VisualElements DisplayName="TsVitch" Square150x150Logo="Assets\Square150x150Logo.png"
       Square44x44Logo="Assets\Square44x44Logo.png"
-      Description="tsvitch"
+      Description="TsVitch is a TV streaming application"
       BackgroundColor="transparent">
         <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
         <uap:SplashScreen Image="Assets\SplashScreen.png" />

@@ -60,4 +60,4 @@ cmake -B ${BUILD_DIR} \
     -DSERVER_TOKEN="${SERVER_TOKEN}" \
   -DM3U8_URL="${M3U8_URL}" 
 
-make -C ${BUILD_DIR} tsvitch.nro -j$(nproc)
+make -C ${BUILD_DIR} TsVitch.nro -j$(nproc)

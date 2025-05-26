@@ -38,4 +38,4 @@ cmake -B build -DCPR_USE_SYSTEM_CURL=ON \
   -DM3U8_URL="${M3U8_URL}" \
   
 
-make -C build tsvitch -j$(sysctl -n hw.ncpu)
+make -C build TsVitch -j$(sysctl -n hw.ncpu)

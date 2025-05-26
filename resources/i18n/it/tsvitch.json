@@ -1,5 +1,5 @@
 {
-  "title": "tsvitch",
+  "title": "TsVitch",
   "github": "https://github.com/giovannimirulla/TsVitch",
   "github_release": "https://github.com/giovannimirulla/TsVitch/releases/latest",
   "setting": {
@@ -147,7 +147,7 @@
       "font_q1": "Come impostare font o icona personalizzata",
       "font_a1": "1. Scarica il font o l'icona che desideri\n2. Rinomina il font in: font.ttf; Rinomina l'icona in: icon.ttf\n3. Inserisci i file nella cartella di configurazione\n4. Riavvia l'applicazione",
       "font_q2": "Domande frequenti",
-      "font_a2": "1. tsvitch dà priorità ai font personalizzati, con i font integrati come fallback\n2. \"Impostazioni - Strumenti - Altri\" offre una voce di menu per aprire rapidamente la cartella di configurazione\n3. Su Linux, tsvitch usa xdg-open per aprire la cartella. Se la cartella non si apre correttamente, considera di installare questo strumento"
+      "font_a2": "1. TsVitch dà priorità ai font personalizzati, con i font integrati come fallback\n2. \"Impostazioni - Strumenti - Altri\" offre una voce di menu per aprire rapidamente la cartella di configurazione\n3. Su Linux, TsVitch usa xdg-open per aprire la cartella. Se la cartella non si apre correttamente, considera di installare questo strumento"
     },
     "hot_keys": {
       "common_header": "Comuni",
@@ -171,8 +171,8 @@
   "hints": {
     "hint1": "Seleziona un gioco dalla schermata home",
     "hint2": "Tieni premuto il tasto  e premi  per entrare in hbmenu",
-    "hint3": "In hbmenu, seleziona tsvitch",
-    "hint4": "Opzionale: usa il forwarder NSP fornito (Metti tsvitch.nro in /switch/tsvitch.nro)",
+    "hint3": "In hbmenu, seleziona TsVitch",
+    "hint4": "Opzionale: usa il forwarder NSP fornito (Metti TsVitch.nro in /switch/TsVitch.nro)",
     "hint_nsp": "Premi  per installare il forwarder NSP",
     "hint_confirm": "Installare il forwarder NSP può causare un ban\nConfermi?",
     "hint_right": "Le immagini provengono da Internet, il copyright appartiene a Nintendo Co., Ltd"

@@ -41,9 +41,9 @@ The app comes preloaded with a default playlist sourced from the [Free-TV/IPTV r
 ### Nintendo Switch
 
 
-1. Download tsvitch-NintendoSwitch.zip from: [tsvitch releases](https://github.com/giovannimirulla/TsVitch/releases)
-2. Place tsvitch.nro in the SD card under the switch directory.
-3. On the home screen, hold the R button while opening any game to access hbmenu. From the list, select tsvitch and click to launch.
+1. Download TsVitch-NintendoSwitch.zip from: [TsVitch releases](https://github.com/giovannimirulla/TsVitch/releases)
+2. Place TsVitch.nro in the SD card under the switch directory.
+3. On the home screen, hold the R button while opening any game to access hbmenu. From the list, select TsVitch and click to launch.
 4. [Optional] Install a desktop shortcut within the app via: Settings/Utilities/User Guide.
 
 # Clone & Build
@@ -51,12 +51,12 @@ The app comes preloaded with a default playlist sourced from the [Free-TV/IPTV r
 ```shell
 # Pulling code
 git clone --recursive https://github.com/giovannimirulla/TsVitch.git
-cd tsvitch
+cd TsVitch
 ```
 
 ### PC
 
-Currently tsvitch is supported on macOS.
+Currently TsVitch is supported on macOS.
 
 <details>
 
@@ -73,12 +73,12 @@ cmake -B build -DCPR_USE_SYSTEM_CURL=ON \
   -DBOOST_ROOT=/opt/homebrew/opt/boost \
   -DBoost_NO_SYSTEM_PATHS=ON \
   -DPLATFORM_DESKTOP=ON
-make -C build tsvitch -j$(sysctl -n hw.ncpu)
+make -C build TsVitch -j$(sysctl -n hw.ncpu)
 ```
 
 </details>
 
-### Cross-compile the Switch executable (tsvitch.nro)
+### Cross-compile the Switch executable (TsVitch.nro)
 
 Recommended to use docker build, local build configuration environment is slightly cumbersome, but can be used to switch the underlying ffmpeg or mpv and other dependent libraries for more flexible debugging.
 
@@ -109,7 +109,7 @@ sudo dkp-pacman -U \
 
 # 4. Build
 cmake -B cmake-build-switch -DPLATFORM_SWITCH=ON
-make -C cmake-build-switch tsvitch.nro -j$(nproc)
+make -C cmake-build-switch TsVitch.nro -j$(nproc)
 ```
 
 </details>
@@ -121,7 +121,7 @@ This app does not host or provide any IPTV content. Users are responsible for en
 
 # Acknowledgement
 
-The development of tsvitch cannot do without the support of the following open source projects.
+The development of TsVitch cannot do without the support of the following open source projects.
 
 - Toolchain: devkitpro, switchbrew, vitasdk OpenOrbis and PacBrew
     - https://github.com/devkitPro
