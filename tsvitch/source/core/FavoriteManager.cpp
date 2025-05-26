@@ -25,6 +25,12 @@ void FavoriteManager::toggle(const tsvitch::LiveM3u8& channel) {
         set_.push_back(channel);
     }
     save();
+    GA("toggle_favorite", {
+        {"title", channel.title},
+        {"url", channel.url},
+        {"group_title", channel.groupTitle},
+        {"is_favorite", isFavorite(channel.url) ? "true" : "false"}
+    });
 }
 
 

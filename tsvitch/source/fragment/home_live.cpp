@@ -217,6 +217,15 @@ HomeLive::HomeLive() {
 
     upRecyclingGrid->registerCell("Cell", []() { return DynamicGroupChannels::create(); });
 
+    // Sottoscrivi all'evento di cambio M3U8
+    OnM3U8UrlChanged.subscribe([this]() {
+        this->requestLiveList();
+        //reset index group
+        this->selectGroupIndex(0);
+        brls::Logger::debug("OnM3U8UrlChanged: requestLiveList");
+
+    });
+
     this->requestLiveList();
 }
 

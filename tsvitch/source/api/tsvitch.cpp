@@ -26,6 +26,7 @@ void TsVitchClient::register_user(const std::function<void(const std::string&, i
 
     auto url = std::string(SERVER_URL_VALUE) + "/functions/v1/register-user";
     brls::Logger::debug("Registering user with URL: {}", url);
+
     HTTP::__cpr_post(
         url, cpr::Parameters{}, body,
 
@@ -33,21 +34,31 @@ void TsVitchClient::register_user(const std::function<void(const std::string&, i
             try {
                 auto json_result = nlohmann::json::parse(r.text);
                 brls::Logger::debug("Register user response: {}", json_result.dump());
+        
                 if (r.status_code == 200 && json_result.contains("user_id")) {
                     std::string user_id = json_result["user_id"].get<std::string>();
-
                     ProgramConfig::instance().setDeviceID(user_id);
+                    GA("register_user", {{"user_id", user_id},
+                                         {"language", brls::Application::getLocale()},
+                                         {"platform", APPVersion::instance().getPlatform()},
+                                         {"app_version", APPVersion::instance().git_tag.empty()
+                                                            ? "v" + APPVersion::instance().getVersionStr()
+                                                            : APPVersion::instance().git_tag}});
                     if (callback) {
                         callback(user_id, r.status_code);
                     }
                 } else if (json_result.contains("error")) {
                     std::string err_msg = json_result["error"].get<std::string>();
+                     GA("register_user", {{"error", err_msg},
+                                         {"status_code", std::to_string(r.status_code)}});
                     if (error) {
                         error(err_msg, r.status_code);
                     } else {
                         ERROR_MSG(err_msg, r.status_code);
                     }
                 } else {
+                    GA("register_user", {{"error", "Unknown response"},
+                                         {"status_code", std::to_string(r.status_code)}});
                     if (error) {
                         error("Unknown response", r.status_code);
                     } else {
@@ -56,6 +67,8 @@ void TsVitchClient::register_user(const std::function<void(const std::string&, i
                 }
             } catch (const std::exception&) {
                 ERROR_MSG("Failed to register user", r.status_code);
+                // GA call for register_user exception
+                GA("register_user", {{"status_code", std::to_string(r.status_code)}});
                 if (error) {
                     error("Failed to register user", r.status_code);
                 }
@@ -68,6 +81,7 @@ void TsVitchClient::check_user_id(const std::function<void(const std::string&, i
                                   const ErrorCallback& error) {
     std::string user_id = ProgramConfig::instance().getDeviceID();
     if (user_id.empty()) {
+        // GA call for check_user_id error
         if (error) {
             error("User ID is empty", -1);
         } else {
@@ -87,20 +101,25 @@ void TsVitchClient::check_user_id(const std::function<void(const std::string&, i
         [callback, error](const cpr::Response& r) {
             try {
                 auto json_result = nlohmann::json::parse(r.text);
+                // GA call for check_user_id response
                 if (r.status_code == 200 && json_result.contains("exists")) {
                     bool exists = json_result["exists"].get<bool>();
 
                     if (callback) {
+                        GA("check_user_id", {{"user_id", ProgramConfig::instance().getDeviceID()},
+                                           {"exists", exists ? "true" : "false"}});
                         callback(exists ? "true" : "false", r.status_code);
                     }
                 } else if (json_result.contains("error")) {
                     std::string err_msg = json_result["error"].get<std::string>();
+                    GA("check_user_id", {{"error", err_msg}, {"status_code", std::to_string(r.status_code)}});
                     if (error) {
                         error(err_msg, r.status_code);
                     } else {
                         ERROR_MSG(err_msg, r.status_code);
                     }
                 } else {
+                    GA("check_user_id", {{"error", "Unknown response"}, {"status_code", std::to_string(r.status_code)}});
                     if (error) {
                         error("Unknown response", r.status_code);
                     } else {
@@ -109,6 +128,8 @@ void TsVitchClient::check_user_id(const std::function<void(const std::string&, i
                 }
             } catch (const std::exception&) {
                 ERROR_MSG("Failed to check user ID", r.status_code);
+                // GA call for check_user_id exception
+                GA("check_user_id", {{"status_code", std::to_string(r.status_code)}});
                 if (error) {
                     error("Failed to check user ID", r.status_code);
                 }
@@ -120,6 +141,7 @@ void TsVitchClient::check_user_id(const std::function<void(const std::string&, i
 void TsVitchClient::get_ad(const std::function<void(const std::string&, int)>& callback, const ErrorCallback& error) {
     std::string user_id = ProgramConfig::instance().getDeviceID();
     if (user_id.empty()) {
+        // GA call for get_ad error
         if (error) {
             error("User ID is empty", -1);
         } else {
@@ -154,6 +176,8 @@ void TsVitchClient::get_ad(const std::function<void(const std::string&, int)>& c
             brls::Logger::debug("Get ad response: {}", r.text);
             try {
                 auto json_result = nlohmann::json::parse(r.text);
+                // GA call for get_ad response
+                GA("get_ad", {{"status_code", std::to_string(r.status_code)}, {"response", r.text}});
                 if (r.status_code == 200 && json_result.contains("ad") && json_result["ad"].contains("url")) {
                     std::string url = json_result["ad"]["url"].get<std::string>();
                     if (callback) {
@@ -161,12 +185,14 @@ void TsVitchClient::get_ad(const std::function<void(const std::string&, int)>& c
                     }
                 } else if (json_result.contains("error")) {
                     std::string err_msg = json_result["error"].get<std::string>();
+                    GA("get_ad", {{"error", err_msg}, {"status_code", std::to_string(r.status_code)}});
                     if (error) {
                         error(err_msg, r.status_code);
                     } else {
                         ERROR_MSG(err_msg, r.status_code);
                     }
                 } else {
+                    GA("get_ad", {{"error", "Unknown response"}, {"status_code", std::to_string(r.status_code)}});
                     if (error) {
                         error("Unknown response", r.status_code);
                     } else {
@@ -175,6 +201,8 @@ void TsVitchClient::get_ad(const std::function<void(const std::string&, int)>& c
                 }
             } catch (const std::exception&) {
                 ERROR_MSG("Failed to get ad", r.status_code);
+                // GA call for get_ad exception
+                GA("get_ad", {{"status_code", std::to_string(r.status_code)}});
                 if (error) {
                     error("Failed to get ad", r.status_code);
                 }

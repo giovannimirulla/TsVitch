@@ -1,4 +1,3 @@
-
 #include <pystring.h>
 #include <borealis/core/i18n.hpp>
 #include <borealis/core/application.hpp>
@@ -492,6 +491,7 @@ void SettingActivity::onContentAvailable() {
         [](const std::string& data) {
             std::string m3u8Url = pystring::strip(data);
             ProgramConfig::instance().setM3U8Url(m3u8Url);
+            OnM3U8UrlChanged.fire(); // Notifica tutte le view interessate
         },
         "tsvitch/setting/tools/m3u8/hint"_i18n, "tsvitch/setting/tools/m3u8/hint"_i18n, 255);
 
