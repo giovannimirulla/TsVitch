@@ -189,7 +189,7 @@ jobs:
             -DANALYTICS_KEY="${GA_KEY}" \
             -DSERVER_URL="${SERVER_URL}" \
             -DSERVER_TOKEN="${SERVER_TOKEN}" \
-            -DM3U8_URL="${M3U8_URL}" \
+            -DM3U8_URL="${M3U8_URL}"
           make -C build TsVitch.app -j$(sysctl -n hw.ncpu)
 
       - name: Name
