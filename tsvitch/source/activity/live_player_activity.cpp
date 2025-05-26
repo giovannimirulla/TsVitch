@@ -138,7 +138,12 @@ void LiveActivity::onContentAvailable() {
         }
     });
 
-    GA("open_live", {{"title", this->liveData.title}})
+    GA("open_live", {
+        {"title", this->liveData.title},
+        {"url", this->liveData.url},
+        {"group", this->liveData.groupTitle},
+        {"index", std::to_string(currentChannelIndex)},
+    });
 }
 void LiveActivity::startAd(std::string adUrl) {
     brls::Logger::debug("LiveActivity: adUrl: {}", adUrl);

@@ -74,6 +74,7 @@ int main(int argc, char* argv[]) {
     //check if user_id is set, if not register a new user
     if (ProgramConfig::instance().getDeviceID().empty()) {
         brls::Logger::info("No user ID found, registering a new user...");
+    
         CLIENT::register_user(
             [](const std::string& user_id, int status) {
                 if (status == 200) {

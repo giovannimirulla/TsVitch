@@ -20,7 +20,10 @@
 <br>
 
 <p align="center">
-<img src="docs/images/screenshot.png" alt="screenshot">
+<img src="docs/images/screenshot-NX.png" alt="screenshot">
+</p>
+<p align="center">
+<img src="docs/images/screenshot-macOS.png" alt="screenshot">
 </p>
 
 

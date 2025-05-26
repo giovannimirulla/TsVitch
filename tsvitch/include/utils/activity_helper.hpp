@@ -1,7 +1,6 @@
-
-
 #pragma once
 #include <string>
+#include <borealis/core/event.hpp> // aggiungi questa riga
 #include "api/tsvitch/result/home_live_result.h" // aggiungi questa riga
 
 class Intent {
@@ -39,3 +38,6 @@ public:
 #else
 #define registerFullscreen(activity) (void)activity
 #endif
+
+// Evento globale per notificare il cambio M3U8
+inline brls::Event<> OnM3U8UrlChanged;

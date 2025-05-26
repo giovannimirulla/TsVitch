@@ -97,7 +97,11 @@ void TsVitchClient::get_file_m3u8(const std::function<void(LiveM3u8ListResult)>&
                     live.id         = item.value("id", "");
                     live.chno       = item.value("chno", "");
                     live.logo       = item.value("logo", "");
-                    live.groupTitle = item.value("groupTitle", "");
+                    {
+                        std::string groupTitle = item.value("groupTitle", "");
+                        std::replace(groupTitle.begin(), groupTitle.end(), ';', ' ');
+                        live.groupTitle = groupTitle;
+                    }
                     live.title      = item.value("title", "");
                     live.url        = item.value("url", "");
                     result.push_back(live);

@@ -17,7 +17,7 @@ if (NOT HACBREWPACK_EXE)
 endif()
 
 project(nsp_forwarder)
-set(PROJECT_TITLEID "010ff000ffff0002")
+set(PROJECT_TITLEID "010ff000ffff0021")
 set(FORWARDER_SRC "${PROJECT_SOURCE_DIR}/source/main.c" "${PROJECT_SOURCE_DIR}/source/trampoline.s")
 add_executable(${PROJECT_NAME} ${FORWARDER_SRC})
 target_link_libraries(${PROJECT_NAME} PRIVATE nx)
