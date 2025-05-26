@@ -8,6 +8,7 @@
 #include <borealis/views/applet_frame.hpp>
 #include <borealis/views/dialog.hpp>
 #include <pystring.h>
+#include <cmath> 
 
 #include "utils/number_helper.hpp"
 #include "utils/config_helper.hpp"
@@ -832,7 +833,7 @@ void VideoView::refreshToggleIcon() {
 
 void VideoView::setProgress(float value) {
     if (is_seeking) return;
-    if (isnan(value)) return;
+   if (std::isnan(value)) return;
     this->osdSlider->setProgress(value);
 }
 

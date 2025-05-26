@@ -87,6 +87,7 @@ void TsVitchClient::get_file_m3u8(const std::function<void(LiveM3u8ListResult)>&
     HTTP::__cpr_get(
         m3u8Url,
         {},
+        60000, // timeout added as an option
         [callback, error](const cpr::Response& r) {
             try {
                 nlohmann::json json_result = parse_m3u8_to_json(r.text);
