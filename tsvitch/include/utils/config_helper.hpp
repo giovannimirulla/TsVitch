@@ -61,7 +61,7 @@ enum class SettingItem {
     OPENCC_ON,
     CUSTOM_UPDATE_API,
     IMAGE_REQUEST_THREADS,
-
+    
     GAMEPAD_VIBRATION,
     KEYMAP,
     HOME_WINDOW_STATE,
@@ -73,9 +73,12 @@ enum class SettingItem {
     DLNA_PORT,
     DLNA_NAME,
 
-    M3U8_URL,
+    M3U8_URL_ITEM,
+
     TLS_VERIFY,
     UP_FILTER,
+
+    GROUP_SELECTED_INDEX,
 };
 
 class APPVersion : public brls::Singleton<APPVersion> {
@@ -118,16 +121,6 @@ inline void from_json(const nlohmann::json& nlohmann_json_j, CustomTheme& nlohma
         nlohmann_json_j.at("author").get_to(nlohmann_json_t.author);
 }
 
-class SeasonCustomItem {
-public:
-    std::string player_aspect;
-    bool custom_clip{};
-    int clip_start{};
-    int clip_end{};
-};
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SeasonCustomItem, player_aspect, custom_clip, clip_start, clip_end);
-
-typedef std::unordered_map<std::string, SeasonCustomItem> SeasonCustomSetting;
 
 typedef struct ProgramOption {
     std::string key;
@@ -146,9 +139,10 @@ public:
     void setProgramConfig(const ProgramConfig& conf);
 
     std::string getClientID();
-    std::string getUserID();
 
     std::string getDeviceID();
+
+    void setDeviceID(const std::string& deviceId);
 
     void loadHomeWindowState();
     void saveHomeWindowState();

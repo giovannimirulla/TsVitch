@@ -3,6 +3,7 @@
 #pragma once
 
 #include "view/recycling_grid.hpp"
+#include "api/tsvitch/result/home_live_result.h" 
 
 class SVGImage;
 class TextBox;
@@ -23,16 +24,21 @@ public:
 
     ~RecyclingGridItemLiveVideoCard() override;
 
-    void setCard(std::string logo, std::string title, std::string groupTitle, std::string chno);
+    void setChannel(tsvitch::LiveM3u8 liveData);
+
+   tsvitch::LiveM3u8 getChannel();
+
+                                             void setFavoriteIcon(bool isFavorite);
 
     static RecyclingGridItemLiveVideoCard* create();
 
 private:
+tsvitch::LiveM3u8 liveData;
     BRLS_BIND(TextBox, labelTitle, "video/card/label/title");
-    BRLS_BIND(brls::Label, labelUsername, "video/card/label/username");
-    BRLS_BIND(brls::Label, labelCount, "video/card/label/count");
-    BRLS_BIND(brls::Label, labelDuration, "video/card/label/duration");
+    BRLS_BIND(brls::Label, labelGroup, "video/card/label/group");
+    BRLS_BIND(brls::Label, labelChno, "video/card/label/chno");
     BRLS_BIND(brls::Box, boxPic, "video/card/pic_box");
     BRLS_BIND(brls::Box, boxHint, "video/card/hint");
     BRLS_BIND(SVGImage, svgUp, "video/svg/up");
+    BRLS_BIND(SVGImage, svgFavoriteIcon, "video/card/ico/favorite");
 };

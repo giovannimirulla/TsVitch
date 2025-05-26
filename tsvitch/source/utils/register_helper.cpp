@@ -1,6 +1,8 @@
 
 
 #include "fragment/home_live.hpp"
+#include "fragment/home_history.hpp"
+#include "fragment/home_favorites.hpp"
 
 #include "utils/config_helper.hpp"
 
@@ -36,15 +38,18 @@ void Register::initCustomView() {
     brls::Application::registerXMLView("VideoProgressSlider", VideoProgressSlider::create);
     brls::Application::registerXMLView("GalleryView", GalleryView::create);
     brls::Application::registerXMLView("CustomButton", CustomButton::create);
+    brls::Application::registerXMLView("HintLabel", HintLabel::create);
 
     brls::Application::registerXMLView("UserInfoView", UserInfoView::create);
 
     brls::Application::registerXMLView("ButtonClose", ButtonClose::create);
     brls::Application::registerXMLView("CheckBox", BiliCheckBox::create);
-    brls::Application::registerXMLView("SelectorCell", BiliSelectorCell::create);
+    brls::Application::registerXMLView("SelectorCell", TsVitchSelectorCell::create);
     brls::Application::registerXMLView("AnimationImage", AnimationImage::create);
 
     brls::Application::registerXMLView("HomeLive", HomeLive::create);
+    brls::Application::registerXMLView("HomeHistory", HomeHistory::create);
+    brls::Application::registerXMLView("HomeFavorites", HomeFavorites::create);
 }
 
 void Register::initCustomTheme() {
@@ -57,8 +62,8 @@ void Register::initCustomTheme() {
     brls::Theme::getLightTheme().addColor("color/grey_3", nvgRGBA(200, 200, 200, 16));
     brls::Theme::getDarkTheme().addColor("color/grey_3", nvgRGBA(160, 160, 160, 160));
 
-    brls::Theme::getLightTheme().addColor("color/grey_4", nvgRGBA(48, 48, 48, 160));
-    brls::Theme::getDarkTheme().addColor("color/grey_4", nvgRGBA(48, 48, 48, 160));
+    brls::Theme::getLightTheme().addColor("color/grey_4", nvgRGBA(48, 48, 48, 10));
+    brls::Theme::getDarkTheme().addColor("color/grey_4", nvgRGBA(48, 48, 48, 10));
 
     brls::Theme::getLightTheme().addColor("font/grey", nvgRGB(148, 153, 160));
     brls::Theme::getDarkTheme().addColor("font/grey", nvgRGB(148, 153, 160));
@@ -69,8 +74,8 @@ void Register::initCustomTheme() {
     brls::Theme::getLightTheme().addColor("font/yellow_1", nvgRGB(217, 118, 7));
     brls::Theme::getDarkTheme().addColor("font/yellow_1", nvgRGB(217, 118, 7));
 
-    brls::Theme::getLightTheme().addColor("color/tsvitch", nvgRGB(252, 236, 212));
-    brls::Theme::getDarkTheme().addColor("color/tsvitch", nvgRGB(252, 236, 212));
+    brls::Theme::getLightTheme().addColor("color/tsvitch", nvgRGB(255, 145, 0));
+    brls::Theme::getDarkTheme().addColor("color/tsvitch", nvgRGB(255, 145, 0));
 
     brls::Theme::getLightTheme().addColor("color/link", nvgRGB(102, 147, 182));
     brls::Theme::getDarkTheme().addColor("color/link", nvgRGB(102, 147, 182));

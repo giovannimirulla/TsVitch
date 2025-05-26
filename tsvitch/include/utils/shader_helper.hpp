@@ -1,3 +1,7 @@
+//
+// Created by fang on 2023/3/3.
+//
+
 #pragma once
 
 #include <string>
@@ -33,7 +37,7 @@ inline void from_json(const nlohmann::json& nlohmann_json_j, ShaderProfile& nloh
         if (settings.is_array()) settings.get_to(nlohmann_json_t.settings);
         for (auto& setting : nlohmann_json_t.settings) {
             if (setting.empty()) continue;
-            
+            // 检查是否包含操作指令
             const std::vector<std::string> mainOptions = {"set", "run", "change-list"};
             bool hasMainOption                         = false;
             for (auto& option : mainOptions) {
@@ -42,7 +46,7 @@ inline void from_json(const nlohmann::json& nlohmann_json_j, ShaderProfile& nloh
                     break;
                 }
             }
-            
+            // 如果没有指明操作方式，则默认为 set
             if (!hasMainOption) setting.insert(setting.begin(), "set");
         }
     }
@@ -105,43 +109,81 @@ public:
 
     ShaderPack getShaderPack();
 
-    
-    
-    
-    
+    /// 下面部分涉及到剧集ID的函数并没有实际使用到，相关函数的用意是：
+    /// 在某个番剧打开shader时，会记录下番剧和shader的信息，下次再打开同一个番剧就不需要重新开启。
+    /// 准备先使用简单模式：即重启软件需要重新开启shader，打开 shader 后对全体视频生效（直播无效）
+    /// 看后续反馈再做决定
 
     void setShader(size_t index, bool showHint = true);
 
     void clearShader(bool showHint = true);
 
-
+    /**
+     * 设置番剧配置
+     * @param sid
+     * @param profileIndex
+     */
     void setProfile(size_t sid, size_t profileIndex);
 
-  
+    /**
+     * 清空番剧的配置
+     * @param sid
+     */
     void clearProfile(size_t sid);
 
- 
+    /**
+     * 通过剧集 id 获取 profile 字符串
+     * @param sid anime season id
+     * @return
+     */
     std::string getProfileBySeason(size_t sid);
 
-
+    /**
+     * 通过配置名称获取 profile 字符串
+     * @param name
+     * @return
+     */
     std::string getProfileByName(const std::string& name);
 
-
+    /**
+     * 通过配置索引获取配置名称
+     * @param index
+     * @return
+     */
     std::string getProfileNameByIndex(size_t index);
 
-
+    /**
+     * 通过配置索引获取 profile shader
+     * @param index
+     * @return
+     */
     std::string getProfileShaderByIndex(size_t index);
 
-
+    /**
+     * 通过配置索引获取 profile settings
+     * @param index
+     * @return
+     */
     std::vector<std::vector<std::string>> getByProfileSettingByIndex(size_t index);
 
-
+    /**
+     * 通过剧集 id 获取配置索引
+     * @param sid
+     * @return
+     */
     size_t getProfileIndexBySeason(size_t sid);
 
-
+    /**
+     * 通过配置名称获取配置索引
+     * @param name
+     * @return
+     */
     size_t getProfileIndexByName(const std::string& name);
 
-
+    /**
+     * 获取配置列表
+     * @return
+     */
     std::vector<std::string> getProfileList();
 
     [[nodiscard]] bool isAvailable() const;

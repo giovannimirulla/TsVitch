@@ -3,11 +3,11 @@ set -e
 
 BUILD_DIR=cmake-build-switch
 
-# cd to tsvitch
+# cd to TsVitch
 cd "$(dirname $0)/.."
 git config --global --add safe.directory `pwd`
 
-BASE_URL="https://github.com/giovannimirulla/TsVitch/releases/download/v0.1.0/"
+BASE_URL="https://github.com/xfangfang/wiliwili/releases/download/v0.1.0/"
 
 PKGS=(
       "deko3d-8939ff80f94d061dbc7d107e08b8e3be53e2938b-1-any.pkg.tar.zst"
@@ -24,4 +24,4 @@ for PKG in "${PKGS[@]}"; do
 done
 
 cmake -B ${BUILD_DIR} -DCMAKE_BUILD_TYPE=Release -DBUILTIN_NSP=ON -DPLATFORM_SWITCH=ON -DUSE_DEKO3D=ON -DBRLS_UNITY_BUILD=ON -DCMAKE_UNITY_BUILD_BATCH_SIZE=16
-make -C ${BUILD_DIR} tsvitch.nro -j$(nproc)
+make -C ${BUILD_DIR} TsVitch.nro -j$(nproc)

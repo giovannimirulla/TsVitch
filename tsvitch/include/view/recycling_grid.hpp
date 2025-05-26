@@ -1,5 +1,3 @@
-
-
 #pragma once
 
 #include <map>
@@ -128,6 +126,8 @@ public:
     int preFetchLine = 1;
 
     bool isFlowMode = false;
+
+    RecyclingGridItem* getFocusedItem();
 
 private:
     RecyclingGridDataSource* dataSource = nullptr;

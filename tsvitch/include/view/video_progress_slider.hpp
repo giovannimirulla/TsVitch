@@ -1,5 +1,3 @@
-
-
 #pragma once
 
 #include <vector>
@@ -10,7 +8,8 @@ class Rectangle;
 }
 class SVGImage;
 
-class VideoProgressSlider : public brls::Box {
+class VideoProgressSlider : public brls::Box
+{
 public:
     VideoProgressSlider();
 
@@ -41,7 +40,13 @@ public:
 
     void setClipPoint(const std::vector<float>& data);
 
+    void setDisabledPointerGesture(bool disabled);
+
+
     const std::vector<float>& getClipPoint();
+
+protected:
+    bool disabledPointerGesture = false;
 
 private:
     brls::InputManager* input;
@@ -65,4 +70,6 @@ private:
     void buttonsProcessing();
     void updateUI();
     bool cancelPointerChange();
+    void updateGestures();
+    void clearGestureRecognizers();
 };

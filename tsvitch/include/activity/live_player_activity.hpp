@@ -1,6 +1,6 @@
-
-
 #pragma once
+
+#include <functional>
 
 #include <borealis/core/activity.hpp>
 #include <borealis/core/bind.hpp>
@@ -14,7 +14,8 @@ class LiveActivity : public brls::Activity, public LiveDataRequest {
 public:
     CONTENT_FROM_XML_RES("activity/video_activity.xml");
 
-    explicit LiveActivity(const std::string& url = "", const std::string& name = "", const std::string& views = "");
+    explicit LiveActivity(const std::vector<tsvitch::LiveM3u8>& channels, size_t startIndex,
+                          std::function<void()> onClose = nullptr);
 
     void setCommonData();
 
@@ -29,18 +30,32 @@ public:
 
     void retryRequestData();
 
+    void startLive();
+
+    void startAd(std::string adUrl);
+
     ~LiveActivity() override;
 
 protected:
     BRLS_BIND(VideoView, video, "video");
 
+    std::function<void()> onCloseCallback;
+
+    std::vector<tsvitch::LiveM3u8> channelList;
+    size_t currentChannelIndex = 0;
+
     size_t toggleDelayIter = 0;
 
     size_t errorDelayIter = 0;
+
+    bool isAd = false;
 
     tsvitch::LiveM3u8 liveData;
 
     MPVEvent::Subscription tl_event_id;
 
     CustomEvent::Subscription event_id;
+
+private:
+   void getAdUrlFromServer(std::function<void(const std::string&)> callback = nullptr);
 };

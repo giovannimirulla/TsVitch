@@ -6,7 +6,7 @@
 #include <borealis/core/bind.hpp>
 
 class ButtonClose;
-class BiliSelectorCell;
+class TsVitchSelectorCell;
 enum class SettingItem;
 namespace brls {
 class ScrollingFrame;
@@ -41,7 +41,7 @@ private:
     BRLS_BIND(brls::Box, cancel, "player/cancel");
 
     BRLS_BIND(brls::BooleanCell, btnFullscreen, "setting/fullscreen");
-    BRLS_BIND(BiliSelectorCell, btnOnTopMode, "setting/onTopMode");
+    BRLS_BIND(TsVitchSelectorCell, btnOnTopMode, "setting/onTopMode");
 
     BRLS_BIND(brls::BooleanCell, btnMirror, "setting/video/mirror");
 
@@ -56,7 +56,7 @@ private:
 
     BRLS_BIND(brls::Header, bangumiHeader, "setting/video/custom/header");
     BRLS_BIND(brls::Box, bangumiBox, "setting/video/custom/box");
-    BRLS_BIND(BiliSelectorCell, btnCustomAspect, "setting/video/custom/aspect");
+    BRLS_BIND(TsVitchSelectorCell, btnCustomAspect, "setting/video/custom/aspect");
     BRLS_BIND(brls::BooleanCell, btnClip, "setting/video/custom/clip");
     BRLS_BIND(brls::InputNumericCell, btnClipStart, "setting/video/custom/clip/start");
     BRLS_BIND(brls::InputNumericCell, btnClipEnd, "setting/video/custom/clip/end");

@@ -1,4 +1,4 @@
-local outPath = "build/tsvitch.msix"
+local outPath = "build/TsVitch.msix"
 local keyPath = "winrt/key.pfx"
 local priconfigPath = "build/priconfig.xml"
 local fileMapPath = "build/main.map.txt"
@@ -16,12 +16,12 @@ end
 function main(target)
     local files = {
         {priPath, "resources.pri"},
-        {target:targetfile(), "tsvitch.exe"},
+        {target:targetfile(), "TsVitch.exe"},
     }
     local d = {}
     local debugs = {
-        path.join(target:targetdir(), "tsvitch.pdb"),
-        path.join(target:targetdir(), "tsvitch.ilk"),
+        path.join(target:targetdir(), "TsVitch.pdb"),
+        path.join(target:targetdir(), "TsVitch.ilk"),
     }
     for _, f in ipairs(debugs) do
         if os.exists(f) then

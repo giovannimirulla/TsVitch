@@ -114,6 +114,7 @@ public:
     std::string groupTitle;
     std::string url;
 };
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LiveM3u8, id, chno, title, logo, groupTitle, url)
 
 typedef std::vector<LiveM3u8> LiveM3u8ListResult;
 

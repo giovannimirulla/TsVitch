@@ -29,9 +29,6 @@ public:
     static void clear(brls::Image* view);
 
     static void setRequestThreads(size_t num);
-
-    static unsigned char* createBackground(unsigned char* imageData, int sourceW, int sourceH, int imageW, int imageH);
-
 #ifdef USE_WEBP
 #ifdef __PSV__
     inline static std::string h_ext           = "@224w_126h_1c.webp";
@@ -82,7 +79,6 @@ public:
 
 protected:
     virtual void requestImage();
-
 
     void clean();
 

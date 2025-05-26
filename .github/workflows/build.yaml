@@ -1,32 +1,43 @@
-name: Build tsvitch
+name: Build TsVitch
 
 on:
   push:
-  pull_request:
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       universal_macos:
-        description: 'build macos (universal)'
+        description: "build macos (universal)"
         required: false
-        default: 'false'
+        default: "false"
       release:
-        description: 'Push a new release'
+        description: "Push a new release"
         required: false
-        default: 'false'
+        default: "false"
       version:
-        description: 'Version'
+        description: "Version"
         required: false
-        default: '0.0.0'
+        default: "0.0.0"
       disable_unity_build:
-        description: 'Disable unity build'
+        description: "Disable unity build"
         required: false
-        default: 'false'
+        default: "false"
+
+env:
+  GA_ID: ${{ secrets.GA_ID }}
+  GA_KEY: ${{ secrets.GA_KEY }}
+  SERVER_URL: ${{ secrets.SERVER_URL }}
+  SERVER_TOKEN: ${{ secrets.SERVER_TOKEN }}
+  M3U8_URL: ${{ secrets.M3U8_URL }}
+
 jobs:
   version:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.info.outputs.version }}
       standard_version: ${{ steps.info.outputs.standard_version }}
+      DIST_EXE: ${{ steps.info.outputs.DIST_EXE }}
+      DIST_UWP: ${{ steps.info.outputs.DIST_UWP }}
       DIST_NRO: ${{ steps.info.outputs.DIST_NRO }}
       DIST_DMG_PREFIX: ${{ steps.info.outputs.DIST_DMG_PREFIX }}
       DIST_INTEL_DMG: ${{ steps.info.outputs.DIST_INTEL_DMG }}
@@ -54,20 +65,21 @@ jobs:
           VERSION: ${{ env.VERSION }}
         run: |
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "DIST_NRO=tsvitch-NintendoSwitch-${VERSION}" >> $GITHUB_OUTPUT
-          echo "DIST_DMG_PREFIX=tsvitch-macOS" >> $GITHUB_OUTPUT
-          echo "DIST_INTEL_DMG=tsvitch-macOS-IntelChip-${VERSION}" >> $GITHUB_OUTPUT
-          echo "DIST_INTEL_OLD_DMG=tsvitch-macOS-IntelChip_10.11-${VERSION}" >> $GITHUB_OUTPUT
-          echo "DIST_ARM_DMG=tsvitch-macOS-AppleSilicon-${VERSION}" >> $GITHUB_OUTPUT
-          echo "DIST_UNIVERSAL_DMG=tsvitch-macOS-Universal-${VERSION}" >> $GITHUB_OUTPUT
+          echo "DIST_EXE=wiliwili-Windows-${VERSION}" >> $GITHUB_OUTPUT
+          echo "DIST_UWP=wiliwili-windows-x64-uwp-${VERSION}" >> $GITHUB_OUTPUT
+          echo "DIST_NRO=TsVitch-NintendoSwitch-${VERSION}" >> $GITHUB_OUTPUT
+          echo "DIST_DMG_PREFIX=TsVitch-macOS" >> $GITHUB_OUTPUT
+          echo "DIST_INTEL_DMG=TsVitch-macOS-IntelChip-${VERSION}" >> $GITHUB_OUTPUT
+          echo "DIST_INTEL_OLD_DMG=TsVitch-macOS-IntelChip_10.11-${VERSION}" >> $GITHUB_OUTPUT
+          echo "DIST_ARM_DMG=TsVitch-macOS-AppleSilicon-${VERSION}" >> $GITHUB_OUTPUT
+          echo "DIST_UNIVERSAL_DMG=TsVitch-macOS-Universal-${VERSION}" >> $GITHUB_OUTPUT
           echo $VERSION
           echo "${{  github.event.inputs.version }}"
 
-
   release:
-    needs: [  build-switch, build-macos, version ]
+    needs: [build-win, build-switch, build-macos, version]
     permissions:
-        contents: write
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -79,7 +91,14 @@ jobs:
       - name: Download Artifact
         if: github.event.inputs.release == 'true' && !cancelled()
         uses: actions/download-artifact@v4
-        
+
+      - name: Package exe
+        if: github.event.inputs.release == 'true' && !cancelled()
+        run: |
+          tree
+          zip -r -9 ${{ needs.version.outputs.DIST_EXE }}-x86_64.zip ${{ needs.version.outputs.DIST_EXE }}-d3d-x86_64
+          zip -r -9 ${{ needs.version.outputs.DIST_EXE }}-x86.zip ${{ needs.version.outputs.DIST_EXE }}-d3d-x86
+
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v2
@@ -89,16 +108,140 @@ jobs:
           make_latest: true
           tag_name: ${{  github.event.inputs.version }}
           files: |
-              ${{ needs.version.outputs.DIST_NRO }}/tsvitch.nro
-              ${{ needs.version.outputs.DIST_INTEL_DMG }}/${{ needs.version.outputs.DIST_INTEL_DMG }}.dmg
-              ${{ needs.version.outputs.DIST_ARM_DMG }}/${{ needs.version.outputs.DIST_ARM_DMG }}.dmg
-              ${{ needs.version.outputs.DIST_UNIVERSAL_DMG }}/${{ needs.version.outputs.DIST_UNIVERSAL_DMG }}.dmg
+            ${{ needs.version.outputs.DIST_EXE }}-x86_64.zip
+            ${{ needs.version.outputs.DIST_EXE }}-x86.zip
+            ${{ needs.version.outputs.DIST_NRO }}/TsVitch.nro
+            ${{ needs.version.outputs.DIST_INTEL_DMG }}/${{ needs.version.outputs.DIST_INTEL_DMG }}.dmg
+            ${{ needs.version.outputs.DIST_ARM_DMG }}/${{ needs.version.outputs.DIST_ARM_DMG }}.dmg
+            ${{ needs.version.outputs.DIST_UNIVERSAL_DMG }}/${{ needs.version.outputs.DIST_UNIVERSAL_DMG }}.dmg
           draft: false
           prerelease: false
           body_path: "CHANGELOG.md"
 
+  build-win:
+    needs: [version]
+    runs-on: windows-2019
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x86_64, msystem: MINGW64, driver: gl }
+          - {
+              arch: x86_64,
+              msystem: MINGW64,
+              driver: d3d,
+              cmake: "-DUSE_D3D11=ON",
+            }
+          - { arch: x86, msystem: MINGW32, driver: gl, cmake: "-DUSE_GL2=ON" }
+          - {
+              arch: x86,
+              msystem: MINGW32,
+              driver: d3d,
+              cmake: "-DUSE_D3D11=ON",
+            }
+        arch: [x86_64, x86]
+        driver: [gl, d3d]
+    env:
+      MSYSTEM: ${{ matrix.msystem }}
+      MSYS2_PATH_TYPE: inherit
+    defaults:
+      run:
+        shell: C:\shells\msys2bash.cmd {0}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Install dependency
+        run: |
+          pacman -S --needed --noconfirm --noprogressbar \
+            ${MINGW_PACKAGE_PREFIX}-gcc \
+            ${MINGW_PACKAGE_PREFIX}-ninja unzip
+
+          curl -LO https://github.com/xfangfang/wiliwili/releases/download/v0.1.0/${MINGW_PACKAGE_PREFIX}-mpv-0.39.0-4-any.pkg.tar.zst
+          pacman -U --noconfirm *.pkg.tar.zst
+
+          curl -LO https://github.com/rainers/cv2pdb/releases/download/v0.52/cv2pdb-0.52.zip
+          unzip cv2pdb-0.52.zip cv2pdb64.exe -d /usr/bin
+      - if: matrix.arch == 'x86'
+        name: Config Editbin
+        shell: powershell
+        run: |
+          $vcvarsall_path = vswhere.exe -latest -products * -find "VC\Auxiliary\Build\vcvarsall.bat"
+          $cc1_path = Get-ChildItem -Path "C:\msys64\mingw32\lib\gcc" -Filter cc1plus.exe -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+          cmd.exe /c "call ""$vcvarsall_path"" x86_amd64 && editbin /LARGEADDRESSAWARE $cc1_path"
+      - name: Update gamepad db
+        run: |
+          BRLS_GLFW=library/borealis/library/lib/extern/glfw
+          cmake -P ${BRLS_GLFW}/CMake/GenerateMappings.cmake ${BRLS_GLFW}/src/mappings.h.in ${BRLS_GLFW}/src/mappings.h
+      - name: Build dependency
+        run: |
+          curl -sL https://github.com/webmproject/libwebp/archive/v1.4.0.tar.gz | tar zxf - -C /tmp
+          cd /tmp/libwebp-1.4.0
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=${MINGW_PREFIX} \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DWEBP_BUILD_ANIM_UTILS=OFF \
+            -DWEBP_BUILD_CWEBP=OFF \
+            -DWEBP_BUILD_DWEBP=OFF \
+            -DWEBP_BUILD_GIF2WEBP=OFF \
+            -DWEBP_BUILD_IMG2WEBP=OFF \
+            -DWEBP_BUILD_VWEBP=OFF \
+            -DWEBP_BUILD_WEBPINFO=OFF \
+            -DWEBP_BUILD_WEBPMUX=OFF \
+            -DWEBP_BUILD_LIBWEBPMUX=OFF \
+            -DWEBP_BUILD_EXTRAS=OFF
+          cmake --build build
+          cmake --install build
+
+          curl -sL https://curl.se/download/curl-8.7.1.tar.xz | tar Jxf - -C /tmp
+          cd /tmp/curl-8.7.1
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=${MINGW_PREFIX} \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DHTTP_ONLY=ON \
+            -DCURL_USE_SCHANNEL=ON \
+            -DCURL_DISABLE_PROGRESS_METER=ON \
+            -DBUILD_CURL_EXE=OFF \
+            -DBUILD_TESTING=OFF \
+            -DBUILD_LIBCURL_DOCS=OFF \
+            -DUSE_LIBIDN2=OFF \
+            -DUSE_WIN32_IDN=ON \
+            -DCURL_USE_LIBSSH2=OFF \
+            -DCURL_USE_LIBPSL=OFF \
+            -DZLIB_USE_STATIC_LIBS=ON
+          cmake --build build
+          cmake --install build
+      - name: Build
+        run: |
+          cmake -B build -G Ninja ${{ matrix.cmake }} \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DPLATFORM_DESKTOP=ON \
+            -DWIN32_TERMINAL=OFF \
+            -DUSE_SYSTEM_CURL=ON \
+            -DUSE_LIBROMFS=ON \
+            -DBRLS_UNITY_BUILD=${{ github.event.inputs.disable_unity_build == 'true' && 'OFF' || 'ON' }} \
+            -DCMAKE_UNITY_BUILD_BATCH_SIZE=20 \
+            -DZLIB_USE_STATIC_LIBS=ON \
+            -DMPV_BUNDLE_DLL=${MINGW_PREFIX}/bin/libmpv-2.dll \
+            -DVERSION_BUILD=${{ github.run_number }}
+          cmake --build build
+          cv2pdb64 build/wiliwili.exe
+          cp -a README.md build
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ needs.version.outputs.DIST_EXE }}-${{ matrix.driver }}-${{ matrix.arch }}
+          path: |
+            build/wiliwili.exe
+            build/wiliwili.pdb
+            build/README.md
+
   build-switch:
-    needs: [ version ]
+    needs: [version]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -120,16 +263,23 @@ jobs:
 
       - name: Build Nro
         run: |
-          docker run --platform linux/amd64 --rm -v $(pwd):/data devkitpro/devkita64:20240324 bash -c "/data/scripts/build_switch${{ matrix.shuffix }}.sh"
-    
+          docker run --platform linux/amd64 --rm \
+            -e GA_ID="${GA_ID}" \
+            -e GA_KEY="${GA_KEY}" \
+            -e SERVER_URL="${SERVER_URL}" \
+            -e SERVER_TOKEN="${SERVER_TOKEN}" \
+            -e M3U8_URL="${M3U8_URL}" \
+            -v $(pwd):/data devkitpro/devkita64:20240324 \
+            bash -c "/data/scripts/build_switch${{ matrix.shuffix }}.sh"
+
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
           name: ${{ needs.version.outputs.DIST_NRO }}${{ matrix.shuffix }}
-          path: "cmake-build-switch/tsvitch.nro"
+          path: "cmake-build-switch/TsVitch.nro"
 
   build-macos:
-    needs: [ version ]
+    needs: [version]
     runs-on: macos-14
     strategy:
       matrix:
@@ -171,8 +321,11 @@ jobs:
             -DMAC_${{ matrix.arch }}=ON \
             -DMAC_DOWNLOAD_DYLIB=ON \
             -DBRLS_UNITY_BUILD=${{ github.event.inputs.disable_unity_build == 'true' && 'OFF' || 'ON' }} \
-            -DCMAKE_UNITY_BUILD_BATCH_SIZE=16
-          make -C build tsvitch.app -j$(sysctl -n hw.ncpu)
+            -DCMAKE_UNITY_BUILD_BATCH_SIZE=16 \
+            -DANALYTICS=ON \
+            -DANALYTICS_ID="${GA_ID}" \
+            -DANALYTICS_KEY="${GA_KEY}"
+          make -C build TsVitch.app -j$(sysctl -n hw.ncpu)
 
       - name: Name
         if: matrix.arch != 'Universal' || ( matrix.arch == 'Universal' && github.event.inputs.universal_macos == 'true')
@@ -185,13 +338,13 @@ jobs:
         id: bundle
         run: |
           mkdir -p dist
-          mv build/tsvitch.app dist/
+          mv build/TsVitch.app dist/
           cp ./scripts/mac/readme.txt dist/readme.txt
           create-dmg --window-pos 200 120 --window-size 800 400 \
-            --icon-size 100 --icon "tsvitch.app" 200 190 \
-            --icon "readme.txt" 400 100 --hide-extension "tsvitch.app" \
+            --icon-size 100 --icon "TsVitch.app" 200 190 \
+            --icon "readme.txt" 400 100 --hide-extension "TsVitch.app" \
             --app-drop-link 600 185  --volicon ./scripts/mac/dmg.icns \
-            --volname "tsvitch (${{ needs.version.outputs.version }})" ${{ steps.name.outputs.DMG }}.dmg "dist/"
+            --volname "TsVitch (${{ needs.version.outputs.version }})" ${{ steps.name.outputs.DMG }}.dmg "dist/"
 
       - name: Upload dist
         if: matrix.arch != 'Universal' || ( matrix.arch == 'Universal' && github.event.inputs.universal_macos == 'true')

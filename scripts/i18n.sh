@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# cd to tsvitch/resources/i18n
+# cd to TsVitch/resources/i18n
 cd "$(dirname "$0")/../resources/i18n" || exit
 
-LANG_PATH="$HOME/Downloads/tsvitch (translations)"
+LANG_PATH="$HOME/Downloads/TsVitch (translations)"
 
 if [ -n "$1" ] ;then
   LANG_PATH=$1

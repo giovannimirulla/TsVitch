@@ -25,3 +25,5 @@ android-project
 *.deb
 *.dmp
 *.log
+/supabase
+.env

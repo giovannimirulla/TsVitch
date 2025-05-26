@@ -8,12 +8,16 @@
   "delete": "Elimina",
   "save": "Salva",
   "submit": "Invia",
-  "input": "Please input...",
-  "preset": "Preset",
+  "search": "Cerca",
+  "toggle_favorite": "Aggiungi/Rimuovi ai preferiti",
+  "input": "Inserisci...",
+  "preset": "Preimpostazione",
   "default": "Predefinito",
   "current": "Attuale",
   "success": "Riuscito",
   "failed": "Fallito",
   "exit_hint": "Vuoi uscire dall'applicazione?",
-  "loading": "Caricamento"
+  "live_error": "Errore: la live non è disponibile",
+  "loading": "Caricamento",
+  "network_error": "Errore di rete"
 }

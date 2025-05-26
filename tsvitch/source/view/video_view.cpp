@@ -1,5 +1,3 @@
-
-
 #include <limits>
 
 #include <borealis/views/label.hpp>
@@ -8,6 +6,7 @@
 #include <borealis/core/thread.hpp>
 #include <borealis/views/slider.hpp>
 #include <borealis/views/applet_frame.hpp>
+#include <borealis/views/dialog.hpp>
 #include <pystring.h>
 
 #include "utils/number_helper.hpp"
@@ -30,6 +29,8 @@
 #ifdef __SWITCH__
 #include <switch.h>
 #endif
+using namespace brls::literals;
+
 enum ClickState { IDLE = 0, PRESS = 1, FAST_RELEASE = 3, FAST_PRESS = 4, CLICK_DOUBLE = 5 };
 
 #define CHECK_OSD(shake)                                                              \
@@ -64,6 +65,26 @@ VideoView::VideoView() {
                     return true;
                 },
                 true);
+        }
+    });
+
+    this->registerBoolXMLAttribute("disabledSliderGesture", [this](bool value) {
+        this->disabledSliderGesture = value;
+        if (!this->disabledSliderGesture) {
+            osdSlider->getProgressSetEvent()->subscribe([this](float progress) {
+                brls::Logger::verbose("Set progress: {}", progress);
+                this->showOSD(true);
+                if (real_duration > 0) {
+                    mpvCore->seek((float)real_duration * progress);
+                } else {
+                    mpvCore->seekPercent(progress);
+                }
+            });
+
+            osdSlider->getProgressEvent()->subscribe([this](float progress) {
+                this->showOSD(false);
+                leftStatusLabel->setText(tsvitch::sec2Time(getRealDuration() * progress));
+            });
         }
     });
 
@@ -106,21 +127,6 @@ VideoView::VideoView() {
 
     this->registerMpvEvent();
 
-    osdSlider->getProgressSetEvent()->subscribe([this](float progress) {
-        brls::Logger::verbose("Set progress: {}", progress);
-        this->showOSD(true);
-        if (real_duration > 0) {
-            mpvCore->seek((float)real_duration * progress);
-        } else {
-            mpvCore->seekPercent(progress);
-        }
-    });
-
-    osdSlider->getProgressEvent()->subscribe([this](float progress) {
-        this->showOSD(false);
-        leftStatusLabel->setText(tsvitch::sec2Time(getRealDuration() * progress));
-    });
-
     this->addGestureRecognizer(new OsdGestureRecognizer([this](OsdGestureStatus status) {
         switch (status.osdGestureType) {
             case OsdGestureType::TAP:
@@ -133,34 +139,17 @@ VideoView::VideoView() {
                 }
                 this->togglePlay();
                 break;
-            case OsdGestureType::LONG_PRESS_START: {
-                if (is_osd_lock) break;
-                float SPEED = MPVCore::VIDEO_SPEED == 100 ? 2.0 : MPVCore::VIDEO_SPEED * 0.01f;
-                this->setSpeed(SPEED);
-
-                this->speedHintBox->setVisibility(brls::Visibility::VISIBLE);
-                break;
-            }
-            case OsdGestureType::LONG_PRESS_CANCEL:
-            case OsdGestureType::LONG_PRESS_END:
-                if (is_osd_lock) {
-                    this->toggleOSD();
-                    break;
-                }
-                this->setSpeed(1.0f);
-                this->speedHintBox->setVisibility(brls::Visibility::GONE);
-                break;
             case OsdGestureType::HORIZONTAL_PAN_START:
-                if (is_osd_lock) break;
+                if (is_osd_lock || this->disabledSliderGesture) break;
                 this->showCenterHint();
                 this->setCenterHintIcon("svg/arrow-left-right.svg");
                 break;
             case OsdGestureType::HORIZONTAL_PAN_UPDATE:
-                if (is_osd_lock) break;
+                if (is_osd_lock || this->disabledSliderGesture) break;
                 this->requestSeeking(fmin(120.0f, getRealDuration()) * status.deltaX);
                 break;
             case OsdGestureType::HORIZONTAL_PAN_CANCEL:
-                if (is_osd_lock) break;
+                if (is_osd_lock || this->disabledSliderGesture) break;
 
                 this->requestSeeking(VIDEO_CANCEL_SEEKING, VIDEO_SEEK_IMMEDIATELY);
                 break;
@@ -169,7 +158,7 @@ VideoView::VideoView() {
                     this->toggleOSD();
                     break;
                 }
-
+                if (this->disabledSliderGesture) break;
                 this->requestSeeking(fmin(120.0f, getRealDuration()) * status.deltaX, VIDEO_SEEK_IMMEDIATELY);
                 break;
             case OsdGestureType::LEFT_VERTICAL_PAN_START:
@@ -227,13 +216,6 @@ VideoView::VideoView() {
         return true;
     });
 
-    this->videoQuality->getParent()->registerClickAction([](...) {
-        APP_E->fire(VideoView::QUALITY_CHANGE, nullptr);
-        return true;
-    });
-    this->videoQuality->getParent()->addGestureRecognizer(
-        new brls::TapGestureRecognizer(this->videoQuality->getParent()));
-
     this->registerAction(
         "profile", brls::ControllerButton::BUTTON_BACK,
         [this](brls::View* view) -> bool {
@@ -258,6 +240,13 @@ VideoView::VideoView() {
     });
     this->btnFullscreenIcon->getParent()->addGestureRecognizer(
         new brls::TapGestureRecognizer(this->btnFullscreenIcon->getParent()));
+
+    this->btnFavoriteIcon->getParent()->registerClickAction([this](...) {
+        this->toggleFavorite();
+        return true;
+    });
+    this->btnFavoriteIcon->getParent()->addGestureRecognizer(
+        new brls::TapGestureRecognizer(this->btnFavoriteIcon->getParent()));
 
     this->btnSettingIcon->getParent()->registerClickAction([this](...) {
         auto setting = new PlayerSetting();
@@ -345,10 +334,6 @@ VideoView::VideoView() {
     customEventSubscribeID = APP_E->subscribe([this](const std::string& event, void* data) {
         if (event == VideoView::SET_TITLE) {
             this->setTitle((const char*)data);
-        } else if (event == VideoView::SET_ONLINE_NUM) {
-            this->setOnlineCount((const char*)data);
-        } else if (event == VideoView::SET_QUALITY) {
-            this->setQuality((const char*)data);
         } else if (event == VideoView::REAL_DURATION) {
             this->real_duration = *(int*)data;
             this->setDuration(tsvitch::sec2Time(real_duration));
@@ -546,7 +531,6 @@ void VideoView::drawHighlightProgress(NVGcontext* vg, float x, float y, float wi
 #else
         if (fabs(lastY - pointY) < 3) {
 #endif
-
             nvgLineTo(vg, pointX, pointY);
         } else {
             nvgBezierTo(vg, cx, lastY, cx, pointY, pointX, pointY);
@@ -597,8 +581,7 @@ void VideoView::setUrl(const std::string& url, int start, int end, const std::ve
 
 void VideoView::setUrl(const std::vector<EDLUrl>& edl_urls, int start, int end) {
     std::string url = "edl://";
-        std::vector<std::string>
-            urls;
+    std::vector<std::string> urls;
     bool delay_open = true;
     for (auto& i : edl_urls) {
         if (i.length < 0) {
@@ -725,16 +708,6 @@ void VideoView::showCenterHint() { osdCenterBox2->setVisibility(brls::Visibility
 
 void VideoView::hideCenterHint() { osdCenterBox2->setVisibility(brls::Visibility::GONE); }
 
-void VideoView::hideVideoQualityButton() {
-    videoQuality->setVisibility(brls::Visibility::GONE);
-    videoQuality->getParent()->setVisibility(brls::Visibility::GONE);
-}
-
-void VideoView::hideVideoSpeedButton() {
-    videoSpeed->setVisibility(brls::Visibility::GONE);
-    videoSpeed->getParent()->setVisibility(brls::Visibility::GONE);
-}
-
 void VideoView::hideOSDLockButton() {
     osdLockBox->setVisibility(brls::Visibility::INVISIBLE);
     hide_lock_button = true;
@@ -748,9 +721,18 @@ void VideoView::hideStatusLabel() {
 
 void VideoView::setLiveMode() {
     isLiveMode = true;
+    leftStatusLabel->setVisibility(brls::Visibility::GONE);
     centerStatusLabel->setVisibility(brls::Visibility::GONE);
     rightStatusLabel->setVisibility(brls::Visibility::GONE);
     _setTvControlMode(false);
+}
+
+void VideoView::setVideoMode() {
+    isLiveMode = false;
+    leftStatusLabel->setVisibility(brls::Visibility::VISIBLE);
+    centerStatusLabel->setVisibility(brls::Visibility::VISIBLE);
+    rightStatusLabel->setVisibility(brls::Visibility::VISIBLE);
+    _setTvControlMode(isTvControlMode && !isLiveMode);
 }
 
 void VideoView::setTvControlMode(bool state) {
@@ -765,9 +747,9 @@ void VideoView::_setTvControlMode(bool state) {
     btnToggle->setCustomNavigationRoute(brls::FocusDirection::RIGHT, state ? osdSlider : iconBox);
     btnVolumeIcon->setCustomNavigationRoute(brls::FocusDirection::UP, state ? osdSlider : osdLockBox);
 
-    videoQuality->setCustomNavigationRoute(brls::FocusDirection::UP, state ? osdSlider : osdLockBox);
-    videoSpeed->setCustomNavigationRoute(brls::FocusDirection::UP, state ? osdSlider : osdLockBox);
     btnFullscreenIcon->setCustomNavigationRoute(brls::FocusDirection::UP, state ? osdSlider : osdLockBox);
+    btnFavoriteIcon->setCustomNavigationRoute(brls::FocusDirection::UP, state ? osdSlider : osdLockBox);
+
     osdLockBox->setCustomNavigationRoute(brls::FocusDirection::DOWN, state ? osdSlider : iconBox);
     osdSlider->setFocusable(state);
 }
@@ -790,15 +772,11 @@ void VideoView::hideHighlightLineSetting() { showHighlightLineSetting = false; }
 
 void VideoView::hideVideoProgressSlider() { osdSlider->setVisibility(brls::Visibility::GONE); }
 
+void VideoView::showVideoProgressSlider() { osdSlider->setVisibility(brls::Visibility::VISIBLE); }
+
 void VideoView::setTitle(const std::string& title) { this->videoTitleLabel->setText(title); }
 
-void VideoView::setOnlineCount(const std::string& count) { this->videoOnlineCountLabel->setText(count); }
-
 std::string VideoView::getTitle() { return this->videoTitleLabel->getFullText(); }
-
-void VideoView::setQuality(const std::string& str) { this->videoQuality->setText(str); }
-
-std::string VideoView::getQuality() { return this->videoQuality->getFullText(); }
 
 void VideoView::setDuration(const std::string& value) { this->rightStatusLabel->setText(value); }
 
@@ -817,6 +795,40 @@ void VideoView::setFullscreenIcon(bool fs) {
 }
 
 brls::View* VideoView::getFullscreenIcon() { return btnFullscreenIcon; }
+
+void VideoView::setFavoriteIcon(bool fs) {
+    brls::Logger::debug("Set favorite icon: {}", fs);
+    if (fs) {
+        btnFavoriteIcon->setImageFromSVGRes("svg/ico-favorites-activate.svg");
+    } else {
+        btnFavoriteIcon->setImageFromSVGRes("svg/ico-favorites.svg");
+    }
+    isFavorite = fs;
+}
+
+void VideoView::setFavoriteCallback(std::function<void(bool)> callback) { this->favoriteCallback = callback; }
+
+void VideoView::toggleFavorite() {
+    if (favoriteCallback) {
+        favoriteCallback(!isFavorite);
+    }
+    isFavorite = !isFavorite;
+    setFavoriteIcon(isFavorite);
+}
+
+brls::View* VideoView::getFavoriteIcon() { return btnFavoriteIcon; }
+
+void VideoView::refreshToggleIcon() {
+    if (!mpvCore->isPlaying()) {
+        if (showReplay) {
+            btnToggleIcon->setImageFromSVGRes("svg/bpx-svg-sprite-re-play.svg");
+            return;
+        }
+        btnToggleIcon->setImageFromSVGRes("svg/bpx-svg-sprite-play.svg");
+    } else {
+        btnToggleIcon->setImageFromSVGRes("svg/bpx-svg-sprite-pause.svg");
+    }
+}
 
 void VideoView::setProgress(float value) {
     if (is_seeking) return;
@@ -870,8 +882,6 @@ void VideoView::setFullScreen(bool fs) {
         video->setHeightPercentage(100);
         video->setId("video");
         video->setTitle(this->getTitle());
-        video->setQuality(this->getQuality());
-        video->videoSpeed->setText(this->videoSpeed->getFullText());
         video->setDuration(this->rightStatusLabel->getFullText());
         video->setPlaybackTime(this->leftStatusLabel->getFullText());
         video->setProgress(this->getProgress());
@@ -886,32 +896,20 @@ void VideoView::setFullScreen(bool fs) {
         video->real_duration = real_duration;
         video->setLastPlayedPosition(lastPlayedPosition);
         video->osdSlider->setClipPoint(osdSlider->getClipPoint());
-
+        video->refreshToggleIcon();
         video->setHighlightProgress(highlightData);
         if (video->isLiveMode) video->setLiveMode();
         video->setCustomToggleAction(customToggleAction);
 
-        video->setOnlineCount(this->videoOnlineCountLabel->getFullText());
-        if (osdCenterBox->getVisibility() == brls::Visibility::GONE) {
-            video->hideLoading();
-        }
-        if (this->seasonAction != nullptr) {
-            brls::View* view = video->showEpisode->getParent();
-            view->registerClickAction(this->seasonAction);
-            view->addGestureRecognizer(new brls::TapGestureRecognizer(view));
-            view->setVisibility(brls::Visibility::VISIBLE);
-            video->showEpisode->setVisibility(brls::Visibility::VISIBLE);
-        }
         container->addView(video);
         auto activity = new brls::Activity(container);
         brls::Application::pushActivity(activity, brls::TransitionAnimation::NONE);
         registerFullscreen(activity);
     } else {
+        // Pop fullscreen videoView
         brls::Application::popActivity(brls::TransitionAnimation::NONE);
     }
 }
-
-void VideoView::setSeasonAction(brls::ActionListener action) { this->seasonAction = action; }
 
 brls::View* VideoView::getDefaultFocus() {
     if (isFullscreen() && isOSDShown())
@@ -934,79 +932,6 @@ void VideoView::buttonProcessing() {
         if (this->osd_state == OSDState::SHOWN) this->showOSD(true);
     }
     if (is_osd_lock) return;
-
-#ifndef __PSV__
-
-    static int click_state        = ClickState::IDLE;
-    static int64_t rsb_press_time = 0;
-    if (isLiveMode) return;
-    if (click_state == ClickState::IDLE && !state.buttons[brls::BUTTON_RSB]) return;
-
-    int CHECK_TIME = 200000;
-    float SPEED    = MPVCore::VIDEO_SPEED == 100 ? 2.0 : MPVCore::VIDEO_SPEED * 0.01f;
-
-    switch (click_state) {
-        case ClickState::IDLE:
-            if (state.buttons[brls::BUTTON_RSB]) {
-                setSpeed(SPEED);
-                rsb_press_time = brls::getCPUTimeUsec();
-                click_state    = ClickState::PRESS;
-
-                speedHintBox->setVisibility(brls::Visibility::VISIBLE);
-            }
-            break;
-        case ClickState::PRESS:
-            if (!state.buttons[brls::BUTTON_RSB]) {
-                setSpeed(1.0f);
-                int64_t current_time = brls::getCPUTimeUsec();
-                if (current_time - rsb_press_time < CHECK_TIME) {
-                    rsb_press_time = current_time;
-                    click_state    = ClickState::FAST_RELEASE;
-                } else {
-                    click_state = ClickState::IDLE;
-                }
-                speedHintBox->setVisibility(brls::Visibility::GONE);
-            }
-            break;
-        case ClickState::FAST_RELEASE:
-            if (state.buttons[brls::BUTTON_RSB]) {
-                setSpeed(SPEED);
-                int64_t current_time = brls::getCPUTimeUsec();
-                if (current_time - rsb_press_time < CHECK_TIME) {
-                    rsb_press_time = current_time;
-                    click_state    = ClickState::FAST_PRESS;
-                } else {
-                    rsb_press_time = current_time;
-                    click_state    = ClickState::PRESS;
-                }
-
-                speedHintBox->setVisibility(brls::Visibility::VISIBLE);
-            }
-            break;
-        case ClickState::FAST_PRESS:
-            if (!state.buttons[brls::BUTTON_RSB]) {
-                int64_t current_time = brls::getCPUTimeUsec();
-                if (current_time - rsb_press_time < CHECK_TIME) {
-                    rsb_press_time = current_time;
-
-                    setSpeed(SPEED);
-                    click_state = ClickState::CLICK_DOUBLE;
-                } else {
-                    setSpeed(1.0f);
-                    click_state = ClickState::IDLE;
-                }
-                speedHintBox->setVisibility(brls::Visibility::GONE);
-            }
-            break;
-        case ClickState::CLICK_DOUBLE:
-            brls::Logger::debug("speed lock: {}", SPEED);
-            click_state = ClickState::IDLE;
-            break;
-        default:
-            break;
-    }
-
-#endif
 }
 
 void VideoView::registerMpvEvent() {
@@ -1015,6 +940,9 @@ void VideoView::registerMpvEvent() {
     }
     eventSubscribeID = mpvCore->getEvent()->subscribe([this](MpvEventEnum event) {
         switch (event) {
+            case MpvEventEnum::MPV_IDLE:
+                refreshToggleIcon();
+                break;
             case MpvEventEnum::MPV_RESUME:
                 this->showReplay = false;
                 this->showOSD(true);
@@ -1036,13 +964,22 @@ void VideoView::registerMpvEvent() {
                 this->hideLoading();
                 this->showOSD(false);
                 break;
+
+            case MpvEventEnum::MPV_FILE_ERROR: {
+                this->hideLoading();
+                this->showOSD(false);
+                auto dialog = new brls::Dialog("hints/live_error"_i18n);
+                dialog->addButton("hints/back"_i18n,
+                                  []() { brls::Application::popActivity(brls::TransitionAnimation::NONE); });
+                dialog->open();
+                break;
+            }
             case MpvEventEnum::MPV_LOADED:
                 this->setPlaybackTime(tsvitch::sec2Time(this->mpvCore->video_progress));
                 if (lastPlayedPosition <= 0) break;
                 if (abs(getRealDuration() - lastPlayedPosition) <= 5) {
                     mpvCore->seek(0);
                 } else {
-                    this->showHint(fmt::format("已为您定位至: {}", tsvitch::sec2Time(lastPlayedPosition)));
                     mpvCore->seek(lastPlayedPosition);
                     brls::Logger::info("Restore video position: {}", lastPlayedPosition);
                 }
@@ -1056,17 +993,15 @@ void VideoView::registerMpvEvent() {
                 this->setPlaybackTime(tsvitch::sec2Time(this->mpvCore->video_progress));
                 this->setProgress((float)mpvCore->playback_time / getRealDuration());
                 break;
-            case MpvEventEnum::VIDEO_SPEED_CHANGE:
-                if (fabs(mpvCore->video_speed - 1) < 1e-5) {
-                } else {
-                    this->videoSpeed->setText(fmt::format("{}x", mpvCore->video_speed));
-                }
-                break;
             case MpvEventEnum::END_OF_FILE:
 
                 this->showOSD(false);
                 if (EXIT_FULLSCREEN_ON_END && closeOnEndOfFile && this->isFullscreen()) {
                     this->setFullScreen(false);
+                }
+
+                if (this->onEndCallback) {
+                    this->onEndCallback();
                 }
                 break;
             case MpvEventEnum::CACHE_SPEED_CHANGE:
@@ -1126,3 +1061,5 @@ void VideoView::onChildFocusGained(View* directChild, View* focusedView) {
 }
 
 float VideoView::getRealDuration() { return real_duration > 0 ? (float)real_duration : (float)mpvCore->duration; }
+
+void VideoView::setOnEndCallback(std::function<void()> callback) { this->onEndCallback = callback; }

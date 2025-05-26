@@ -331,17 +331,13 @@
                                                 height="auto"
                                                 axis="column"
                                                 wireframe="false"
+                                                id="setting/opensource"
                                                 paddingLeft="@style/brls/tab_frame/content_padding_sides"
                                                 paddingRight="@style/brls/tab_frame/content_padding_sides"
                                                 paddingTop="@style/brls/tab_frame/content_padding_top_bottom"
                                                 paddingBottom="@style/brls/tab_frame/content_padding_top_bottom">
 
-                                                <TextBox
-                                                        id="setting/label/opensource"
-                                                        width="auto"
-                                                        height="auto"
-                                                        lineHeight="1.2"
-                                                        marginBottom="10px" />
+                        
 
                                         </brls:Box>
 

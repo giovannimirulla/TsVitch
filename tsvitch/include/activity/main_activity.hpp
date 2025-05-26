@@ -14,7 +14,10 @@ public:
 
     void onContentAvailable() override;
 
+    void resetSettingIcon();
+
     ~MainActivity() override;
+    
 
 private:
     BRLS_BIND(CustomButton, settingBtn, "main/setting");

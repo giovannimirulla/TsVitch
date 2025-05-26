@@ -1,16 +1,20 @@
-# Changelog for TsVitch v0.1.1
+# Changelog for TsVitch v0.2.0
 
-## [0.1.1] - Portuguese and Logo fixes
+### New Features
+- **Improved image display**: Fixed how channel and interface images are shown.
+- **Enhanced navigation**: Added "Next" and "Previous" buttons for easier channel browsing.
+- **Translations**: New languages and updates to existing translations.
+- **Favorites**: You can now save your favorite channels.
+- **History**: View the history of watched channels.
+- **Search bar**: Quickly search among channels.
+- **Filters**: Channel list filtering and added country list.
 
 ### Improvements
-- **Localization Updates**:  
-  - Fixed issues in `en-US` and `it` i18n values for improved consistency and accuracy.  
-  - Added **Portuguese (Brazilian)** localization support, thanks to contributions from [@osnipezzini](https://github.com/osnipezzini).  
+- Sidebar improved with new buttons.
+- Optimized images and logo display.
 
 ### Bug Fixes
-- **Logo Display**: Resolved issues with the channel logo image:  
-  - Fixed background rendering problems.  
-  - Adjusted logo resizing to ensure proper scaling and alignment.  
+- Various fixes and stability improvements.
 
 ---
 
