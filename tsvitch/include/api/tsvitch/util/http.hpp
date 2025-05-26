@@ -70,8 +70,9 @@ public:
     }
 
     static void __cpr_get(const std::string& url, const cpr::Parameters& parameters = {},
+                          int timeout = HTTP::TIMEOUT,
                           const std::function<void(const cpr::Response&)>& callback = nullptr,
-                          const ErrorCallback& error                                = nullptr) {
+                          const ErrorCallback& error = nullptr) {
         cpr::GetCallback(
             [callback, error](const cpr::Response& r) {
                 if (r.error) {
@@ -83,7 +84,13 @@ public:
                 }
                 callback(r);
             },
-            cpr::Url{url}, parameters, CPR_HTTP_BASE);
+            cpr::Url{url}, parameters,
+            cpr::HttpVersion{cpr::HttpVersionCode::VERSION_2_0_TLS},
+            cpr::Timeout{timeout},
+            HTTP::HEADERS,
+            HTTP::COOKIES,
+            HTTP::PROXIES,
+            HTTP::VERIFY);
     }
 
     template <typename ReturnType>

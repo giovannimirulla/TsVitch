@@ -15,6 +15,7 @@
 
 #include "core/HistoryManager.hpp"
 #include "core/FavoriteManager.hpp"
+#include "core/ChannelManager.hpp"
 
 #include "utils/config_helper.hpp"
 
@@ -221,10 +222,21 @@ HomeLive::HomeLive() {
         //reset index group
         this->selectGroupIndex(0);
         brls::Logger::debug("OnM3U8UrlChanged: requestLiveList");
-
     });
 
-    this->requestLiveList();
+    // Carica i canali in background
+    brls::Threading::async([this] {
+        auto cachedChannels = ChannelManager::get()->load();
+        brls::sync([this, cachedChannels]() {
+            if (cachedChannels.empty()) {
+                brls::Logger::debug("HomeLive: No cached channels found, requesting live list.");
+                this->requestLiveList();
+            } else {
+                brls::Logger::debug("HomeLive: Found cached channels, displaying them.");
+                this->onLiveList(cachedChannels, false);
+            }
+        });
+    });
 }
 
 void HomeLive::onError(const std::string& error) {
@@ -240,7 +252,7 @@ void HomeLive::onError(const std::string& error) {
     dialog->open();
 }
 
-void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result) {
+void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstLoad) {
     brls::Logger::debug("Fragment HomeLive: onLiveList");
     if (result.empty()) {
         recyclingGrid->setEmpty();
@@ -270,6 +282,11 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result) {
         this->toggleFavorite();
         return true;
     });
+
+    if (!firstLoad) {
+        // If not the first load, we clear the previous data source
+        brls::Threading::async([result] { ChannelManager::get()->save(result); });
+    }
 
     brls::Threading::sync([this, result]() {
         this->channelsList = result;

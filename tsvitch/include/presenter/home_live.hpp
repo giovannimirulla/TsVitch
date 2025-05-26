@@ -9,7 +9,7 @@
 
 class HomeLiveRequest : public Presenter {
 public:
-    virtual void onLiveList(const tsvitch::LiveM3u8ListResult& result);
+    virtual void onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstLoad);
 
     virtual void onError(const std::string& error) = 0;
 
