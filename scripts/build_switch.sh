@@ -22,28 +22,23 @@ for PKG in "${PKGS[@]}"; do
 done
 
 
-GA_ID=$(grep -oP '(?<=GA_ID=).*' .env)
-GA_KEY=$(grep -oP '(?<=GA_KEY=).*' .env)
 if [ -z "${GA_ID}" ] || [ -z "${GA_KEY}" ]; then
-    echo "GA_ID or GA_KEY not found in .env file"
+    echo "GA_ID or GA_KEY not found in environment"
     exit 1
 fi
 
-SERVER_URL=$(grep -oP '(?<=SERVER_URL=).*' .env)
 if [ -z "${SERVER_URL}" ]; then
-    echo "SERVER_URL not found in .env file"
+    echo "SERVER_URL not found in environment"
     exit 1
 fi
 
-SERVER_TOKEN=$(grep -oP '(?<=SERVER_TOKEN=).*' .env)
 if [ -z "${SERVER_TOKEN}" ]; then
-    echo "SERVER_TOKEN not found in .env file"
+    echo "SERVER_TOKEN not found in environment"
     exit 1
 fi
 
-M3U8_URL=$(grep -oP '(?<=M3U8_URL=).*' .env)
 if [ -z "${M3U8_URL}" ]; then
-    echo "M3U8_URL not found in .env file"
+    echo "M3U8_URL not found in environment"
     exit 1
 fi
 

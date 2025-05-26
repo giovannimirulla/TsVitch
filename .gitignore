@@ -9,7 +9,6 @@ settings.json
 ffmpeg-*
 mpv-*
 *.tar.*
-config/
 .flatpak-builder/
 pack/
 repo/
@@ -27,3 +26,4 @@ android-project
 *.log
 /supabase
 .env
+/otherScripts
