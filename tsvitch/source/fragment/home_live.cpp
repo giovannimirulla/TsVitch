@@ -206,8 +206,6 @@ public:
 
 private:
     tsvitch::LiveM3u8ListResult videoList;
-    UpdateSearchEvent* updateSearchEvent = nullptr;
-    brls::Event<>* clearSearchEvent      = nullptr;
 };
 
 HomeLive::HomeLive() {
