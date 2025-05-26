@@ -1,1 +1,0 @@
-xmake lua ./scripts/generate-assets.lua
