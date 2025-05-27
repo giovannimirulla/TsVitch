@@ -218,10 +218,11 @@ HomeLive::HomeLive() {
 
     // Sottoscrivi all'evento di cambio M3U8
     OnM3U8UrlChanged.subscribe([this]() {
+        brls::Logger::debug("OnM3U8UrlChanged: requestLiveList");
+        ChannelManager::get()->remove();
         this->requestLiveList();
         //reset index group
         this->selectGroupIndex(0);
-        brls::Logger::debug("OnM3U8UrlChanged: requestLiveList");
     });
 
     // Carica i canali in background
@@ -264,7 +265,6 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstL
         if (isSearchActive) {
             this->cancelSearch();
         } else {
-            //exits the app
             auto dialog = new brls::Dialog("hints/exit_hint"_i18n);
             dialog->addButton("hints/cancel"_i18n, []() {});
             dialog->addButton("hints/ok"_i18n, []() { brls::Application::quit(); });
@@ -284,43 +284,80 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstL
     });
 
     if (!firstLoad) {
-        // If not the first load, we clear the previous data source
         brls::Threading::async([result] { ChannelManager::get()->save(result); });
     }
 
-    brls::Threading::sync([this, result]() {
-        this->channelsList = result;
-        auto* datasource   = dynamic_cast<DataSourceLiveVideoList*>(recyclingGrid->getDataSource());
-        if (datasource) {
-            if (result.empty()) return;
-            if (!result.empty()) {
-                datasource->appendData(result);
-                recyclingGrid->notifyDataChanged();
-            }
-        } else {
-            if (result.empty())
-                recyclingGrid->setEmpty();
-            else
-                recyclingGrid->setDataSource(new DataSourceLiveVideoList(result));
-        }
+    // Raggruppa i canali per groupTitle SENZA COPIARE i dati
+    std::map<std::string, std::vector<const tsvitch::LiveM3u8*>> groupMap;
+    for (const auto& item : result) {
+        groupMap[item.groupTitle].push_back(&item);
+    }
+    std::vector<std::string> groupTitles;
+    for (const auto& item : groupMap) {
+        groupTitles.push_back(item.first);
+    }
 
-        // set list inside upRecyclingGrid of unique groupTitle inside result
-        std::map<std::string, std::vector<tsvitch::LiveM3u8>> groupMap;
+    // Carica solo il gruppo selezionato in sync
+    int lastIndex = ProgramConfig::instance().getSettingItem(SettingItem::GROUP_SELECTED_INDEX, 0);
+    if (lastIndex >= groupTitles.size()) lastIndex = 0;
+    std::string selectedGroup = groupTitles.empty() ? "" : groupTitles[lastIndex];
+
+    tsvitch::LiveM3u8ListResult filtered;
+    if (!selectedGroup.empty()) {
+        for (const auto* ptr : groupMap[selectedGroup]) {
+            filtered.push_back(*ptr);
+        }
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(groupCacheMutex);
+        groupCache.clear();
+        groupCache[selectedGroup] = filtered;
+    }
+    this->channelsList = result;
+
+    // Mostra solo il gruppo selezionato
+    brls::Threading::sync([this, filtered]() {
+        if (filtered.empty())
+            recyclingGrid->setEmpty();
+        else
+            recyclingGrid->setDataSource(new DataSourceLiveVideoList(filtered));
+    });
+
+    // Precarica gli altri gruppi in background (senza bloccare la UI)
+    for (const auto& group : groupTitles) {
+        if (group == selectedGroup) continue;
+        // Copia direttamente gli oggetti, non i puntatori!
+        tsvitch::LiveM3u8ListResult filteredBg;
         for (const auto& item : result) {
-            groupMap[item.groupTitle].push_back(item);
+            if (item.groupTitle == group) filteredBg.push_back(item);
         }
-        std::vector<std::string> groupTitles;
-        for (const auto& item : groupMap) {
-            groupTitles.push_back(item.first);
-        }
+        // Sposta la copia nel thread asincrono
+        brls::Threading::async([this, group, filteredBg = std::move(filteredBg)]() mutable {
+            std::lock_guard<std::mutex> lock(groupCacheMutex);
+            groupCache[group] = std::move(filteredBg);
+        });
+    }
+
+    // UI gruppi
+    brls::Threading::sync([this, groupTitles, lastIndex]() {
         if (groupTitles.size() == 1) {
             upRecyclingGrid->setVisibility(brls::Visibility::GONE);
         } else {
+            upRecyclingGrid->setVisibility(brls::Visibility::VISIBLE);
             auto* upList = new DataSourceUpList(groupTitles, [this](const std::string& group) {
-                // Filtro la lista e aggiorno recyclingGrid
+                // Cambio gruppo: usa cache se presente, altrimenti filtra ora
                 tsvitch::LiveM3u8ListResult filtered;
-                for (const auto& item : this->channelsList) {
-                    if (item.groupTitle == group) filtered.push_back(item);
+                {
+                    std::lock_guard<std::mutex> lock(groupCacheMutex);
+                    if (groupCache.count(group)) {
+                        filtered = groupCache[group];
+                    } else {
+                        for (const auto& item : this->channelsList) {
+                            if (item.groupTitle == group) filtered.push_back(item);
+                        }
+                        groupCache[group] = filtered;
+                    }
                 }
                 if (filtered.empty())
                     recyclingGrid->setEmpty();
@@ -328,14 +365,10 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstL
                     recyclingGrid->setDataSource(new DataSourceLiveVideoList(filtered));
             });
             upRecyclingGrid->setDataSource(upList);
-
-            int lastIndex = ProgramConfig::instance().getSettingItem(SettingItem::GROUP_SELECTED_INDEX, 0);
-            brls::Logger::debug("lastIndex: {}", lastIndex);
             this->selectGroupIndex(static_cast<size_t>(lastIndex));
         }
     });
 }
-
 void HomeLive::selectGroupIndex(size_t index) {
     auto* datasource = dynamic_cast<DataSourceUpList*>(upRecyclingGrid->getDataSource());
     if (!datasource) return;
@@ -344,18 +377,23 @@ void HomeLive::selectGroupIndex(size_t index) {
     datasource->setSelectedIndex(upRecyclingGrid, index);
     upRecyclingGrid->selectRowAt(index, false);
 
-    // --- FILTRAGGIO IN BASE ALL'INDICE ---
-    // Recupera il nome del gruppo selezionato
     std::string selectedGroup = datasource->getGroupNameByIndex(index);
     tsvitch::LiveM3u8ListResult filtered;
-    for (const auto& item : this->channelsList) {
-        if (item.groupTitle == selectedGroup) filtered.push_back(item);
+    {
+        std::lock_guard<std::mutex> lock(groupCacheMutex);
+        if (groupCache.count(selectedGroup)) {
+            filtered = groupCache[selectedGroup];
+        } else {
+            for (const auto& item : this->channelsList) {
+                if (item.groupTitle == selectedGroup) filtered.push_back(item);
+            }
+            groupCache[selectedGroup] = filtered;
+        }
     }
     if (filtered.empty())
         recyclingGrid->setEmpty();
     else
         recyclingGrid->setDataSource(new DataSourceLiveVideoList(filtered));
-    // --------------------------------------
 
     brls::Logger::debug("selectGroupIndex: {}", index);
 }

@@ -39,7 +39,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 APP_TITLE := TsVitch
 APP_AUTHOR := giovannimirulla
-APP_VERSION := 0.2.0
+APP_VERSION := 0.2.1
 APP_TITLEID := 010ff000ffff0021
 
 TARGET		:=	TsVitch

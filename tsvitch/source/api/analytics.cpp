@@ -41,7 +41,7 @@ void Analytics::send() {
     if (package.events.empty()) return;
 
     package.client_id        = this->client_id;
-    package.user_id          = "0";
+    package.user_id          = ProgramConfig::instance().getDeviceID();
     package.timestamp_micros = std::to_string(tsvitch::getUnixTime()) + "000000";
     package.insertUserProperties({
         {"git", APPVersion::instance().git_tag.empty() ? "v" + app_version : APPVersion::instance().git_tag},

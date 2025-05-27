@@ -14,6 +14,8 @@ public:
 
     static ChannelManager* get();
 
+    void remove() const;
+
 private:
     std::filesystem::path file_;
 };

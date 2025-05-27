@@ -1,11 +1,12 @@
 #include "core/ChannelManager.hpp"
 #include "utils/config_helper.hpp"
 #include <fstream>
+#include <filesystem>
+#include <cstdio>
 
 using json = nlohmann::json;
 
-ChannelManager::ChannelManager(const std::filesystem::path& dataDir)
-    : file_{dataDir / "channels.json"} {}
+ChannelManager::ChannelManager(const std::filesystem::path& dataDir) : file_{dataDir / "channels.json"} {}
 
 ChannelManager* ChannelManager::get() {
     const std::string path = ProgramConfig::instance().getConfigDir();
@@ -17,6 +18,7 @@ void ChannelManager::save(const tsvitch::LiveM3u8ListResult& channels) const {
     json j = channels;
     std::ofstream(file_) << j.dump(2);
 }
+void ChannelManager::remove() const { std::remove(file_.string().c_str()); }
 
 tsvitch::LiveM3u8ListResult ChannelManager::load() const {
     tsvitch::LiveM3u8ListResult channels;
