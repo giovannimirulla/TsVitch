@@ -119,7 +119,7 @@ void TsVitchClient::check_user_id(const std::function<void(const std::string&, i
                                                                      : APPVersion::instance().git_tag;
 
     std::string m3u8_url = ProgramConfig::instance().getM3U8Url();
-    auto url             = std::string(SERVER_URL_VALUE) + "/functions/v1/get-ad";
+    auto url             = std::string(SERVER_URL_VALUE) + "/functions/v1/check-user";
 
     brls::Logger::debug("Getting ad with URL: {}", url);
 
@@ -139,6 +139,8 @@ void TsVitchClient::check_user_id(const std::function<void(const std::string&, i
         [callback, error](const cpr::Response& r) {
             try {
                 auto json_result = nlohmann::json::parse(r.text);
+
+                brls::Logger::debug("Check user ID response: {}", json_result.dump());
                 // GA call for check_user_id response
                 if (r.status_code == 200 && json_result.contains("exists")) {
                     bool exists = json_result["exists"].get<bool>();
