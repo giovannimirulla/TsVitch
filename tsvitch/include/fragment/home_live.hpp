@@ -5,6 +5,9 @@
 #include "view/auto_tab_frame.hpp"
 #include "presenter/home_live.hpp"
 
+#include <map>
+#include <mutex>
+
 typedef brls::Event<std::string> UpdateSearchEvent;
 
 namespace brls {
@@ -17,7 +20,7 @@ class HomeLive : public AttachedView, public HomeLiveRequest {
 public:
     HomeLive();
 
-    void onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstLoad) override;
+    void onLiveList(const tsvitch::LiveM3u8ListResult &result, bool firstLoad) override;
 
     ~HomeLive() override;
 
@@ -43,8 +46,10 @@ public:
 
 private:
     int selectedGroupIndex = 0;
-    bool isSearchActive = false;
+    bool isSearchActive    = false;
     tsvitch::LiveM3u8ListResult channelsList;
+    std::map<std::string, tsvitch::LiveM3u8ListResult> groupCache;
+    std::mutex groupCacheMutex;
     BRLS_BIND(RecyclingGrid, recyclingGrid, "home/live/recyclingGrid");
     BRLS_BIND(RecyclingGrid, upRecyclingGrid, "dynamic/up/recyclingGrid");
     BRLS_BIND(CustomButton, searchField, "home/search");
