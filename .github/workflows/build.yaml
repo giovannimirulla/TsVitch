@@ -1,9 +1,6 @@
 name: Build TsVitch
 
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
     inputs:
       universal_macos:
