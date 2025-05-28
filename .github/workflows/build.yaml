@@ -90,7 +90,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
         with:
           make_latest: true
-          tag_name: ${{  github.event.inputs.version }}
+          tag_name: v${{ github.event.inputs.version }}
           files: |
             ${{ needs.version.outputs.DIST_NRO }}/TsVitch.nro
             ${{ needs.version.outputs.DIST_INTEL_DMG }}/${{ needs.version.outputs.DIST_INTEL_DMG }}.dmg
