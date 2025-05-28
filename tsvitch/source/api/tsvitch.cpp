@@ -194,7 +194,7 @@ void TsVitchClient::get_ad(const std::function<void(const std::string&, int)>& c
     if (platform.empty()) {
         platform = "unknown";
     }
-    std::string app_version =  APPVersion::instance().git_tag;
+    std::string app_version = APPVersion::instance().git_tag;
 
     std::string m3u8_url = ProgramConfig::instance().getM3U8Url();
     auto url             = std::string(SERVER_URL_VALUE) + "/functions/v1/get-ad";
