@@ -72,7 +72,7 @@ void Analytics::send() {
             {"measurement_id", GA_ID},
         },
         tsvitch::HTTP::VERIFY, tsvitch::HTTP::PROXIES, cpr::Url{GA_URL},
-        cpr::Header{{"User-Agent", "tsvitch/" + app_version}, {"Content-Type", "application/json"}},
+        cpr::Header{{"User-Agent", APP_NAME "/" + app_version}, {"Content-Type", "application/json"}},
         cpr::Cookies{{"_ga", client_id}}, cpr::Body{content_str}, cpr::Timeout{4000});
 }
 

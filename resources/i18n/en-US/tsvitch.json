@@ -99,6 +99,7 @@
       "m3u8": {
         "header": "M3U8 Playlist",
         "input": "Custom playlist",
+        "timeout": "Download timeout (seconds)",
         "hint": "http://example.com/playlist.m3u8"
       },
       "proxy": {

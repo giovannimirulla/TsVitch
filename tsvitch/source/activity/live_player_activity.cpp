@@ -6,6 +6,7 @@
 
 #include <vector>
 #include <chrono>
+#include <algorithm>
 
 #include "tsvitch.h"
 
@@ -157,9 +158,7 @@ void LiveActivity::startAd(std::string adUrl) {
 
 void LiveActivity::startLive() {
     this->isAd = false;
-    this->video->setLiveMode();
-    this->video->hideVideoProgressSlider();
-
+    
     this->video->setCustomToggleAction([this]() {
         if (MPVCore::instance().isStopped()) {
             this->onLiveData(this->liveData.url);
@@ -178,7 +177,70 @@ void LiveActivity::startLive() {
             });
         }
     });
+    
     this->video->setUrl(liveData.url);
+    
+    // Registra un listener per l'evento MPV_LOADED per determinare il tipo di contenuto
+    this->tl_event_id = MPVCore::instance().getEvent()->subscribe([this](MpvEventEnum event) {
+        if (event == MPV_LOADED) {
+            this->detectContentType();
+        }
+    });
+}
+
+void LiveActivity::detectContentType() {
+    // Controlla se il contenuto ha una durata definita
+    double duration = MPVCore::instance().duration;
+    
+    brls::Logger::debug("LiveActivity: detectContentType - duration: {}", duration);
+    
+    // Determina se è un live stream o un video con durata
+    bool isLiveStream = false;
+    
+    // Criteri per identificare un live stream:
+    // 1. Durata è 0 o negativa (sconosciuta)
+    // 2. Il contenuto è in playing ma la durata è ancora 0 dopo un po' di tempo
+    if (duration <= 0) {
+        isLiveStream = true;
+    }
+    
+    // Controllo aggiuntivo basato sull'URL o sul titolo
+    std::string url = liveData.url;
+    std::string title = liveData.title;
+    
+    // Converti in lowercase per il confronto
+    std::transform(url.begin(), url.end(), url.begin(), ::tolower);
+    std::transform(title.begin(), title.end(), title.begin(), ::tolower);
+    
+    // Indicatori tipici di live stream negli URL
+    if (url.find("live") != std::string::npos || 
+        url.find("stream") != std::string::npos ||
+        url.find(".m3u8") != std::string::npos ||
+        title.find("live") != std::string::npos ||
+        title.find("diretta") != std::string::npos) {
+        isLiveStream = true;
+    }
+    
+    // Indicatori tipici di video con durata negli URL
+    if (url.find(".mp4") != std::string::npos ||
+        url.find(".mkv") != std::string::npos ||
+        url.find(".avi") != std::string::npos ||
+        url.find("video") != std::string::npos) {
+        isLiveStream = false;
+    }
+    
+    brls::Logger::debug("LiveActivity: Content detected as: {}", isLiveStream ? "LIVE STREAM" : "VIDEO WITH DURATION");
+    
+    // Configura l'interfaccia in base al tipo di contenuto
+    if (isLiveStream) {
+        this->video->setLiveMode();
+        this->video->hideVideoProgressSlider();
+        brls::Logger::debug("LiveActivity: Configured for live stream mode");
+    } else {
+        this->video->setVideoMode();
+        this->video->showVideoProgressSlider();
+        brls::Logger::debug("LiveActivity: Configured for video mode with progress bar");
+    }
 }
 
 void LiveActivity::onLiveData(std::string url) {
@@ -232,5 +294,9 @@ LiveActivity::~LiveActivity() {
     }
     brls::cancelDelay(toggleDelayIter);
     brls::cancelDelay(errorDelayIter);
+    
+    // Pulisci l'evento MPV per evitare callback dopo la distruzione
+    MPVCore::instance().getEvent()->unsubscribe(this->tl_event_id);
+    
     if (onCloseCallback) onCloseCallback();
 }

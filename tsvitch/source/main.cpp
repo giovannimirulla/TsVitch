@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
         } else if (std::strcmp(argv[i], "-t") == 0) {
             MPVCore::TERMINAL = true;
         } else if (std::strcmp(argv[i], "-o") == 0) {
-            const char* path = (i + 1 < argc) ? argv[++i] : "tsvitch.log";
+            const char* path = (i + 1 < argc) ? argv[++i] : APP_NAME ".log";
             brls::Logger::setLogOutput(std::fopen(path, "w+"));
         }
     }
@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
     }
 
     brls::Application::getPlatform()->exitToHomeMode(true);
-    brls::Application::createWindow("tsvitch");
+    brls::Application::createWindow(APP_NAME);
     brls::Logger::info("createWindow done");
 
     Register::initCustomView();
