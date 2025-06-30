@@ -150,7 +150,7 @@
                         axis="column">
                         <VideoProgressSlider
                                 focusable="false"
-                                disabledPointerGesture="true"
+                                disabledPointerGesture="false"
                                 id="video/osd/bottom/progress"
                                 focusUp="video/osd/lock/box"
                                 focusRight="video/osd/bottom/progress"

@@ -178,6 +178,7 @@ std::unordered_map<SettingItem, ProgramOption> ProgramConfig::SETTING_MAP = {
     {SettingItem::GROUP_SELECTED_INDEX, {"group_selected_index", {}, {}, 0}},
     {SettingItem::UP_FILTER, {"up_filter", {}, {}, 0}},
     {SettingItem::M3U8_URL_ITEM, {"m3u8_url", {}, {}, 0}},
+    {SettingItem::M3U8_TIMEOUT, {"m3u8_timeout", {"60", "120", "300", "600"}, {60000, 120000, 300000, 600000}, 2}}, // Default: 5 minuti
 };
 
 ProgramConfig::ProgramConfig() = default;

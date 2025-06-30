@@ -78,6 +78,10 @@ VideoProgressSlider::VideoProgressSlider() {
         }
     });
 
+        pointerIcon->setDimensions(44, 44);
+    pointerIcon->setImageFromSVGRes("svg/bpx-svg-sprite-thumb.svg");
+    
+
     pointer->setDimensions(60, 60);
     pointer->setFocusable(true);
     pointer->setHighlightCornerRadius(60);

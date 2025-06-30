@@ -74,6 +74,7 @@ enum class SettingItem {
     DLNA_NAME,
 
     M3U8_URL_ITEM,
+    M3U8_TIMEOUT,
 
     TLS_VERIFY,
     UP_FILTER,
