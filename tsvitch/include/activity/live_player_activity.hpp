@@ -34,6 +34,8 @@ public:
 
     void startAd(std::string adUrl);
 
+    void detectContentType();
+
     ~LiveActivity() override;
 
 protected:

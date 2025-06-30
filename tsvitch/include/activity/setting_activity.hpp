@@ -40,6 +40,7 @@ private:
     BRLS_BIND(brls::BooleanCell, btnProxy, "setting/network/proxy");
     BRLS_BIND(brls::InputCell, btnM3U8Input, "setting/tools/m3u8/input");
     BRLS_BIND(brls::InputCell, btnProxyInput, "setting/tools/proxy/input");
+    BRLS_BIND(TsVitchSelectorCell, selectorM3U8Timeout, "setting/tools/m3u8/timeout");
     BRLS_BIND(TsVitchSelectorCell, selectorLang, "setting/language");
     BRLS_BIND(TsVitchSelectorCell, selectorTheme, "setting/ui/theme");
     BRLS_BIND(TsVitchSelectorCell, selectorCustomTheme, "setting/custom/theme");

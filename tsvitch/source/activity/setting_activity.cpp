@@ -526,6 +526,30 @@ void SettingActivity::onContentAvailable() {
             OnM3U8UrlChanged.fire(); // Notifica tutte le view interessate
         },
         "tsvitch/setting/tools/m3u8/hint"_i18n, "tsvitch/setting/tools/m3u8/hint"_i18n, 255);
+    
+    // Soluzione definitiva per l'overflow del testo nell'InputCell
+    btnM3U8Input->detail->setMaxWidth(140);      // Riduciamo a 140px per essere sicuri
+    btnM3U8Input->detail->setSingleLine(true);   // Forza una sola linea
+    btnM3U8Input->detail->setEllipsisWidth(20);  // Imposta la larghezza per l'ellissi
+    btnM3U8Input->detail->setRequiredWidth(140); // Forza anche la required width
+    
+    // Applica troncamento manuale del testo se necessario
+    auto currentText = btnM3U8Input->detail->getFullText();
+    if (currentText.length() > 30) {
+        // Mostra inizio e fine dell'URL con ellissi al centro
+        std::string truncated = currentText.substr(0, 15) + "..." + currentText.substr(currentText.length() - 12);
+        btnM3U8Input->detail->setText(truncated);
+    }
+
+    // Inizializza il selector per il timeout M3U8
+    auto timeoutOption = ProgramConfig::instance().getOptionData(SettingItem::M3U8_TIMEOUT);
+    selectorM3U8Timeout->init("tsvitch/setting/tools/m3u8/timeout"_i18n,
+                              timeoutOption.optionList,
+                              timeoutOption.defaultOption,
+                              [](int data) {
+                                  auto timeoutOption = ProgramConfig::instance().getOptionData(SettingItem::M3U8_TIMEOUT);
+                                  ProgramConfig::instance().setSettingItem(SettingItem::M3U8_TIMEOUT, timeoutOption.rawOptionList[data]);
+                              });
 
     auto proxyUrl = conf.getSettingItem(SettingItem::PROXY_URL_ITEM, std::string{""});
     btnProxyInput->init(

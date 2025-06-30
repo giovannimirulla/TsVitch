@@ -75,6 +75,7 @@ enum class SettingItem {
 
     M3U8_URL_ITEM,
     PROXY_URL_ITEM,
+    M3U8_TIMEOUT,
 
     TLS_VERIFY,
     UP_FILTER,

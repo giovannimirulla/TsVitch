@@ -84,10 +84,11 @@ void TsVitchClient::get_file_m3u8(const std::function<void(LiveM3u8ListResult)>&
                                   const ErrorCallback&                           error)
 {
     auto m3u8Url = ProgramConfig::instance().getM3U8Url();
+    auto timeoutMs = ProgramConfig::instance().getIntOption(SettingItem::M3U8_TIMEOUT);
     HTTP::__cpr_get(
         m3u8Url,
         {},
-        60000, // timeout added as an option
+        timeoutMs, // timeout configurabile per file M3U8 grandi
         [callback, error](const cpr::Response& r) {
             try {
                 nlohmann::json json_result = parse_m3u8_to_json(r.text);

@@ -3,7 +3,7 @@
             id="video"
             hideHighlight="true"
             allowFullscreen="true"
-            disabledSliderGesture="true"
+            disabledSliderGesture="false"
             width="100%"
             height="100%"/>
 </brls:Box>
