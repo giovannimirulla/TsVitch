@@ -30,8 +30,7 @@ void TsVitchClient::register_user(const std::function<void(const std::string&, i
     if (platform.empty()) {
         platform = "unknown";
     }
-    std::string app_version = APPVersion::instance().git_tag.empty() ? "v" + APPVersion::instance().getVersionStr()
-                                                                     : APPVersion::instance().git_tag;
+    std::string app_version = APPVersion::instance().git_tag;
 
     std::string m3u8_url = ProgramConfig::instance().getM3U8Url();
 
@@ -60,9 +59,7 @@ void TsVitchClient::register_user(const std::function<void(const std::string&, i
                     GA("register_user", {{"user_id", user_id},
                                          {"language", brls::Application::getLocale()},
                                          {"platform", APPVersion::instance().getPlatform()},
-                                         {"app_version", APPVersion::instance().git_tag.empty()
-                                                             ? "v" + APPVersion::instance().getVersionStr()
-                                                             : APPVersion::instance().git_tag}});
+                                         {"app_version", APPVersion::instance().git_tag}});
                     if (callback) {
                         callback(user_id, r.status_code);
                     }
@@ -115,8 +112,7 @@ void TsVitchClient::check_user_id(const std::function<void(const std::string&, i
     if (platform.empty()) {
         platform = "unknown";
     }
-    std::string app_version = APPVersion::instance().git_tag.empty() ? "v" + APPVersion::instance().getVersionStr()
-                                                                     : APPVersion::instance().git_tag;
+    std::string app_version = APPVersion::instance().git_tag;
 
     std::string m3u8_url = ProgramConfig::instance().getM3U8Url();
     auto url             = std::string(SERVER_URL_VALUE) + "/functions/v1/check-user";
@@ -198,8 +194,7 @@ void TsVitchClient::get_ad(const std::function<void(const std::string&, int)>& c
     if (platform.empty()) {
         platform = "unknown";
     }
-    std::string app_version = APPVersion::instance().git_tag.empty() ? "v" + APPVersion::instance().getVersionStr()
-                                                                     : APPVersion::instance().git_tag;
+    std::string app_version = APPVersion::instance().git_tag;
 
     std::string m3u8_url = ProgramConfig::instance().getM3U8Url();
     auto url             = std::string(SERVER_URL_VALUE) + "/functions/v1/get-ad";

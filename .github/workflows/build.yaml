@@ -1,9 +1,6 @@
 name: Build TsVitch
 
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
     inputs:
       universal_macos:
@@ -13,7 +10,7 @@ on:
       release:
         description: "Push a new release"
         required: false
-        default: "false"
+        default: "true"
       version:
         description: "Version"
         required: false
@@ -70,6 +67,17 @@ jobs:
           echo $VERSION
           echo "${{  github.event.inputs.version }}"
 
+      - name: Create tag if not exists
+        if: github.event.inputs.release == 'true' && github.event.inputs.version != '' && !cancelled()
+        run: |
+          git fetch --tags
+          if ! git rev-parse "v${{ github.event.inputs.version }}" >/dev/null 2>&1; then
+            git tag "v${{ github.event.inputs.version }}"
+            git push origin "v${{ github.event.inputs.version }}"
+          else
+            echo "Tag v${{ github.event.inputs.version }} already exists"
+          fi
+
   release:
     needs: [build-switch, build-macos, version]
     permissions:
@@ -93,7 +101,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
         with:
           make_latest: true
-          tag_name: ${{  github.event.inputs.version }}
+          tag_name: v${{ github.event.inputs.version }}
           files: |
             ${{ needs.version.outputs.DIST_NRO }}/TsVitch.nro
             ${{ needs.version.outputs.DIST_INTEL_DMG }}/${{ needs.version.outputs.DIST_INTEL_DMG }}.dmg
