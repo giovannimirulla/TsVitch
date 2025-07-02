@@ -10,7 +10,7 @@ public:
 
     static void openPgcFilter(const std::string& filter);
 
-    static void openSetting(std::function<void()> onClose = nullptr);
+    static void openSettings(std::function<void()> onClose = nullptr);
 
     static void openInbox();
 

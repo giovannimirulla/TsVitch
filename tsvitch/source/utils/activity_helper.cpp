@@ -5,7 +5,7 @@
 
 #include "activity/live_player_activity.hpp"
 
-#include "activity/setting_activity.hpp"
+#include "activity/settings_activity.hpp"
 
 #include "activity/main_activity.hpp"
 #include "activity/hint_activity.hpp"
@@ -19,8 +19,8 @@ void Intent::openLive(const std::vector<tsvitch::LiveM3u8>& channelList, size_t 
     registerFullscreen(activity);
 }
 
-void Intent::openSetting(std::function<void()> onClose) {
-    auto activity = new SettingActivity(onClose);
+void Intent::openSettings(std::function<void()> onClose) {
+    auto activity = new SettingsActivity(onClose);
     brls::Application::pushActivity(activity);
     registerFullscreen(activity);
 }

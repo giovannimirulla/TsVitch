@@ -16,6 +16,8 @@
 #include "core/HistoryManager.hpp"
 #include "core/FavoriteManager.hpp"
 #include "core/ChannelManager.hpp"
+#include "core/DownloadManager.hpp"
+#include "core/DownloadManager.hpp"
 
 #include "utils/config_helper.hpp"
 
@@ -283,6 +285,11 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstL
         return true;
     });
 
+    this->registerAction("Scarica video", brls::BUTTON_RT, [this](...) {
+        this->downloadVideo();
+        return true;
+    });
+
     if (!firstLoad) {
         brls::Threading::async([result] { ChannelManager::get()->save(result); });
     }
@@ -492,3 +499,48 @@ void HomeLive::onCreate() {
 HomeLive::~HomeLive() { brls::Logger::debug("Fragment HomeLiveActivity: delete"); }
 
 brls::View* HomeLive::create() { return new HomeLive(); }
+
+void HomeLive::downloadVideo() {
+    // Ottieni l'item attualmente focalizzato
+    auto* item = dynamic_cast<RecyclingGridItemLiveVideoCard*>(this->recyclingGrid->getFocusedItem());
+    if (!item) {
+        brls::Logger::warning("HomeLive::downloadVideo: No focused item");
+        return;
+    }
+
+    // Ottieni il canale
+    tsvitch::LiveM3u8 channel = item->getChannel();
+    
+    // Avvia il download
+    std::string downloadId = DownloadManager::instance().startDownload(
+        channel.title, 
+        channel.url, 
+        channel.logo,  // URL dell'immagine
+        [](const std::string& id, float progress, size_t downloaded, size_t total) {
+            // Callback di progresso
+            brls::Logger::debug("Download {}: {:.1f}% ({}/{} bytes)", id, progress, downloaded, total);
+        },
+        [](const std::string& id, const std::string& filePath) {
+            // Callback di completamento
+            brls::Logger::info("Download {} completed: {}", id, filePath);
+            brls::sync([]() {
+                brls::Application::notify("Download completato!");
+            });
+        },
+        [](const std::string& id, const std::string& error) {
+            // Callback di errore
+            brls::Logger::error("Download {} failed: {}", id, error);
+            brls::sync([error]() {
+                brls::Application::notify("Errore download: " + error);
+            });
+        }
+    );
+    
+    if (!downloadId.empty()) {
+        brls::Application::notify("Download avviato: " + channel.title);
+        brls::Logger::info("HomeLive: Started download {} for {}", downloadId, channel.title);
+    } else {
+        brls::Application::notify("Errore nell'avvio del download");
+        brls::Logger::error("HomeLive: Failed to start download for {}", channel.title);
+    }
+}

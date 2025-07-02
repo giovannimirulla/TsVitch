@@ -25,6 +25,8 @@ public:
 
     void toggleFavorite();
 
+    void downloadVideo();
+
 private:
     bool isSearchActive = false;
     tsvitch::LiveM3u8ListResult favoritesList;

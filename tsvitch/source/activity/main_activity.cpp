@@ -29,7 +29,7 @@ void MainActivity::onContentAvailable() {
     this->registerAction(
         "Settings", brls::ControllerButton::BUTTON_BACK,
         [this](brls::View* view) -> bool {
-            Intent::openSetting([this]() {
+            Intent::openSettings([this]() {
                 //if not focused
                 if (!this->settingBtn->isFocused()) {
                     this->resetSettingIcon();
@@ -42,7 +42,7 @@ void MainActivity::onContentAvailable() {
     this->registerAction(
         "Settings", brls::ControllerButton::BUTTON_START,
         [this](brls::View* view) -> bool {
-            Intent::openSetting([this]() {
+            Intent::openSettings([this]() {
                 //if not focused
                 if (!this->settingBtn->isFocused()) {
                     this->resetSettingIcon();
@@ -53,7 +53,7 @@ void MainActivity::onContentAvailable() {
         true);
 
     this->settingBtn->registerClickAction([this](brls::View* view) -> bool {
-        Intent::openSetting([this]() {
+        Intent::openSettings([this]() {
             //if not focused
             if (!this->settingBtn->isFocused()) {
                 this->resetSettingIcon();

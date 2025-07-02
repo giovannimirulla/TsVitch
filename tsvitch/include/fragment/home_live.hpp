@@ -36,6 +36,8 @@ public:
 
     void toggleFavorite();
 
+    void downloadVideo();
+
     void selectGroupIndex(size_t index);
 
     void filter(const std::string &key);
