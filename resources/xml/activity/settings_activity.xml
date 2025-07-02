@@ -176,7 +176,28 @@
                                                 <brls:Header
                                                         width="auto"
                                                         height="auto"
-                                                        title="Xtream Codes IPTV"
+                                                        title="M3U8 Playlist"
+                                                        marginBottom="0px" />
+                                                <brls:Box
+                                                        width="100%"
+                                                        height="auto"
+                                                        axis="column"
+                                                        marginBottom="30px">
+
+                                                        <brls:InputCell
+                                                                id="setting/tools/m3u8/input"
+                                                                title="M3U8 URL"
+                                                        />
+
+                                                        <SelectorCell
+                                                                id="setting/tools/m3u8/timeout" />
+
+                                                </brls:Box>
+
+                                                <brls:Header
+                                                        width="auto"
+                                                        height="auto"
+                                                        title="Xtream Codes API"
                                                         marginBottom="0px" />
                                                 <brls:Box
                                                         width="100%"
