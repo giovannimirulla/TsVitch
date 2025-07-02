@@ -1,5 +1,3 @@
-
-
 #ifdef IOS
 #include <CoreFoundation/CoreFoundation.h>
 #elif defined(__APPLE__) || defined(__linux__) || defined(_WIN32)
@@ -179,6 +177,12 @@ std::unordered_map<SettingItem, ProgramOption> ProgramConfig::SETTING_MAP = {
     {SettingItem::UP_FILTER, {"up_filter", {}, {}, 0}},
     {SettingItem::M3U8_URL_ITEM, {"m3u8_url", {}, {}, 0}},
     {SettingItem::M3U8_TIMEOUT, {"m3u8_timeout", {"60", "120", "300", "600"}, {60000, 120000, 300000, 600000}, 2}}, // Default: 5 minuti
+    
+    // Xtream Codes IPTV Settings
+    {SettingItem::XTREAM_SERVER_URL, {"xtream_server_url", {}, {}, 0}},
+    {SettingItem::XTREAM_USERNAME, {"xtream_username", {}, {}, 0}},
+    {SettingItem::XTREAM_PASSWORD, {"xtream_password", {}, {}, 0}},
+    {SettingItem::XTREAM_ENABLED, {"xtream_enabled", {}, {}, 0}}, // 0 = disabled, 1 = enabled
 };
 
 ProgramConfig::ProgramConfig() = default;
@@ -760,6 +764,43 @@ void ProgramConfig::setM3U8Url(const std::string& url) {
         m3u8Url = M3U8_URL_VALUE;
     }
     GA("m3u8_url", {{"url", m3u8Url}});
+}
+
+// Xtream Codes IPTV getters and setters
+std::string ProgramConfig::getXtreamServerUrl() {
+    return getSettingItem(SettingItem::XTREAM_SERVER_URL, std::string(""));
+}
+
+void ProgramConfig::setXtreamServerUrl(const std::string& url) {
+    setSettingItem(SettingItem::XTREAM_SERVER_URL, url);
+    brls::Logger::info("setXtreamServerUrl: {}", url);
+}
+
+std::string ProgramConfig::getXtreamUsername() {
+    return getSettingItem(SettingItem::XTREAM_USERNAME, std::string(""));
+}
+
+void ProgramConfig::setXtreamUsername(const std::string& username) {
+    setSettingItem(SettingItem::XTREAM_USERNAME, username);
+    brls::Logger::info("setXtreamUsername: {}", username);
+}
+
+std::string ProgramConfig::getXtreamPassword() {
+    return getSettingItem(SettingItem::XTREAM_PASSWORD, std::string(""));
+}
+
+void ProgramConfig::setXtreamPassword(const std::string& password) {
+    setSettingItem(SettingItem::XTREAM_PASSWORD, password);
+    brls::Logger::info("setXtreamPassword: [hidden]");
+}
+
+bool ProgramConfig::getXtreamEnabled() {
+    return getSettingItem(SettingItem::XTREAM_ENABLED, 0) == 1;
+}
+
+void ProgramConfig::setXtreamEnabled(bool enabled) {
+    setSettingItem(SettingItem::XTREAM_ENABLED, enabled ? 1 : 0);
+    brls::Logger::info("setXtreamEnabled: {}", enabled);
 }
 
 void ProgramConfig::toggleFullscreen() {

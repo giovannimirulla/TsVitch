@@ -1,5 +1,3 @@
-
-
 #pragma once
 
 #include <fstream>
@@ -78,6 +76,12 @@ enum class SettingItem {
 
     TLS_VERIFY,
     UP_FILTER,
+
+    // Xtream Codes IPTV Settings
+    XTREAM_SERVER_URL,
+    XTREAM_USERNAME,
+    XTREAM_PASSWORD,
+    XTREAM_ENABLED,
 
     GROUP_SELECTED_INDEX,
 };
@@ -205,6 +209,16 @@ public:
     std::string getM3U8Url();
 
     void setM3U8Url(const std::string& url);
+
+    // Xtream Codes IPTV methods
+    std::string getXtreamServerUrl();
+    void setXtreamServerUrl(const std::string& url);
+    std::string getXtreamUsername();
+    void setXtreamUsername(const std::string& username);
+    std::string getXtreamPassword();
+    void setXtreamPassword(const std::string& password);
+    bool getXtreamEnabled();
+    void setXtreamEnabled(bool enabled);
 
     std::vector<CustomTheme> customThemes;
     nlohmann::json setting;
