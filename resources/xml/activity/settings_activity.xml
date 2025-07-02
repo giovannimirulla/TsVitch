@@ -152,6 +152,60 @@
                                 </brls:ScrollingFrame>
                         </Tab>
 
+                        <Tab label="IPTV Settings"
+                                style="inline"
+                                icon="@res/svg/setting_tools.svg"
+                                iconActivate="@res/svg/setting_tools_active.svg"
+                                fontSize="22">
+                                <brls:ScrollingFrame
+                                        width="auto"
+                                        height="auto"
+                                        marginTop="10"
+                                        grow="1.0">
+
+                                        <brls:Box
+                                                width="auto"
+                                                height="auto"
+                                                axis="column"
+                                                alignItems="stretch"
+                                                paddingLeft="@style/brls/tab_frame/content_padding_sides"
+                                                paddingRight="@style/brls/tab_frame/content_padding_sides"
+                                                paddingTop="@style/brls/tab_frame/content_padding_top_bottom"
+                                                paddingBottom="@style/brls/tab_frame/content_padding_top_bottom">
+                                                
+                                                <brls:Header
+                                                        width="auto"
+                                                        height="auto"
+                                                        title="Xtream Codes IPTV"
+                                                        marginBottom="0px" />
+                                                <brls:Box
+                                                        width="100%"
+                                                        height="auto"
+                                                        axis="column"
+                                                        marginBottom="30px">
+
+                                                        <brls:BooleanCell
+                                                                id="setting/iptv/xtream_enabled"
+                                                                title="Enable Xtream Codes IPTV" />
+
+                                                        <brls:InputCell
+                                                                id="setting/iptv/xtream_server"
+                                                                title="Server URL" />
+
+                                                        <brls:InputCell
+                                                                id="setting/iptv/xtream_username"
+                                                                title="Username" />
+
+                                                        <brls:InputCell
+                                                                id="setting/iptv/xtream_password"
+                                                                title="Password" />
+
+                                                </brls:Box>
+
+                                        </brls:Box>
+                                </brls:ScrollingFrame>
+                        </Tab>
+
                         <Tab label="@i18n/tsvitch/setting/app/playback/header"
                                 style="inline"
                                 icon="@res/svg/setting_play.svg"
