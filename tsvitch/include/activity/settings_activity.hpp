@@ -14,15 +14,15 @@ class Label;
 class TextBox;
 class TsVitchSelectorCell;
 
-class SettingActivity : public brls::Activity {
+class SettingsActivity : public brls::Activity {
 public:
-    CONTENT_FROM_XML_RES("activity/setting_activity.xml");
+    CONTENT_FROM_XML_RES("activity/settings_activity.xml");
 
-    SettingActivity(std::function<void()> onClose = nullptr);
+    SettingsActivity(std::function<void()> onClose = nullptr);
 
     void onContentAvailable() override;
 
-    ~SettingActivity() override;
+    ~SettingsActivity() override;
 
 private:
     std::function<void()> onCloseCallback;

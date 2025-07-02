@@ -4,6 +4,7 @@
 
 #include <borealis/core/activity.hpp>
 #include <borealis/core/bind.hpp>
+#include <borealis/views/slider.hpp>
 
 #include "utils/event_helper.hpp"
 #include "presenter/live_data.hpp"
@@ -36,10 +37,18 @@ public:
 
     void detectContentType();
 
+    void startDownload();
+
+    std::string formatFileSize(size_t bytes);
+
     ~LiveActivity() override;
 
 protected:
-    BRLS_BIND(VideoView, video, "video");
+    VideoView* video = nullptr;
+    brls::Box* downloadProgressOverlay = nullptr;
+    brls::Label* downloadStatusLabel = nullptr;
+    brls::Label* downloadProgressText = nullptr;
+    brls::Slider* downloadProgressBar = nullptr;
 
     std::function<void()> onCloseCallback;
 
@@ -55,8 +64,14 @@ protected:
     tsvitch::LiveM3u8 liveData;
 
     MPVEvent::Subscription tl_event_id;
+    bool mpvEventRegistered = false;
 
     CustomEvent::Subscription event_id;
+    bool customEventRegistered = false;
+
+    // Download state
+    std::string currentDownloadId;
+    bool hasActiveDownload = false;
 
 private:
    void getAdUrlFromServer(std::function<void(const std::string&)> callback = nullptr);

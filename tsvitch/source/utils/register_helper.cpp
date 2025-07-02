@@ -3,6 +3,7 @@
 #include "fragment/home_live.hpp"
 #include "fragment/home_history.hpp"
 #include "fragment/home_favorites.hpp"
+#include "fragment/home_downloads.hpp"
 
 #include "utils/config_helper.hpp"
 
@@ -12,6 +13,7 @@
 #include "view/text_box.hpp"
 #include "view/qr_image.hpp"
 #include "view/svg_image.hpp"
+#include "view/download_item_cell.hpp"
 
 #include "view/recycling_grid.hpp"
 #include "view/grid_dropdown.hpp"
@@ -46,10 +48,12 @@ void Register::initCustomView() {
     brls::Application::registerXMLView("CheckBox", BiliCheckBox::create);
     brls::Application::registerXMLView("SelectorCell", TsVitchSelectorCell::create);
     brls::Application::registerXMLView("AnimationImage", AnimationImage::create);
+    brls::Application::registerXMLView("DownloadItemCell", DownloadItemCell::create);
 
     brls::Application::registerXMLView("HomeLive", HomeLive::create);
     brls::Application::registerXMLView("HomeHistory", HomeHistory::create);
     brls::Application::registerXMLView("HomeFavorites", HomeFavorites::create);
+    brls::Application::registerXMLView("HomeDownloads", HomeDownloads::create);
 }
 
 void Register::initCustomTheme() {
