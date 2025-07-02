@@ -530,25 +530,12 @@ void SettingsActivity::onContentAvailable() {
     // Soluzione definitiva per l'overflow del testo nell'InputCell
     btnM3U8Input->detail->setMaxWidth(140);      // Riduciamo a 140px per essere sicuri
     btnM3U8Input->detail->setSingleLine(true);   // Forza una sola linea
-    btnM3U8Input->detail->setEllipsisWidth(20);  // Imposta la larghezza per l'ellissi
-    btnM3U8Input->detail->setRequiredWidth(140); // Forza anche la required width
-    
-    // Applica troncamento manuale del testo se necessario
-    auto currentText = btnM3U8Input->detail->getFullText();
-    if (currentText.length() > 30) {
-        // Mostra inizio e fine dell'URL con ellissi al centro
-        std::string truncated = currentText.substr(0, 15) + "..." + currentText.substr(currentText.length() - 12);
-        btnM3U8Input->detail->setText(truncated);
-    }
 
-    // Inizializza il selector per il timeout M3U8
-    auto timeoutOption = ProgramConfig::instance().getOptionData(SettingItem::M3U8_TIMEOUT);
-    selectorM3U8Timeout->init("tsvitch/setting/tools/m3u8/timeout"_i18n,
-                              timeoutOption.optionList,
-                              timeoutOption.defaultOption,
-                              [](int data) {
-                                  auto timeoutOption = ProgramConfig::instance().getOptionData(SettingItem::M3U8_TIMEOUT);
-                                  ProgramConfig::instance().setSettingItem(SettingItem::M3U8_TIMEOUT, timeoutOption.rawOptionList[data]);
+    auto m3u8TimeoutOption = conf.getOptionData(SettingItem::M3U8_TIMEOUT);
+    selectorM3U8Timeout->init("tsvitch/setting/tools/m3u8/timeout"_i18n, m3u8TimeoutOption.optionList,
+                              conf.getIntOptionIndex(SettingItem::M3U8_TIMEOUT), [m3u8TimeoutOption](int data) {
+                                  ProgramConfig::instance().setSettingItem(SettingItem::M3U8_TIMEOUT,
+                                                                           m3u8TimeoutOption.rawOptionList[data]);
                               });
 
     auto proxyUrl = conf.getSettingItem(SettingItem::PROXY_URL_ITEM, std::string{""});
@@ -578,9 +565,38 @@ void SettingsActivity::onContentAvailable() {
                          MPVCore::LOW_QUALITY = value;
                          MPVCore::instance().restart();
                      });
+    // Inizializza i controlli Xtream Codes IPTV
+    btnXtreamEnabled->init("Enable Xtream Codes IPTV", conf.getXtreamEnabled(), [](bool value) {
+        ProgramConfig::instance().setXtreamEnabled(value);
+    });
+    
+    btnXtreamServer->init("Server URL", conf.getXtreamServerUrl(), 
+        [](const std::string& data) {
+            ProgramConfig::instance().setXtreamServerUrl(data);
+        }, 
+        "Enter Xtream Codes server URL", "http://server.com:8080", 255);
+    
+    btnXtreamUsername->init("Username", conf.getXtreamUsername(), 
+        [](const std::string& data) {
+            ProgramConfig::instance().setXtreamUsername(data);
+        }, 
+        "Enter your username", "username", 255);
+    
+    btnXtreamPassword->init("Password", conf.getXtreamPassword(), 
+        [](const std::string& data) {
+            ProgramConfig::instance().setXtreamPassword(data);
+        }, 
+        "Enter your password", "password", 255);
+
+    // Inizializza tutti gli altri selettori...
+    // (Il resto del codice esistente)
+    
+    brls::Logger::debug("SettingsActivity: onContentAvailable completed");
 }
 
 SettingsActivity::~SettingsActivity() {
-    brls::Logger::debug("SettingsActivity: delete");
-    if (onCloseCallback) onCloseCallback();
+    brls::Logger::debug("SettingsActivity: destroy");
+    if (onCloseCallback) {
+        onCloseCallback();
+    }
 }
