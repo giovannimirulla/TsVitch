@@ -1,0 +1,33 @@
+<brls:Box
+        axis="column"
+        marginTop="20"
+        marginBottom="8"
+        width="auto"
+        height="auto">
+
+    <brls:Box
+            height="60"
+            width="100%"
+            paddingTop="20"
+            paddingLeft="40"
+            paddingRight="40"
+            justifyContent="center"
+            alignItems="center">
+
+        <brls:Label
+                fontSize="24"
+                text="Downloads" />
+    </brls:Box>
+
+    <RecyclingGrid
+            id="home/downloads/recyclingGrid"
+            grow="1"
+            marginLeft="40"
+            marginRight="40"
+            marginBottom="20"
+            spanCount="1"
+            itemHeight="100"
+            paddingTop="10"
+            paddingBottom="10" />
+
+</brls:Box>

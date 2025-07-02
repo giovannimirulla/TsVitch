@@ -204,7 +204,19 @@
       "high": "Alta",
       "medium": "Media",
       "low": "Bassa",
-      "no_login": "Non hai ancora effettuato l'accesso"
+      "no_login": "Non hai ancora effettuato l'accesso",
+      "downloads": "Download",
+      "download_tab": "Download",
+      "download_start": "Avvia download",
+      "download_pause": "Pausa download",
+      "download_resume": "Riprendi download",
+      "download_cancel": "Annulla download",
+      "download_delete": "Elimina download",
+      "download_completed": "Download completato",
+      "download_progress": "In download...",
+      "download_failed": "Download fallito",
+      "downloaded_videos": "Video scaricati",
+      "no_downloads": "Nessun download"
     },
     "live": {
       "tab": "Canali",

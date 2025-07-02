@@ -228,7 +228,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 )
 set_source_files_properties(
         tsvitch/source/utils/config_helper.cpp
-        tsvitch/source/activity/setting_activity.cpp
+        tsvitch/source/activity/settings_activity.cpp
         tsvitch/source/activity/dlna_activity.cpp
         PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 

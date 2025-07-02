@@ -9,7 +9,7 @@
 #include <cpr/cpr.h>
 
 #include "tsvitch.h"
-#include "activity/setting_activity.hpp"
+#include "activity/settings_activity.hpp"
 #include "fragment/setting_network.hpp"
 #include "fragment/test_rumble.hpp"
 #include "utils/config_helper.hpp"
@@ -88,13 +88,13 @@ const std::map<std::string, std::map<std::string, std::string>> OPENSOURCE = {
 #endif
 };
 
-SettingActivity::SettingActivity(std::function<void()> onClose) : onCloseCallback(onClose) {
-    brls::Logger::debug("SettingActivity: create");
+SettingsActivity::SettingsActivity(std::function<void()> onClose) : onCloseCallback(onClose) {
+    brls::Logger::debug("SettingsActivity: create");
     GA("open_setting")
 }
 
-void SettingActivity::onContentAvailable() {
-    brls::Logger::debug("SettingActivity: onContentAvailable");
+void SettingsActivity::onContentAvailable() {
+    brls::Logger::debug("SettingsActivity: onContentAvailable");
 
 #ifdef __SWITCH__
     btnTutorialOpenApp->registerClickAction([](...) -> bool {
@@ -580,7 +580,7 @@ void SettingActivity::onContentAvailable() {
                      });
 }
 
-SettingActivity::~SettingActivity() {
-    brls::Logger::debug("SettingActivity: delete");
+SettingsActivity::~SettingsActivity() {
+    brls::Logger::debug("SettingsActivity: delete");
     if (onCloseCallback) onCloseCallback();
 }
