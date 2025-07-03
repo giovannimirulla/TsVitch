@@ -44,6 +44,10 @@ public:
     using GlobalProgressCallback = std::function<void(const std::string& id, float progress, size_t downloaded, size_t total)>;
     using GlobalCompleteCallback = std::function<void(const std::string& id, bool success)>;
     
+    // Costruttore e distruttore
+    DownloadManager();
+    ~DownloadManager();
+    
     // Avvia un download (versione semplice senza callback)
     std::string startDownload(const std::string& title, const std::string& url);
     
@@ -87,14 +91,9 @@ public:
     // Ottiene la directory dei download
     std::string getDownloadDirectory() const;
     
-    // Aggiunge download di test per debug
-    void addTestDownloads();
-    
     // Callback globali per tutti i download
     void setGlobalProgressCallback(GlobalProgressCallback callback);
     void setGlobalCompleteCallback(GlobalCompleteCallback callback);
-    
-    ~DownloadManager();
 
     // Membri pubblici per il callback di progresso
     std::vector<DownloadItem> downloads;
@@ -113,10 +112,12 @@ public:
     GlobalProgressCallback globalProgressCallback;
     GlobalCompleteCallback globalCompleteCallback;
     
+    // Flag di shutdown accessibile dai callback
+    std::atomic<bool> shouldStop{false};
+    
 private:
     
     std::vector<std::thread> downloadThreads;
-    std::atomic<bool> shouldStop{false};
     
     // Thread worker per il download
     void downloadWorker(const std::string& id);
@@ -126,9 +127,6 @@ private:
     
     // Trova un download per ID (versione const)
     std::vector<DownloadItem>::const_iterator findDownload(const std::string& id) const;
-    
-    // Crea la directory di download se non esiste
-    void ensureDownloadDirectory();
     
     // Ottiene il path del file di stato
     std::string getDownloadsStatePath() const;

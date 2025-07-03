@@ -33,6 +33,7 @@ private:
 
     DownloadDataSource* dataSource = nullptr;
     std::atomic<bool> shouldAutoRefresh{true};
+    std::atomic<bool> isShuttingDown{false}; // Flag per questa istanza
     std::thread refreshThread;
     std::atomic<bool> refreshThreadRunning{false};
     std::mutex refreshMutex;
