@@ -1,15 +1,31 @@
 #include "core/DownloadManager.hpp"
+#include "utils/config_helper.hpp"
 #include <borealis/core/logger.hpp>
+#include <borealis/core/application.hpp>
 #include <fstream>
 #include <cstdio>
+#include <filesystem>
 #include <random>
 #include <sstream>
 #include <iomanip>
 #include <chrono>
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
+#include <atomic>
 
 using json = nlohmann::json;
+
+// Flag globale per shutdown dell'applicazione
+static std::atomic<bool> g_appShuttingDown{false};
+
+// Funzione per accedere al flag di shutdown
+bool isAppShuttingDown() {
+    return g_appShuttingDown.load();
+}
+
+void setAppShuttingDown(bool shutting_down) {
+    g_appShuttingDown = shutting_down;
+}
 
 // Callback per scrivere i dati scaricati
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::ofstream* stream) {
@@ -31,6 +47,11 @@ static int ProgressCallback(void* clientp, curl_off_t dltotal, curl_off_t dlnow,
     auto* data = static_cast<ProgressData*>(clientp);
     if (!data || !data->manager) {
         return 0; // Manager non valido, esci
+    }
+    
+    // Controlla se il manager è in fase di shutdown o l'app si sta spegnendo
+    if (data->manager->shouldStop.load() || isAppShuttingDown()) {
+        return 1; // Interrompe il download
     }
     
     if (dltotal > 0) {
@@ -173,8 +194,7 @@ std::string DownloadManager::startDownload(const std::string& title, const std::
     item.status = DownloadStatus::PENDING;
     item.progress = 0.0f;
     
-    // Genera il path locale
-    ensureDownloadDirectory();
+    // Genera il path locale - la directory verrà creata automaticamente quando necessario
     std::string filename = title + "_" + id + ".mp4"; // Assumiamo formato MP4
     // Rimuovi caratteri non validi dal filename
     std::replace_if(filename.begin(), filename.end(), [](char c) {
@@ -287,16 +307,17 @@ DownloadItem DownloadManager::getDownload(const std::string& id) const {
 }
 
 std::string DownloadManager::getDownloadDirectory() const {
-    // Su macOS usa la directory Documents
-    #ifdef __APPLE__
-        return std::string(getenv("HOME")) + "/Documents/TsVitch/Downloads";
-    #else
-        // Su altre piattaforme usa una directory nella home
-        return std::string(getenv("HOME")) + "/.tsvitch/downloads";
-    #endif
+    const std::string configDir = ProgramConfig::instance().getConfigDir();
+    return configDir + "/downloads";
 }
 
 void DownloadManager::downloadWorker(const std::string& id) {
+    // Verifica che il manager non sia in fase di shutdown o l'app si stia spegnendo
+    if (shouldStop.load() || isAppShuttingDown()) {
+        brls::Logger::debug("DownloadManager: Worker {} exiting due to shutdown", id);
+        return;
+    }
+    
     // Verifica che il download esista ancora
     {
         std::lock_guard<std::mutex> lock(downloadsMutex);
@@ -372,6 +393,8 @@ void DownloadManager::downloadWorker(const std::string& id) {
             // La totalSize verrà aggiornata quando conosceremo il Content-Length
         }
     }
+    
+    // La directory di download verrà creata automaticamente se necessario
     
     // Apri il file in modalità appropriata
     std::ofstream outFile;
@@ -469,14 +492,38 @@ void DownloadManager::downloadWorker(const std::string& id) {
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     
+    // Aggiungi timeout per evitare hang durante shutdown
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L); // 30 secondi timeout totale
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L); // 10 secondi timeout connessione
+    
     // Aggiungi logging dettagliato
     curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L); // Disabilita per ora il verbose
     
     brls::Logger::info("DownloadManager: Starting download from URL: {}", item.url);
     brls::Logger::info("DownloadManager: Target file: {}", item.localPath);
     
+    // Controlla se dobbiamo fermarci prima di iniziare il download
+    if (shouldStop.load() || isAppShuttingDown()) {
+        brls::Logger::debug("DownloadManager: Aborting download {} due to shutdown", id);
+        if (headers) {
+            curl_slist_free_all(headers);
+        }
+        curl_easy_cleanup(curl);
+        return;
+    }
+    
     CURLcode res = curl_easy_perform(curl);
     outFile.close();
+    
+    // Controlla se dobbiamo fermarci dopo il download
+    if (shouldStop.load() || isAppShuttingDown()) {
+        brls::Logger::debug("DownloadManager: Download {} interrupted by shutdown", id);
+        if (headers) {
+            curl_slist_free_all(headers);
+        }
+        curl_easy_cleanup(curl);
+        return;
+    }
     
     // Controlla il codice di risposta HTTP
     long httpCode = 0;
@@ -731,34 +778,13 @@ std::vector<DownloadItem>::const_iterator DownloadManager::findDownload(const st
                        [&id](const DownloadItem& item) { return item.id == id; });
 }
 
-void DownloadManager::ensureDownloadDirectory() {
-    std::string downloadDir = getDownloadDirectory();
-    
-    // Verifica se la directory esiste provando ad aprire un file temporaneo
-    std::string testPath = downloadDir + "/.test";
-    std::ofstream testFile(testPath);
-    if (!testFile.good()) {
-        // La directory non esiste, prova a crearla usando system call
-        std::string command = "mkdir -p \"" + downloadDir + "\"";
-        int result = system(command.c_str());
-        if (result == 0) {
-            brls::Logger::info("DownloadManager: Created download directory: {}", downloadDir);
-        } else {
-            brls::Logger::error("DownloadManager: Failed to create download directory: {}", downloadDir);
-        }
-    } else {
-        // Rimuovi il file di test
-        testFile.close();
-        std::remove(testPath.c_str());
-    }
-}
-
 std::string DownloadManager::getDownloadsStatePath() const {
     return getDownloadDirectory() + "/downloads.json";
 }
 
 void DownloadManager::saveDownloads() {
     try {
+        // La directory verrà creata automaticamente se necessario dal file system
         json j = json::array();
         for (const auto& download : downloads) {
             json item;
@@ -848,6 +874,17 @@ void DownloadManager::loadDownloads() {
     }
 }
 
+DownloadManager::DownloadManager() {
+    // Sottoscrivi l'exitEvent per shutdown rapido
+    brls::Application::getExitEvent()->subscribe([this]() {
+        brls::Logger::debug("DownloadManager: Application exit event received");
+        shouldStop = true;
+        setAppShuttingDown(true);
+    });
+    
+    brls::Logger::debug("DownloadManager: Constructor completed with exit event subscription");
+}
+
 DownloadManager::~DownloadManager() {
     brls::Logger::debug("DownloadManager: Starting destruction");
     shouldStop = true;
@@ -855,69 +892,39 @@ DownloadManager::~DownloadManager() {
     // Pulisci tutti i callback prima di aspettare i thread
     {
         std::lock_guard<std::mutex> lock(downloadsMutex);
+        globalProgressCallback = nullptr;
+        globalCompleteCallback = nullptr;
         downloadProgressCallbacks.clear();
         downloadCompleteCallbacks.clear();
         downloadErrorCallbacks.clear();
+        
+        // Interrompi tutti i download attivi
+        for (auto& download : downloads) {
+            if (download.status == DownloadStatus::DOWNLOADING || 
+                download.status == DownloadStatus::PENDING) {
+                download.status = DownloadStatus::PAUSED;
+                brls::Logger::debug("DownloadManager: Paused download {} during shutdown", download.id);
+            }
+        }
     }
     
-    // Aspetta che tutti i thread finiscano
+    // Aspetta che tutti i thread finiscano con timeout
+    auto startTime = std::chrono::steady_clock::now();
     for (auto& thread : downloadThreads) {
         if (thread.joinable()) {
-            thread.join();
+            // Aspetta massimo 2 secondi per thread
+            auto elapsed = std::chrono::steady_clock::now() - startTime;
+            if (elapsed < std::chrono::seconds(2)) {
+                thread.join();
+            } else {
+                brls::Logger::warning("DownloadManager: Thread join timeout during shutdown");
+                thread.detach(); // Detach se il join impiega troppo tempo
+            }
         }
     }
     
     saveDownloads();
     brls::Logger::debug("DownloadManager: Destroyed");
-}
-
-void DownloadManager::addTestDownloads() {
-    std::lock_guard<std::mutex> lock(downloadsMutex);
-    
-    // Aggiungi solo se la lista è vuota
-    if (!downloads.empty()) {
-        brls::Logger::debug("DownloadManager::addTestDownloads() - downloads already exist, skipping");
-        return;
-    }
-    
-    brls::Logger::info("DownloadManager::addTestDownloads() - adding test downloads");
-    
-    // Crea alcuni download di test
-    DownloadItem test1;
-    test1.id = "test-download-1";
-    test1.title = "Test Video 1";
-    test1.url = "https://example.com/video1.mp4";
-    test1.status = DownloadStatus::COMPLETED;
-    test1.progress = 100.0f;
-    test1.downloadedSize = 1024 * 1024 * 50; // 50MB
-    test1.totalSize = 1024 * 1024 * 50;
-    test1.localPath = "/tmp/video1.mp4";
-    
-    DownloadItem test2;
-    test2.id = "test-download-2";
-    test2.title = "Test Video 2";
-    test2.url = "https://example.com/video2.mp4";
-    test2.status = DownloadStatus::DOWNLOADING;
-    test2.progress = 45.0f;
-    test2.downloadedSize = 1024 * 1024 * 22; // 22MB
-    test2.totalSize = 1024 * 1024 * 50; // 50MB
-    test2.localPath = "/tmp/video2.mp4";
-    
-    DownloadItem test3;
-    test3.id = "test-download-3";
-    test3.title = "Test Video 3";
-    test3.url = "https://example.com/video3.mp4";
-    test3.status = DownloadStatus::PAUSED;
-    test3.progress = 75.0f;
-    test3.downloadedSize = 1024 * 1024 * 37; // 37MB
-    test3.totalSize = 1024 * 1024 * 50; // 50MB
-    test3.localPath = "/tmp/video3.mp4";
-    
-    downloads.push_back(test1);
-    downloads.push_back(test2);
-    downloads.push_back(test3);
-    
-    brls::Logger::info("DownloadManager::addTestDownloads() - added {} test downloads", downloads.size());
 }
 
 void DownloadManager::setGlobalProgressCallback(GlobalProgressCallback callback) {

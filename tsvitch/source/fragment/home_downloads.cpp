@@ -16,6 +16,10 @@
 #include <condition_variable>
 #include <functional> // per std::hash
 
+// Funzioni per il flag di shutdown globale (definite in DownloadManager.cpp)
+extern bool isAppShuttingDown();
+extern void setAppShuttingDown(bool shutting_down);
+
 using namespace brls::literals;
 
 // Data source personalizzata per i download
@@ -177,90 +181,164 @@ public:
 };
 
 HomeDownloads::HomeDownloads() {
+    brls::Logger::info("HomeDownloads: Constructor started");
+    
     this->inflateFromXMLRes("xml/fragment/home_downloads.xml");
+    brls::Logger::debug("HomeDownloads: XML inflated");
+    
+    // Sottoscrivi l'exitEvent per shutdown rapido
+    brls::Application::getExitEvent()->subscribe([this]() {
+        brls::Logger::debug("HomeDownloads: Application exit event received");
+        setAppShuttingDown(true);
+        isShuttingDown = true;
+        shouldAutoRefresh = false;
+        
+        // Notifica immediatamente il thread di refresh
+        refreshCondition.notify_all();
+    });
+    brls::Logger::debug("HomeDownloads: Exit event subscribed");
     
     // Configura la data source
     dataSource = new DownloadDataSource(this);
+    brls::Logger::debug("HomeDownloads: Data source created");
     
     // Configura la recycling grid
     setupRecyclingGrid();
+    brls::Logger::debug("HomeDownloads: Recycling grid setup completed");
     
-    // Carica i download esistenti
+    // Carica i download esistenti SOLO se non in shutdown e senza fare chiamate di rete
     brls::Logger::info("HomeDownloads: About to load existing downloads");
-    DownloadManager::instance().loadDownloads();
-    
-    // Controlla quanti download sono stati caricati
-    auto loadedDownloads = DownloadManager::instance().getAllDownloads();
-    brls::Logger::info("HomeDownloads: Loaded {} downloads from storage", loadedDownloads.size());
-    
-    // Aggiungi alcuni download di test se la lista è vuota
-    DownloadManager::instance().addTestDownloads();
-    
-    // Controlla di nuovo quanti download ci sono dopo addTestDownloads
-    auto finalDownloads = DownloadManager::instance().getAllDownloads();
-    brls::Logger::info("HomeDownloads: Final download count: {}", finalDownloads.size());
-    
-    // Registra i callback per gli aggiornamenti dei download
-    DownloadManager::instance().setGlobalProgressCallback(
-        [this](const std::string& id, float progress, size_t downloaded, size_t total) {
-            this->onDownloadProgress(id, progress);
+    if (!isShuttingDown.load()) {
+        try {
+            // Disabilita temporaneamente il caricamento per testare se è questo a causare il crash
+            // DownloadManager::instance().loadDownloads();
+            brls::Logger::debug("HomeDownloads: Downloads loading SKIPPED for testing");
+        } catch (const std::exception& e) {
+            brls::Logger::error("HomeDownloads: Error loading downloads: {}", e.what());
         }
-    );
+    }
     
-    DownloadManager::instance().setGlobalCompleteCallback(
-        [this](const std::string& id, bool success) {
-            this->onDownloadComplete(id, success);
-        }
-    );
+    // Controlla quanti download sono stati caricati - DISABILITATO PER TESTING
+    // auto loadedDownloads = DownloadManager::instance().getAllDownloads();
+    // brls::Logger::info("HomeDownloads: Loaded {} downloads from storage", loadedDownloads.size());
+    brls::Logger::warning("HomeDownloads: Download loading and getAllDownloads() DISABLED for testing");
     
-    brls::Logger::info("HomeDownloads: About to call refresh()");
-    refresh();
-    
-    // Avvia l'aggiornamento automatico
-    startAutoRefresh();
-    
-    // Forza un refresh ritardato per assicurarsi che la UI sia pronta
-    std::thread([this]() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500)); // Aspetta mezzo secondo
-        brls::sync([this]() {
-            brls::Logger::info("HomeDownloads: Executing delayed refresh to show loaded downloads");
-            if (dataSource && recyclingGrid) {
-                auto downloads = DownloadManager::instance().getAllDownloads();
-                brls::Logger::info("HomeDownloads: Delayed refresh found {} downloads", downloads.size());
-                
-                if (!downloads.empty()) {
-                    dataSource->updateDownloads(downloads);
-                    dataSource->forceRefresh(); // Forza il refresh indipendentemente dai cambiamenti
-                    recyclingGrid->reloadData();
-                    brls::Logger::info("HomeDownloads: Delayed refresh completed with {} downloads", downloads.size());
-                } else {
-                    brls::Logger::info("HomeDownloads: No downloads to show in delayed refresh");
+    // Registra i callback per gli aggiornamenti dei download SOLO se non ci stiamo spegnendo
+    if (!isShuttingDown.load()) {
+        DownloadManager::instance().setGlobalProgressCallback(
+            [this](const std::string& id, float progress, size_t downloaded, size_t total) {
+                if (!isShuttingDown.load() && this->shouldAutoRefresh.load()) {
+                    this->onDownloadProgress(id, progress);
                 }
-            } else {
-                brls::Logger::error("HomeDownloads: dataSource or recyclingGrid is null in delayed refresh!");
             }
-        });
-    }).detach(); // Detach il thread per non dover gestirlo
+        );
+        
+        DownloadManager::instance().setGlobalCompleteCallback(
+            [this](const std::string& id, bool success) {
+                if (!isShuttingDown.load() && this->shouldAutoRefresh.load()) {
+                    this->onDownloadComplete(id, success);
+                }
+            }
+        );
+        brls::Logger::debug("HomeDownloads: Callbacks registered");
+    }
     
-    brls::Logger::info("HomeDownloads: Fragment initialized with UI and auto-refresh complete");
+    brls::Logger::info("HomeDownloads: About to call refresh() - DISABLED FOR TESTING");
+    // if (!isShuttingDown.load()) {
+    //     try {
+    //         refresh();
+    //         brls::Logger::debug("HomeDownloads: Initial refresh completed");
+    //     } catch (const std::exception& e) {
+    //         brls::Logger::error("HomeDownloads: Error in initial refresh: {}", e.what());
+    //     }
+    // }
+    brls::Logger::warning("HomeDownloads: Initial refresh() DISABLED for testing");
+    
+    // Avvia l'aggiornamento automatico SOLO se non ci stiamo spegnendo - DISABILITATO PER TESTING
+    // if (!isShuttingDown.load()) {
+    //     startAutoRefresh();
+    //     brls::Logger::debug("HomeDownloads: Auto-refresh started");
+    // }
+    brls::Logger::warning("HomeDownloads: Auto-refresh START DISABLED for testing");
+    
+    // Forza un refresh ritardato per assicurarsi che la UI sia pronta - DISABILITATO PER TESTING
+    // Ma SOLO se non ci stiamo spegnendo
+    // if (!isShuttingDown.load()) {
+    //     std::thread([this]() {
+    //         std::this_thread::sleep_for(std::chrono::milliseconds(500)); // Aspetta mezzo secondo
+    //         
+    //         // Controlla se l'app si sta spegnendo prima di fare sync
+    //         if (!isShuttingDown.load() && this->shouldAutoRefresh.load()) {
+    brls::Logger::warning("HomeDownloads: Delayed refresh thread DISABLED for testing");
+    //             try {
+    //                 brls::sync([this]() {
+    //                     if (!isShuttingDown.load() && this->shouldAutoRefresh.load()) {
+    //                         brls::Logger::info("HomeDownloads: Executing delayed refresh to show loaded downloads");
+    //                         if (dataSource && recyclingGrid) {
+    //                             auto downloads = DownloadManager::instance().getAllDownloads();
+    //                             brls::Logger::info("HomeDownloads: Delayed refresh found {} downloads", downloads.size());
+    //                             
+    //                             if (!downloads.empty()) {
+    //                                 dataSource->updateDownloads(downloads);
+    //                                 dataSource->forceRefresh(); // Forza il refresh indipendentemente dai cambiamenti
+    //                                 recyclingGrid->reloadData();
+    //                                 brls::Logger::info("HomeDownloads: Delayed refresh completed with {} downloads", downloads.size());
+    //                             } else {
+    //                                 brls::Logger::info("HomeDownloads: No downloads to show in delayed refresh");
+    //                             }
+    //                         } else {
+    //                             brls::Logger::error("HomeDownloads: dataSource or recyclingGrid is null in delayed refresh!");
+    //                         }
+    //                     }
+    //                 });
+    //             } catch (const std::exception& e) {
+    //                 brls::Logger::error("HomeDownloads: Error in delayed refresh: {}", e.what());
+    //             }
+    //         }
+    //     }).detach(); // Detach il thread per non dover gestirlo
+    // }
+    
+    brls::Logger::info("HomeDownloads: Constructor completed successfully");
 }
 
 HomeDownloads::~HomeDownloads() {
-    brls::Logger::debug("HomeDownloads: Starting destructor");
+    brls::Logger::info("HomeDownloads: Starting destructor");
     
-    // Ferma il refresh thread prima di tutto
-    stopAutoRefresh();
+    // Imposta immediatamente i flag di shutdown
+    isShuttingDown = true;
+    shouldAutoRefresh = false;
     
-    // Assicurati che non ci siano operazioni in corso
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    brls::Logger::debug("HomeDownloads: Shutdown flags set, stopping auto-refresh");
+    
+    // Ferma il refresh thread prima di tutto con timeout
+    try {
+        stopAutoRefresh();
+        brls::Logger::debug("HomeDownloads: Auto-refresh stopped");
+    } catch (const std::exception& e) {
+        brls::Logger::error("HomeDownloads: Error stopping auto-refresh: {}", e.what());
+    }
+    
+    // Rimuovi i callback globali per evitare crash
+    try {
+        DownloadManager::instance().setGlobalProgressCallback(nullptr);
+        DownloadManager::instance().setGlobalCompleteCallback(nullptr);
+        brls::Logger::debug("HomeDownloads: Callbacks cleared");
+    } catch (const std::exception& e) {
+        brls::Logger::error("HomeDownloads: Error clearing callbacks: {}", e.what());
+    }
     
     // Pulisci la data source
     if (dataSource) {
-        delete dataSource;
-        dataSource = nullptr;
+        try {
+            delete dataSource;
+            dataSource = nullptr;
+            brls::Logger::debug("HomeDownloads: Data source deleted");
+        } catch (const std::exception& e) {
+            brls::Logger::error("HomeDownloads: Error deleting data source: {}", e.what());
+        }
     }
     
-    brls::Logger::debug("HomeDownloads: destructor completed");
+    brls::Logger::info("HomeDownloads: destructor completed");
 }
 
 void HomeDownloads::draw(NVGcontext* vg, float x, float y, float width, float height, brls::Style style, brls::FrameContext* ctx) {
@@ -316,7 +394,28 @@ void HomeDownloads::stopAutoRefresh() {
         refreshCondition.notify_all();
         
         if (refreshThread.joinable()) {
-            refreshThread.join();
+            // Prova il join con timeout ridotto durante shutdown
+            auto startTime = std::chrono::steady_clock::now();
+            bool joined = false;
+            int maxWaitMs = isShuttingDown.load() ? 100 : 1000; // Timeout più breve durante shutdown
+            
+            while (!joined && 
+                   std::chrono::duration_cast<std::chrono::milliseconds>(
+                       std::chrono::steady_clock::now() - startTime).count() < maxWaitMs) {
+                refreshCondition.notify_all();
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                // Non c'è un join con timeout standard, quindi simuliamolo
+                if (!refreshThreadRunning.load()) {
+                    refreshThread.join();
+                    joined = true;
+                    break;
+                }
+            }
+            
+            if (!joined) {
+                brls::Logger::warning("HomeDownloads: Thread join timeout, detaching");
+                refreshThread.detach();
+            }
         }
         
         brls::Logger::debug("HomeDownloads: Stopped auto-refresh thread");
@@ -326,8 +425,13 @@ void HomeDownloads::stopAutoRefresh() {
 void HomeDownloads::refreshWorker() {
     brls::Logger::info("HomeDownloads: Auto-refresh thread started");
     
-    while (refreshThreadRunning.load()) {
+    while (refreshThreadRunning.load() && shouldAutoRefresh.load() && !isShuttingDown.load()) {
         try {
+            // Controllo aggiuntivo per uscita veloce
+            if (!refreshThreadRunning.load() || !shouldAutoRefresh.load() || isShuttingDown.load()) {
+                break;
+            }
+            
             // Controlla se ci sono download attivi
             auto downloads = DownloadManager::instance().getAllDownloads();
             bool hasActiveDownloads = false;
@@ -340,30 +444,34 @@ void HomeDownloads::refreshWorker() {
                 }
             }
         
-            if (hasActiveDownloads && shouldAutoRefresh.load()) {
-                // Usa sync per eseguire refresh sul thread UI principale
+            if (hasActiveDownloads && shouldAutoRefresh.load() && !isShuttingDown.load()) {
+                // Usa sync per eseguire refresh sul thread UI principale, ma solo se non ci stiamo spegnendo
                 brls::sync([this]() {
-                    if (shouldAutoRefresh.load() && dataSource && recyclingGrid) {
+                    if (shouldAutoRefresh.load() && !isShuttingDown.load() && dataSource && recyclingGrid) {
                         refresh();
                     }
                 });
                 
-                // Aspetta 750ms per download attivi (aumentato da 500ms per ridurre stress)
+                // Aspetta 750ms per download attivi ma controlla più frequentemente se deve uscire
                 std::unique_lock<std::mutex> lock(refreshMutex);
                 refreshCondition.wait_for(lock, std::chrono::milliseconds(750), [this] {
-                    return !refreshThreadRunning.load();
+                    return !refreshThreadRunning.load() || !shouldAutoRefresh.load() || isShuttingDown.load();
                 });
             } else {
-                // Aspetta 10 secondi se non ci sono download attivi (aumentato da 5s)
+                // Aspetta meno tempo se non ci sono download attivi per uscire più velocemente
                 std::unique_lock<std::mutex> lock(refreshMutex);
-                refreshCondition.wait_for(lock, std::chrono::milliseconds(10000), [this] {
-                    return !refreshThreadRunning.load();
+                refreshCondition.wait_for(lock, std::chrono::milliseconds(2000), [this] {
+                    return !refreshThreadRunning.load() || !shouldAutoRefresh.load() || isShuttingDown.load();
                 });
             }
         } catch (const std::exception& e) {
             brls::Logger::error("HomeDownloads::refreshWorker() exception: {}", e.what());
-            // In caso di errore, aspetta prima di riprovare
-            std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+            // In caso di errore, aspetta prima di riprovare, ma non troppo durante shutdown
+            if (!isShuttingDown.load()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+            } else {
+                break; // Esci immediatamente se ci stiamo spegnendo
+            }
         }
     }
     
