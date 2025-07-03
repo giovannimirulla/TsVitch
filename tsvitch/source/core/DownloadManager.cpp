@@ -15,18 +15,6 @@
 
 using json = nlohmann::json;
 
-// Flag globale per shutdown dell'applicazione
-static std::atomic<bool> g_appShuttingDown{false};
-
-// Funzione per accedere al flag di shutdown
-bool isAppShuttingDown() {
-    return g_appShuttingDown.load();
-}
-
-void setAppShuttingDown(bool shutting_down) {
-    g_appShuttingDown = shutting_down;
-}
-
 // Callback per scrivere i dati scaricati
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::ofstream* stream) {
     size_t totalSize = size * nmemb;
@@ -48,9 +36,9 @@ static int ProgressCallback(void* clientp, curl_off_t dltotal, curl_off_t dlnow,
     if (!data || !data->manager) {
         return 0; // Manager non valido, esci
     }
-    
-    // Controlla se il manager è in fase di shutdown o l'app si sta spegnendo
-    if (data->manager->shouldStop.load() || isAppShuttingDown()) {
+
+    // Controlla se il manager è in fase di shutdown
+    if (data->manager->shouldStop.load()) {
         return 1; // Interrompe il download
     }
     
@@ -312,8 +300,8 @@ std::string DownloadManager::getDownloadDirectory() const {
 }
 
 void DownloadManager::downloadWorker(const std::string& id) {
-    // Verifica che il manager non sia in fase di shutdown o l'app si stia spegnendo
-    if (shouldStop.load() || isAppShuttingDown()) {
+    // Verifica che il manager non sia in fase di shutdown
+    if (shouldStop.load()) {
         brls::Logger::debug("DownloadManager: Worker {} exiting due to shutdown", id);
         return;
     }
@@ -503,7 +491,7 @@ void DownloadManager::downloadWorker(const std::string& id) {
     brls::Logger::info("DownloadManager: Target file: {}", item.localPath);
     
     // Controlla se dobbiamo fermarci prima di iniziare il download
-    if (shouldStop.load() || isAppShuttingDown()) {
+    if (shouldStop.load()) {
         brls::Logger::debug("DownloadManager: Aborting download {} due to shutdown", id);
         if (headers) {
             curl_slist_free_all(headers);
@@ -514,16 +502,6 @@ void DownloadManager::downloadWorker(const std::string& id) {
     
     CURLcode res = curl_easy_perform(curl);
     outFile.close();
-    
-    // Controlla se dobbiamo fermarci dopo il download
-    if (shouldStop.load() || isAppShuttingDown()) {
-        brls::Logger::debug("DownloadManager: Download {} interrupted by shutdown", id);
-        if (headers) {
-            curl_slist_free_all(headers);
-        }
-        curl_easy_cleanup(curl);
-        return;
-    }
     
     // Controlla il codice di risposta HTTP
     long httpCode = 0;
@@ -873,18 +851,8 @@ void DownloadManager::loadDownloads() {
         brls::Logger::error("DownloadManager: Failed to load downloads state: {}", e.what());
     }
 }
-
 DownloadManager::DownloadManager() {
-    // Sottoscrivi l'exitEvent per shutdown rapido
-    brls::Application::getExitEvent()->subscribe([this]() {
-        brls::Logger::debug("DownloadManager: Application exit event received");
-        shouldStop = true;
-        setAppShuttingDown(true);
-    });
-    
-    brls::Logger::debug("DownloadManager: Constructor completed with exit event subscription");
 }
-
 DownloadManager::~DownloadManager() {
     brls::Logger::debug("DownloadManager: Starting destruction");
     shouldStop = true;
