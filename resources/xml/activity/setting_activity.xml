@@ -67,6 +67,23 @@
                                                 <brls:Header
                                                         width="auto"
                                                         height="auto"
+                                                        title="@i18n/tsvitch/setting/tools/proxy/header"
+                                                        marginBottom="0px" />
+                                                <brls:Box
+                                                        width="100%"
+                                                        height="auto"
+                                                        axis="column"
+                                                        marginBottom="30px">
+
+                                                        <brls:InputCell
+                                                                id="setting/tools/proxy/input"
+                                                        />
+
+
+                                                </brls:Box>
+                                                <brls:Header
+                                                        width="auto"
+                                                        height="auto"
                                                         title="@i18n/tsvitch/setting/tools/tutorial/header"
                                                         marginBottom="0px" />
                                                 <brls:Box
@@ -102,6 +119,10 @@
                                                         <brls:RadioCell
                                                                 id="tools/network_checker"
                                                                 title="@i18n/tsvitch/setting/tools/test/net" />
+
+                                                        <brls:RadioCell
+                                                                id="tools/proxy_test"
+                                                                title="@i18n/tsvitch/setting/tools/test/proxy" />
 
                                                         <brls:RadioCell
                                                                 id="tools/vibration_test"

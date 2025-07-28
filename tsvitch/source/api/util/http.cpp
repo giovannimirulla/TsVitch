@@ -8,4 +8,14 @@ cpr::Response HTTP::get(const std::string& url, const cpr::Parameters& parameter
     return cpr::Get(cpr::Url{url}, parameters, CPR_HTTP_BASE);
 }
 
+void HTTP::setProxy(const std::string& proxyUrl) {
+    if (proxyUrl.empty()) {
+        HTTP::PROXIES = {};
+        brls::Logger::info("Proxy disabled");
+    } else {
+        HTTP::PROXIES = cpr::Proxies{{"http", proxyUrl}, {"https", proxyUrl}};
+        brls::Logger::info("Proxy configured: {}", proxyUrl);
+    }
+}
+
 };  // namespace tsvitch

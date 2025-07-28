@@ -101,6 +101,11 @@
         "input": "Playlist personalizzata",
         "hint": "http://example.com/playlist.m3u8"
       },
+      "proxy": {
+        "header": "Impostazioni Proxy",
+        "input": "Server proxy",
+        "hint": "http://127.0.0.1:8080 o socks5://127.0.0.1:1080"
+      },
       "tutorial": {
         "header": "Guida",
         "intro": "Introduzione al software (video online; cinese)",
@@ -113,6 +118,12 @@
       "test": {
         "header": "Diagnostica",
         "net": "Diagnostica di rete",
+        "proxy": "Test proxy",
+        "proxy_none": "Nessun proxy configurato",
+        "proxy_testing": "Test del proxy",
+        "proxy_success": "✓ Proxy funziona correttamente",
+        "proxy_failed": "✗ Proxy fallito - Codice",
+        "proxy_error": "✗ Errore test proxy",
         "vibration": "Test Vibrazione"
       },
       "others": {
