@@ -41,3 +41,6 @@ public:
 
 // Evento globale per notificare il cambio M3U8
 inline brls::Event<> OnM3U8UrlChanged;
+
+// Evento globale per notificare il cambio Proxy
+inline brls::Event<> OnProxyUrlChanged;

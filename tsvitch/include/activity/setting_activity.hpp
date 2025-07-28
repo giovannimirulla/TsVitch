@@ -31,6 +31,7 @@ private:
     BRLS_BIND(brls::RadioCell, btnTutorialError, "tools/tutorial_error");
     BRLS_BIND(brls::RadioCell, btnTutorialFont, "tools/tutorial_font");
     BRLS_BIND(brls::RadioCell, btnNetworkChecker, "tools/network_checker");
+    BRLS_BIND(brls::RadioCell, btnProxyTest, "tools/proxy_test");
     BRLS_BIND(brls::RadioCell, btnReleaseChecker, "tools/release_checker");
     BRLS_BIND(brls::RadioCell, btnQuit, "tools/quit");
     BRLS_BIND(brls::RadioCell, btnOpenConfig, "tools/config_dir");
@@ -38,6 +39,7 @@ private:
     BRLS_BIND(brls::BooleanCell, btnTls, "setting/network/tls");
     BRLS_BIND(brls::BooleanCell, btnProxy, "setting/network/proxy");
     BRLS_BIND(brls::InputCell, btnM3U8Input, "setting/tools/m3u8/input");
+    BRLS_BIND(brls::InputCell, btnProxyInput, "setting/tools/proxy/input");
     BRLS_BIND(TsVitchSelectorCell, selectorLang, "setting/language");
     BRLS_BIND(TsVitchSelectorCell, selectorTheme, "setting/ui/theme");
     BRLS_BIND(TsVitchSelectorCell, selectorCustomTheme, "setting/custom/theme");
