@@ -1,6 +1,7 @@
 
 
 #include "tsvitch/util/http.hpp"
+#include <borealis.hpp> // or the specific header where brls::Logger is defined
 
 namespace tsvitch {
 
