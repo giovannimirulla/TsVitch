@@ -23,11 +23,13 @@
 #include "utils/config_helper.hpp"
 #include "utils/crash_helper.hpp"
 #include "utils/vibration_helper.hpp"
+#include "utils/activity_helper.hpp"
 #include "activity/live_player_activity.hpp"
 #include "view/video_view.hpp"
 #include "view/mpv_core.hpp"
 
 #include "config/m3u8_config.h"
+#include "api/tsvitch/util/http.hpp"
 
 #ifdef PS4
 #include <orbis/SystemService.h>
@@ -178,6 +180,7 @@ std::unordered_map<SettingItem, ProgramOption> ProgramConfig::SETTING_MAP = {
     {SettingItem::GROUP_SELECTED_INDEX, {"group_selected_index", {}, {}, 0}},
     {SettingItem::UP_FILTER, {"up_filter", {}, {}, 0}},
     {SettingItem::M3U8_URL_ITEM, {"m3u8_url", {}, {}, 0}},
+    {SettingItem::PROXY_URL_ITEM, {"proxy_url", {}, {}, 0}},
 };
 
 ProgramConfig::ProgramConfig() = default;
@@ -272,6 +275,12 @@ void ProgramConfig::load() {
     }
 
     this->m3u8Url = getSettingItem(SettingItem::M3U8_URL_ITEM, this->getM3U8Url());
+    this->proxyUrl = getSettingItem(SettingItem::PROXY_URL_ITEM, this->getProxyUrl());
+    
+    // Configura o proxy se estiver definido
+    if (!this->proxyUrl.empty()) {
+        tsvitch::HTTP::setProxy(this->proxyUrl);
+    }
 
 #ifdef IOS
 #elif defined(__APPLE__) || defined(__linux__) || defined(_WIN32)
@@ -759,6 +768,24 @@ void ProgramConfig::setM3U8Url(const std::string& url) {
         m3u8Url = M3U8_URL_VALUE;
     }
     GA("m3u8_url", {{"url", m3u8Url}});
+}
+
+std::string ProgramConfig::getProxyUrl() {
+    return this->proxyUrl;
+}
+
+void ProgramConfig::setProxyUrl(const std::string& url) {
+    this->proxyUrl = url;
+    brls::Logger::info("setProxyUrl: {}", proxyUrl);
+    setSettingItem(SettingItem::PROXY_URL_ITEM, proxyUrl);
+    
+    // Configura o proxy para todas as requisições HTTP
+    tsvitch::HTTP::setProxy(proxyUrl);
+    
+    // Dispara evento para notificar mudança no proxy
+    OnProxyUrlChanged.fire();
+    
+    GA("proxy_url", {{"url", proxyUrl}});
 }
 
 void ProgramConfig::toggleFullscreen() {

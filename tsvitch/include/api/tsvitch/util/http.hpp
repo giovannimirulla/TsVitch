@@ -40,6 +40,8 @@ public:
 
     static cpr::Response get(const std::string& url, const cpr::Parameters& parameters = {}, int timeout = 10000);
 
+    static void setProxy(const std::string& proxyUrl);
+
     static void __cpr_post(const std::string& url, const cpr::Parameters& parameters = {},
                        const cpr::Body& body = cpr::Body{""},
                        const std::function<void(const cpr::Response&)>& callback = nullptr,

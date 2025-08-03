@@ -74,6 +74,7 @@ enum class SettingItem {
     DLNA_NAME,
 
     M3U8_URL_ITEM,
+    PROXY_URL_ITEM,
 
     TLS_VERIFY,
     UP_FILTER,
@@ -205,11 +206,16 @@ public:
 
     void setM3U8Url(const std::string& url);
 
+    std::string getProxyUrl();
+
+    void setProxyUrl(const std::string& url);
+
     std::vector<CustomTheme> customThemes;
     nlohmann::json setting;
     std::string client;
     std::string device;
     std::string m3u8Url;
+    std::string proxyUrl;
     static std::unordered_map<SettingItem, ProgramOption> SETTING_MAP;
 };
 

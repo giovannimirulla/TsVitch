@@ -6,6 +6,7 @@
 #include <borealis/views/dialog.hpp>
 #include <borealis/views/cells/cell_bool.hpp>
 #include <borealis/views/cells/cell_input.hpp>
+#include <cpr/cpr.h>
 
 #include "tsvitch.h"
 #include "activity/setting_activity.hpp"
@@ -151,6 +152,37 @@ void SettingActivity::onContentAvailable() {
         auto dialog = new brls::Dialog((brls::Box*)new SettingNetwork());
         dialog->addButton("hints/ok"_i18n, []() {});
         dialog->open();
+        return true;
+    });
+
+    btnProxyTest->registerClickAction([](...) -> bool {
+        // Testa o proxy fazendo uma requisição simples
+        std::string proxyUrl = ProgramConfig::instance().getProxyUrl();
+        
+        if (proxyUrl.empty()) {
+            brls::Application::notify("tsvitch/setting/tools/test/proxy_none"_i18n);
+            return true;
+        }
+        
+        brls::Application::notify("tsvitch/setting/tools/test/proxy_testing"_i18n + ": " + proxyUrl);
+        
+        // Faz o teste usando a configuração atual do sistema
+        try {
+            // Usa a configuração de proxy atual que já foi aplicada ao sistema
+            auto response = cpr::Get(cpr::Url{"http://httpbin.org/ip"}, 
+                                   cpr::Timeout{5000});
+            
+            if (response.status_code == 200) {
+                brls::Application::notify("tsvitch/setting/tools/test/proxy_success"_i18n);
+            } else if (response.status_code == 0) {
+                brls::Application::notify("tsvitch/setting/tools/test/proxy_error"_i18n + ": " + response.error.message);
+            } else {
+                brls::Application::notify("tsvitch/setting/tools/test/proxy_failed"_i18n + ": " + std::to_string(response.status_code));
+            }
+        } catch (const std::exception& e) {
+            brls::Application::notify("tsvitch/setting/tools/test/proxy_error"_i18n + ": " + std::string(e.what()));
+        }
+        
         return true;
     });
 
@@ -494,6 +526,15 @@ void SettingActivity::onContentAvailable() {
             OnM3U8UrlChanged.fire(); // Notifica tutte le view interessate
         },
         "tsvitch/setting/tools/m3u8/hint"_i18n, "tsvitch/setting/tools/m3u8/hint"_i18n, 255);
+
+    auto proxyUrl = conf.getSettingItem(SettingItem::PROXY_URL_ITEM, std::string{""});
+    btnProxyInput->init(
+        "tsvitch/setting/tools/proxy/input"_i18n, proxyUrl,
+        [](const std::string& data) {
+            std::string proxyUrl = pystring::strip(data);
+            ProgramConfig::instance().setProxyUrl(proxyUrl);
+        },
+        "tsvitch/setting/tools/proxy/hint"_i18n, "tsvitch/setting/tools/proxy/hint"_i18n, 255);
 
 #if defined(PS4) || defined(__PSV__)
     btnHWDEC->setVisibility(brls::Visibility::GONE);
