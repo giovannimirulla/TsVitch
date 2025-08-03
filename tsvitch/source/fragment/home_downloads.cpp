@@ -121,7 +121,7 @@ public:
 
     size_t getItemCount() override {
         // Aggiungi logging temporaneo per debug
-        brls::Logger::debug("DownloadDataSource::getItemCount() called - returning {}", downloads.size());
+       // brls::Logger::debug("DownloadDataSource::getItemCount() called - returning {}", downloads.size());
         return downloads.size();
     }
 
@@ -200,35 +200,35 @@ HomeDownloads::HomeDownloads() {
     // Configura la recycling grid
     setupRecyclingGrid();
     brls::Logger::debug("HomeDownloads: Recycling grid setup completed");
-    
-    // Carica i download esistenti SOLO se non in shutdown e senza fare chiamate di rete
-    brls::Logger::info("HomeDownloads: About to load existing downloads");
 
-    
-    // Controlla quanti download sono stati caricati - DISABILITATO PER TESTING
-    // auto loadedDownloads = DownloadManager::instance().getAllDownloads();
-    // brls::Logger::info("HomeDownloads: Loaded {} downloads from storage", loadedDownloads.size());
-    brls::Logger::warning("HomeDownloads: Download loading and getAllDownloads() DISABLED for testing");
-    
+    // Register global callbacks to update UI on progress and completion
+    DownloadManager::instance().setGlobalProgressCallback([this](const std::string& id, float progress, size_t /*downloaded*/, size_t /*total*/) {
+        this->onDownloadProgress(id, progress);
+    });
+    DownloadManager::instance().setGlobalCompleteCallback([this](const std::string& id, bool success) {
+        this->onDownloadComplete(id, success);
+    });
 
-    
-    brls::Logger::info("HomeDownloads: About to call refresh() - DISABLED FOR TESTING");
-    // if (!isShuttingDown.load()) {
-    //     try {
-    //         refresh();
-    //         brls::Logger::debug("HomeDownloads: Initial refresh completed");
-    //     } catch (const std::exception& e) {
-    //         brls::Logger::error("HomeDownloads: Error in initial refresh: {}", e.what());
-    //     }
-    // }
-    brls::Logger::warning("HomeDownloads: Initial refresh() DISABLED for testing");
-    
-    // Avvia l'aggiornamento automatico SOLO se non ci stiamo spegnendo - DISABILITATO PER TESTING
-    // if (!isShuttingDown.load()) {
-    //     startAutoRefresh();
-    //     brls::Logger::debug("HomeDownloads: Auto-refresh started");
-    // }
-    brls::Logger::warning("HomeDownloads: Auto-refresh START DISABLED for testing");
+    // Load persisted downloads and populate UI
+    DownloadManager::instance().loadDownloads();
+    auto loadedDownloads = DownloadManager::instance().getAllDownloads();
+    if (!loadedDownloads.empty()) {
+        dataSource->updateDownloads(loadedDownloads);
+        dataSource->forceRefresh();
+        recyclingGrid->reloadData();
+    }
+
+    // Initial refresh to show all downloads
+    try {
+        refresh();
+        brls::Logger::debug("HomeDownloads: Initial refresh completed");
+    } catch (const std::exception& e) {
+        brls::Logger::error("HomeDownloads: Error in initial refresh: {}", e.what());
+    }
+
+    // Start automatic refresh thread
+    startAutoRefresh();
+    brls::Logger::debug("HomeDownloads: Auto-refresh started");
     
     // Forza un refresh ritardato per assicurarsi che la UI sia pronta - DISABILITATO PER TESTING
     // Ma SOLO se non ci stiamo spegnendo

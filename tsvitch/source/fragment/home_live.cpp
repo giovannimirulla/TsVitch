@@ -17,7 +17,7 @@
 #include "core/FavoriteManager.hpp"
 #include "core/ChannelManager.hpp"
 #include "core/DownloadManager.hpp"
-#include "core/DownloadManager.hpp"
+#include "core/DownloadProgressManager.hpp"
 
 #include "utils/config_helper.hpp"
 
@@ -517,26 +517,44 @@ void HomeLive::downloadVideo() {
         channel.url, 
         channel.logo,  // URL dell'immagine
         [](const std::string& id, float progress, size_t downloaded, size_t total) {
-            // Callback di progresso
+            // Callback di progresso - aggiorna il manager globale
+            std::string progressText = fmt::format("{:.1f}%", progress);
+            std::string statusText = fmt::format("{} / {} bytes", downloaded, total);
+            
+            brls::sync([id, progress, progressText, statusText]() {
+                tsvitch::DownloadProgressManager::getInstance()->updateProgress(
+                    id, progress, statusText, progressText
+                );
+            });
+            
             brls::Logger::debug("Download {}: {:.1f}% ({}/{} bytes)", id, progress, downloaded, total);
         },
         [](const std::string& id, const std::string& filePath) {
             // Callback di completamento
             brls::Logger::info("Download {} completed: {}", id, filePath);
-            brls::sync([]() {
+            brls::sync([id]() {
+                // Nascondi l'overlay
+                tsvitch::DownloadProgressManager::getInstance()->hideDownloadProgress(id);
                 brls::Application::notify("Download completato!");
             });
         },
         [](const std::string& id, const std::string& error) {
             // Callback di errore
             brls::Logger::error("Download {} failed: {}", id, error);
-            brls::sync([error]() {
+            brls::sync([id, error]() {
+                // Nascondi l'overlay
+                tsvitch::DownloadProgressManager::getInstance()->hideDownloadProgress(id);
                 brls::Application::notify("Errore download: " + error);
             });
         }
     );
     
     if (!downloadId.empty()) {
+        // Mostra l'overlay globale
+        tsvitch::DownloadProgressManager::getInstance()->showDownloadProgress(
+            downloadId, channel.title, channel.url
+        );
+        
         brls::Application::notify("Download avviato: " + channel.title);
         brls::Logger::info("HomeLive: Started download {} for {}", downloadId, channel.title);
     } else {
