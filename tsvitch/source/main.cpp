@@ -14,6 +14,7 @@
 
 #include "core/HistoryManager.hpp"
 #include "core/FavoriteManager.hpp"
+#include "core/DownloadProgressManager.hpp"
 
 #ifdef IOS
 #include <SDL2/SDL_main.h>
@@ -59,6 +60,10 @@ int main(int argc, char* argv[]) {
     brls::Application::getPlatform()->exitToHomeMode(true);
     brls::Application::createWindow(APP_NAME);
     brls::Logger::info("createWindow done");
+
+    // Initialize global download progress manager
+    tsvitch::DownloadProgressManager::getInstance()->initialize();
+    brls::Logger::info("DownloadProgressManager initialized");
 
     Register::initCustomView();
     Register::initCustomTheme();
@@ -112,6 +117,10 @@ int main(int argc, char* argv[]) {
     }
 
     brls::Logger::info("mainLoop done");
+    
+    // Cleanup download progress manager
+    tsvitch::DownloadProgressManager::getInstance()->cleanup();
+    
     ProgramConfig::instance().exit(argv);
 
     HistoryManager::get()->save();

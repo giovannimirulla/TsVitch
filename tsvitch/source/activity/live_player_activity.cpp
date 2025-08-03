@@ -4,6 +4,7 @@
 #include "activity/live_player_activity.hpp"
 #include "utils/number_helper.hpp"
 #include "core/DownloadManager.hpp"
+#include "core/DownloadProgressManager.hpp"
 
 #include <vector>
 #include <chrono>
@@ -41,15 +42,6 @@ void LiveActivity::onContentAvailable() {
 
     // Ottieni i riferimenti agli elementi UI
     video = dynamic_cast<VideoView*>(this->getView("video"));
-    downloadProgressOverlay = dynamic_cast<brls::Box*>(this->getView("download_progress_overlay"));
-    downloadStatusLabel = dynamic_cast<brls::Label*>(this->getView("download_status_label"));
-    downloadProgressText = dynamic_cast<brls::Label*>(this->getView("download_progress_text"));
-    downloadProgressBar = dynamic_cast<brls::Slider*>(this->getView("download_progress_bar"));
-
-    // Configura la progress bar senza cursore
-    if (downloadProgressBar) {
-        downloadProgressBar->setPointerSize(0.0f);
-    }
 
     MPVCore::instance().setAspect(
         ProgramConfig::instance().getSettingItem(SettingItem::PLAYER_ASPECT, std::string{"-1"}));
@@ -285,11 +277,12 @@ void LiveActivity::startDownload() {
         return;
     }
     
-    // Mostra l'overlay del progresso
-    downloadProgressOverlay->setVisibility(brls::Visibility::VISIBLE);
-    downloadStatusLabel->setText("Inizializzazione download...");
-    downloadProgressText->setText("0%");
-    downloadProgressBar->setProgress(0.0f);
+    // Mostra l'overlay del progresso globale
+    tsvitch::DownloadProgressManager::getInstance()->showDownloadProgress(
+        "live_" + this->liveData.title, 
+        this->liveData.title, 
+        this->liveData.url
+    );
     
     // Avvia il download del video corrente con callback
     currentDownloadId = DownloadManager::instance().startDownload(
@@ -297,22 +290,15 @@ void LiveActivity::startDownload() {
         this->liveData.url,
         this->liveData.logo,  // Usa il logo del canale come immagine
         [this](const std::string& downloadId, float progress, size_t downloaded, size_t total) {
-            // Callback di progresso - aggiorna la UI sul thread principale con controlli di sicurezza
+            // Callback di progresso - aggiorna l'overlay globale
             if (!hasActiveDownload) {
                 return;  // Download annullato o completato
             }
             
-            // Verifica che l'attività sia ancora valida
-            if (!downloadProgressBar || !downloadProgressText || !downloadStatusLabel) {
-                brls::Logger::warning("Download progress callback but UI components are null - activity may have been destroyed");
-                hasActiveDownload = false;
-                return;
-            }
-            
             try {
-                downloadProgressBar->setProgress(progress / 100.0f);
-                
                 std::string progressText;
+                std::string statusText = "Download in corso...";
+                
                 if (total > 0) {
                     std::string downloadedStr = formatFileSize(downloaded);
                     std::string totalStr = formatFileSize(total);
@@ -320,36 +306,38 @@ void LiveActivity::startDownload() {
                 } else {
                     progressText = fmt::format("{:.1f}%", progress);
                 }
-                downloadProgressText->setText(progressText);
-                downloadStatusLabel->setText("Download in corso...");
+                
+                // Aggiorna l'overlay globale
+                tsvitch::DownloadProgressManager::getInstance()->updateProgress(
+                    "live_" + this->liveData.title, 
+                    progress, 
+                    statusText, 
+                    progressText
+                );
+                
             } catch (const std::exception& e) {
                 brls::Logger::error("Error in download progress callback: {}", e.what());
                 hasActiveDownload = false;
             }
         },
         [this](const std::string& downloadId, const std::string& filePath) {
-            // Callback di completamento - con controlli di sicurezza
+            // Callback di completamento
             brls::Logger::info("Download completed: {}", downloadId);
-            
-            // Verifica che l'attività sia ancora valida
-            if (!downloadProgressOverlay || !downloadStatusLabel || !downloadProgressText || !downloadProgressBar) {
-                brls::Logger::warning("Download completed but UI components are null - activity may have been destroyed");
-                hasActiveDownload = false;
-                return;
-            }
             
             hasActiveDownload = false;
             
             try {
-                downloadStatusLabel->setText("Download completato!");
-                downloadProgressText->setText("100%");
-                downloadProgressBar->setProgress(1.0f);
+                // Aggiorna l'overlay globale con stato di completamento
+                tsvitch::DownloadProgressManager::getInstance()->updateProgress(
+                    "live_" + this->liveData.title, 
+                    100.0f, 
+                    "Download completato!", 
+                    "100%"
+                );
                 
-                // Nascondi l'overlay dopo 2 secondi con controllo di validità
+                // Nascondi l'overlay dopo 2 secondi
                 brls::delay(2000, [this]() {
-                    if (downloadProgressOverlay) {
-                        downloadProgressOverlay->setVisibility(brls::Visibility::GONE);
-                    }
+                    tsvitch::DownloadProgressManager::getInstance()->hideDownloadProgress("live_" + this->liveData.title);
                 });
                 
                 // Mostra notifica di successo
@@ -364,27 +352,23 @@ void LiveActivity::startDownload() {
             }
         },
         [this](const std::string& downloadId, const std::string& error) {
-            // Callback di errore - con controlli di sicurezza
+            // Callback di errore
             brls::Logger::error("Download failed: {} - {}", downloadId, error);
-            
-            // Verifica che l'attività sia ancora valida
-            if (!downloadProgressOverlay || !downloadStatusLabel || !downloadProgressText) {
-                brls::Logger::warning("Download failed but UI components are null - activity may have been destroyed");
-                hasActiveDownload = false;
-                return;
-            }
             
             hasActiveDownload = false;
             
             try {
-                downloadStatusLabel->setText("Errore nel download");
-                downloadProgressText->setText("Fallito");
+                // Aggiorna l'overlay globale con stato di errore
+                tsvitch::DownloadProgressManager::getInstance()->updateProgress(
+                    "live_" + this->liveData.title, 
+                    0.0f, 
+                    "Errore nel download", 
+                    "Fallito"
+                );
                 
-                // Nascondi l'overlay dopo 3 secondi con controllo di validità
+                // Nascondi l'overlay dopo 3 secondi
                 brls::delay(3000, [this]() {
-                    if (downloadProgressOverlay) {
-                        downloadProgressOverlay->setVisibility(brls::Visibility::GONE);
-                    }
+                    tsvitch::DownloadProgressManager::getInstance()->hideDownloadProgress("live_" + this->liveData.title);
                 });
                 
                 // Mostra notifica di errore
@@ -406,7 +390,6 @@ void LiveActivity::startDownload() {
     } else {
         // Download fallito immediatamente
         hasActiveDownload = false;
-        downloadProgressOverlay->setVisibility(brls::Visibility::GONE);
         
         brls::Dialog* dialog = new brls::Dialog("Impossibile avviare il download");
         dialog->addButton("OK", []() {});
