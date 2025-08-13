@@ -1,4 +1,5 @@
 #include "core/DownloadManager.hpp"
+#include "core/DownloadProgressManager.hpp"
 #include "utils/config_helper.hpp"
 #include <borealis/core/logger.hpp>
 #include <borealis/core/application.hpp>
@@ -21,6 +22,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <sys/stat.h>
+#include <climits>
 
 #ifdef __SWITCH__
     #include <switch.h>
@@ -42,6 +44,21 @@ using json = nlohmann::json;
 static std::map<std::string, int> globalRetryCount;
 static std::mutex retryCountMutex;
 
+// Struttura semplificata per i dati di progresso (solo per downloadSimplified)
+struct SimpleProgressData {
+    DownloadManager* manager;
+    std::string downloadId;
+};
+
+// Struttura per i dati di progresso (per il callback normale)
+struct ProgressData {
+    DownloadManager* manager;
+    std::string downloadId;
+    size_t existingFileSize; // Dimensione del file esistente per il resume
+    std::chrono::steady_clock::time_point lastCallbackTime; // Per throttling
+    float lastProgress = -1.0f; // Ultimo progresso inviato per evitare aggiornamenti inutili
+};
+
 // Callback per scrivere i dati scaricati
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::ofstream* stream) {
     size_t totalSize = size * nmemb;
@@ -49,19 +66,174 @@ static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::ofst
     return totalSize;
 }
 
-// Callback per il progresso del download
+// Callback normale per il progresso del download (per downloadWorker)
 static int ProgressCallback(void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
-    struct ProgressData {
-        DownloadManager* manager;
-        std::string downloadId;
-        size_t existingFileSize; // Dimensione del file esistente per il resume
-        std::chrono::steady_clock::time_point lastCallbackTime; // Per throttling
-        float lastProgress = -1.0f; // Ultimo progresso inviato per evitare aggiornamenti inutili
-    };
-    
-    auto* data = static_cast<ProgressData*>(clientp);
+    ProgressData* data = static_cast<ProgressData*>(clientp);
     if (!data || !data->manager) {
-        return 0; // Manager non valido, esci
+        return 0;
+    }
+
+    if (data->manager->shouldStop.load()) {
+        return 1;
+    }
+    
+    if (dltotal > 0 && dlnow >= 0) {
+        curl_off_t totalDownloaded = dlnow + data->existingFileSize;
+        curl_off_t totalExpected = dltotal + data->existingFileSize;
+        
+        float progress = static_cast<float>(totalDownloaded) / static_cast<float>(totalExpected) * 100.0f;
+        if (progress > 100.0f) progress = 100.0f;
+        
+        size_t downloaded = static_cast<size_t>(totalDownloaded);
+        size_t total = static_cast<size_t>(totalExpected);
+
+        auto now = std::chrono::steady_clock::now();
+        auto timeSinceLastCallback = std::chrono::duration_cast<std::chrono::milliseconds>(now - data->lastCallbackTime);
+        float progressDiff = std::abs(progress - data->lastProgress);
+
+        bool shouldUpdate = (timeSinceLastCallback.count() >= 250) || 
+                           (progressDiff >= 1.0f) || 
+                           (progress >= 100.0f && data->lastProgress < 100.0f);
+
+        if (!shouldUpdate) {
+            return 0;
+        }
+
+        data->lastCallbackTime = now;
+        data->lastProgress = progress;
+
+        {
+            std::lock_guard<std::mutex> lock(data->manager->downloadsMutex);
+            auto it2 = data->manager->findDownload(data->downloadId);
+            if (it2 != data->manager->downloads.end()) {
+                it2->progress = progress;
+                it2->downloadedSize = downloaded;
+                it2->totalSize = total;
+            }
+        }
+        
+        if (data->manager->globalProgressCallback) {
+            data->manager->globalProgressCallback(data->downloadId, progress, downloaded, total);
+        }
+    }
+    return 0;
+}
+
+// Struttura per catturare gli header durante il download
+struct HeaderData {
+    size_t contentLength;
+    bool contentLengthFound;
+    
+    HeaderData() : contentLength(0), contentLengthFound(false) {}
+};
+
+// Callback per analizzare gli header e catturare Content-Length
+static size_t HeaderCallback(char* buffer, size_t size, size_t nitems, void* userdata) {
+    HeaderData* data = static_cast<HeaderData*>(userdata);
+    size_t totalSize = size * nitems;
+    
+    std::string header(buffer, totalSize);
+    
+    // Cerca Content-Length nell'header
+    if (header.find("Content-Length:") == 0) {
+        size_t colonPos = header.find(':');
+        if (colonPos != std::string::npos) {
+            std::string lengthStr = header.substr(colonPos + 1);
+            // Rimuovi spazi bianchi
+            lengthStr.erase(0, lengthStr.find_first_not_of(" \t"));
+            lengthStr.erase(lengthStr.find_last_not_of(" \t\r\n") + 1);
+            
+            try {
+                data->contentLength = std::stoull(lengthStr);
+                data->contentLengthFound = true;
+                brls::Logger::info("HeaderCallback: Found Content-Length: {}", data->contentLength);
+            } catch (const std::exception& e) {
+                brls::Logger::error("HeaderCallback: Error parsing Content-Length: {}", e.what());
+            }
+        }
+    }
+    
+    return totalSize;
+}
+
+// Struttura per il write callback con progresso
+struct WriteProgressData {
+    std::FILE* file;
+    SimpleProgressData* progressData;
+    size_t totalDownloaded;
+    size_t totalExpected;
+    size_t lastReportedSize;
+    HeaderData* headerData; // Puntatore agli header data per aggiornamenti dinamici
+};
+
+// Write callback personalizzato che aggiorna anche il progresso
+static size_t SimplifiedWriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
+    WriteProgressData* data = static_cast<WriteProgressData*>(userp);
+    if (!data || !data->file || !data->progressData) {
+        return 0;
+    }
+    
+    size_t totalSize = size * nmemb;
+    size_t written = std::fwrite(contents, 1, totalSize, data->file);
+    
+    if (written > 0) {
+        data->totalDownloaded += written;
+        
+        // Aggiorna la dimensione totale se abbiamo ricevuto Content-Length dagli header
+        if (data->headerData && data->headerData->contentLengthFound && data->totalExpected == 0) {
+            data->totalExpected = data->headerData->contentLength;
+            brls::Logger::info("SimplifiedWriteCallback: Updated total expected size to {} bytes from headers", data->totalExpected);
+        }
+        
+        // Aggiorna progresso ogni 5MB o se completo per ridurre la frequenza di callback
+        if (data->totalDownloaded - data->lastReportedSize > 5242880 || 
+            (data->totalExpected > 0 && data->totalDownloaded >= data->totalExpected)) {
+            data->lastReportedSize = data->totalDownloaded;
+            
+            if (data->totalExpected > 0) {
+                float progress = static_cast<float>(data->totalDownloaded) / static_cast<float>(data->totalExpected) * 100.0f;
+                if (progress > 100.0f) progress = 100.0f;
+                if (progress < 0.0f) progress = 0.0f; // Assicurati che non sia negativo
+                
+                brls::Logger::debug("SimplifiedWriteCallback: {:.1f}% ({}/{} bytes)", 
+                                   progress, data->totalDownloaded, data->totalExpected);
+
+                // Aggiorna l'item nel manager
+                if (data->progressData->manager) {
+                    std::lock_guard<std::mutex> lock(data->progressData->manager->downloadsMutex);
+                    auto it = data->progressData->manager->findDownload(data->progressData->downloadId);
+                    if (it != data->progressData->manager->downloads.end()) {
+                        it->progress = progress;
+                        it->downloadedSize = data->totalDownloaded;
+                        it->totalSize = data->totalExpected;
+                    }
+                }
+                
+                // Chiama il callback globale se presente
+                if (data->progressData->manager && data->progressData->manager->globalProgressCallback) {
+                    brls::Logger::debug("SimplifiedWriteCallback: Calling global progress callback with {:.1f}%", progress);
+                    try {
+                        data->progressData->manager->globalProgressCallback(data->progressData->downloadId, progress, data->totalDownloaded, data->totalExpected);
+                    } catch (const std::exception& e) {
+                        brls::Logger::error("SimplifiedWriteCallback: Exception in global progress callback: {}", e.what());
+                    } catch (...) {
+                        brls::Logger::error("SimplifiedWriteCallback: Unknown exception in global progress callback");
+                    }
+                } else {
+                    brls::Logger::debug("SimplifiedWriteCallback: No global progress callback available");
+                }
+            }
+        }
+    }
+    
+    return written;
+}
+
+// Callback semplificato per il progresso del download (solo per downloadSimplified)
+static int SimplifiedProgressCallback(void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
+    SimpleProgressData* data = static_cast<SimpleProgressData*>(clientp);
+    if (!data || !data->manager) {
+        return 0;
     }
 
     // Controlla se il manager è in fase di shutdown
@@ -69,31 +241,16 @@ static int ProgressCallback(void* clientp, curl_off_t dltotal, curl_off_t dlnow,
         return 1; // Interrompe il download
     }
     
-    if (dltotal > 0) {
-        // Calcola il progresso considerando il file esistente per il resume
-        curl_off_t totalDownloaded = dlnow + data->existingFileSize;
-        curl_off_t totalExpected = dltotal + data->existingFileSize;
-        // Limita il progresso al 100%
-        float progress = static_cast<float>(totalDownloaded) / static_cast<float>(totalExpected) * 100.0f;
+    if (dltotal > 0 && dlnow >= 0 && dlnow <= dltotal) {
+        // Calcolo semplice del progresso
+        float progress = static_cast<float>(dlnow) / static_cast<float>(dltotal) * 100.0f;
         if (progress > 100.0f) progress = 100.0f;
-        size_t downloaded = static_cast<size_t>(totalDownloaded);
-        size_t total = static_cast<size_t>(totalExpected);
-
-        // Throttling: aggiorna i callback solo se è passato abbastanza tempo O se il progresso è cambiato significativamente
-        auto now = std::chrono::steady_clock::now();
-        auto timeSinceLastCallback = std::chrono::duration_cast<std::chrono::milliseconds>(now - data->lastCallbackTime);
-        float progressDiff = std::abs(progress - data->lastProgress);
-
-        bool shouldUpdate = (timeSinceLastCallback.count() >= 250) || // Massimo 4 volte al secondo
-                           (progressDiff >= 1.0f) || // Solo se il progresso è cambiato di almeno 1%
-                           (progress >= 100.0f && data->lastProgress < 100.0f); // Sempre aggiorna al completamento
-
-        if (!shouldUpdate) {
-            return 0; // Skip questo aggiornamento
-        }
-
-        data->lastCallbackTime = now;
-        data->lastProgress = progress;
+        
+        size_t downloaded = static_cast<size_t>(dlnow);
+        size_t total = static_cast<size_t>(dltotal);
+        
+        brls::Logger::debug("SimplifiedProgressCallback: {:.1f}% ({}/{} bytes)", 
+                           progress, downloaded, total);
 
         // Aggiorna l'item nel manager
         {
@@ -106,31 +263,9 @@ static int ProgressCallback(void* clientp, curl_off_t dltotal, curl_off_t dlnow,
             }
         }
         
-        // Chiama il callback specifico per questo download se presente (thread-safe)
-        DownloadManager::DownloadProgressCallback specificCallback = nullptr;
-        {
-            std::lock_guard<std::mutex> callbackLock(data->manager->downloadsMutex);
-            auto progressIt = data->manager->downloadProgressCallbacks.find(data->downloadId);
-            if (progressIt != data->manager->downloadProgressCallbacks.end()) {
-                specificCallback = progressIt->second; // Copia il callback
-            }
-        }
-        
-        if (specificCallback) {
-            specificCallback(data->downloadId, progress, downloaded, total);
-        }
-        
         // Chiama il callback globale se presente
-        DownloadManager::GlobalProgressCallback globalCallback = nullptr;
-        {
-            std::lock_guard<std::mutex> callbackLock(data->manager->downloadsMutex);
-            if (data->manager->globalProgressCallback) {
-                globalCallback = data->manager->globalProgressCallback; // Copia il callback
-            }
-        } // Il lock viene rilasciato automaticamente qui
-        
-        if (globalCallback) {
-            globalCallback(data->downloadId, progress, downloaded, total);
+        if (data->manager->globalProgressCallback) {
+            data->manager->globalProgressCallback(data->downloadId, progress, downloaded, total);
         }
     }
     return 0;
@@ -1284,6 +1419,10 @@ void DownloadManager::loadDownloads() {
     }
 }
 DownloadManager::DownloadManager() {
+    // NON impostare un callback di default - lascia che l'UI imposti i suoi callback
+    // globalProgressCallback sarà nullptr inizialmente, il che è corretto
+    brls::Logger::info("DownloadManager: Constructor - leaving callbacks unset for UI registration");
+    
     // Subscribe to application exit event to stop downloads immediately
     brls::Application::getExitEvent()->subscribe([this]() {
         brls::Logger::debug("DownloadManager: Application exit event received, stopping all downloads");
@@ -1351,8 +1490,17 @@ DownloadManager::~DownloadManager() {
 
 void DownloadManager::setGlobalProgressCallback(GlobalProgressCallback callback) {
     std::lock_guard<std::mutex> lock(downloadsMutex);
-    globalProgressCallback = callback;
-    brls::Logger::info("DownloadManager: Global progress callback set");
+    if (callback) {
+        globalProgressCallback = callback;
+        brls::Logger::info("DownloadManager: Global progress callback set (UI callback)");
+    } else {
+        // Callback di default che fa solo logging sicuro quando l'UI rimuove il suo callback
+        globalProgressCallback = [](const std::string& id, float progress, size_t downloaded, size_t total) {
+            // Logging minimale per debug senza UI updates
+            brls::Logger::debug("DownloadManager: Progress - Download {} at {:.1f}%", id, progress);
+        };
+        brls::Logger::info("DownloadManager: Global progress callback reset to default (logging only)");
+    }
 }
 
 void DownloadManager::setGlobalCompleteCallback(GlobalCompleteCallback callback) {
@@ -1720,9 +1868,15 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
     brls::Logger::info("DownloadManager: Step 1 - Got parameters: URL={}, Path={}, Size={}", 
                       url.substr(0, 50) + "...", localPath, downloadedSize);
     
+    // Disabilita lo screen dimming durante il download
+    brls::Application::getPlatform()->disableScreenDimming(true, "Download in corso", "TsVitch");
+    brls::Logger::info("DownloadManager: Screen dimming disabled for download");
+    
     CURL* curl = curl_easy_init();
     if (!curl) {
         brls::Logger::error("DownloadManager: Failed to initialize curl");
+        // Riabilita lo screen dimming in caso di errore
+        brls::Application::getPlatform()->disableScreenDimming(false, "Download failed", "TsVitch");
         return;
     }
     brls::Logger::info("DownloadManager: Step 2 - CURL initialized");
@@ -1737,12 +1891,27 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
     
     // Configurazione più robusta con header che spesso servono
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 120L); // 2 minuti per file grandi
+    
+    // NON usare fwrite direttamente, useremo il nostro callback personalizzato
+    // curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
+    // curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
+    
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 0L); // No timeout totale - usa solo low speed timeout
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L); // 30 secondi per connessione
+    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 60L); // Se velocità è bassa per 60 secondi
+    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 1024L); // Considera "bassa" sotto 1KB/s
     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
-    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
+    
+    // Opzioni per migliorare la resilienza delle connessioni
+    curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L); // Keep-alive TCP
+    curl_easy_setopt(curl, CURLOPT_TCP_KEEPIDLE, 120L); // Inizia keep-alive dopo 2 minuti
+    curl_easy_setopt(curl, CURLOPT_TCP_KEEPINTVL, 60L); // Intervallo keep-alive di 1 minuto
+    curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, CURL_MAX_READ_SIZE); // Buffer più grande
+    
+    // IMPORTANTE: NON configurare il callback di progresso qui
+    // Lo configureremo SOLO dopo la HEAD request, prima del download vero
+    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L); // Disabilita progresso per ora
+    
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);
     curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);
@@ -1776,6 +1945,15 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
     long head_http_code = 0;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &head_http_code);
     
+    // Cerca di ottenere la dimensione del file dalla HEAD response
+    curl_off_t contentLength = 0;
+    curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &contentLength);
+    size_t expectedSize = 0;
+    if (contentLength > 0) {
+        expectedSize = static_cast<size_t>(contentLength);
+        brls::Logger::info("DownloadManager: Step 4.2.1 - Expected file size from HEAD: {} bytes", expectedSize);
+    }
+    
     brls::Logger::info("DownloadManager: Step 4.2 - HEAD request result: {}, HTTP: {}", 
                       static_cast<int>(head_res), head_http_code);
     
@@ -1787,7 +1965,32 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
     curl_easy_setopt(curl, CURLOPT_NOBODY, 0L); // Torna a GET
     curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L); // Assicurati che sia GET
     
-    brls::Logger::info("DownloadManager: Step 4.3 - CURL configured with enhanced options");
+    // ORA configura il write callback personalizzato e progresso per il download vero
+    // Usa variabili locali invece di static per evitare conflitti tra download
+    SimpleProgressData progressData;
+    progressData.manager = this;
+    progressData.downloadId = id;
+    
+    // Header callback per catturare la dimensione corretta dalla GET request
+    HeaderData headerData;
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &headerData);
+    
+    // Configurazione del write callback personalizzato che aggiorna il progresso
+    WriteProgressData writeData;
+    writeData.file = file;
+    writeData.progressData = &progressData;
+    writeData.totalDownloaded = 0;
+    writeData.totalExpected = expectedSize; // Inizialmente dalla HEAD, poi aggiornato
+    writeData.lastReportedSize = 0; // Inizializza il tracking del progresso
+    writeData.headerData = &headerData; // Link agli header data per aggiornamenti dinamici
+    
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, SimplifiedWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &writeData);
+    
+    brls::Logger::info("DownloadManager: Step 4.3 - Configured custom write callback with progress tracking");
+    
+    brls::Logger::info("DownloadManager: Step 4.4 - CURL configured with enhanced options");
     
     // NON usare resume per ora - potrebbe causare problemi
     /*
@@ -1797,25 +2000,76 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
     }
     */
     
-    brls::Logger::info("DownloadManager: Step 5 - Starting download (no resume, 120s timeout, verbose on)");
+    brls::Logger::info("DownloadManager: Step 5 - Starting download with retry logic (no total timeout, low speed protection, verbose on)");
     
-    // Ottieni info su quanto scaricheremo
-    double contentLength = 0;
-    curl_easy_setopt(curl, CURLOPT_HEADER, 0L); // No headers nel output
+    // Retry loop per gestire connessioni interrotte
+    int maxRetries = 3;
+    int retryCount = 0;
+    CURLcode res = CURLE_OK;
+    bool downloadComplete = false;
+    long httpCode = 0; // Dichiara httpCode fuori dal loop
     
-    CURLcode res = curl_easy_perform(curl);
-    
-    // Ottieni statistiche del download
-    curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &contentLength);
-    double downloadSpeed = 0;
-    curl_easy_getinfo(curl, CURLINFO_SPEED_DOWNLOAD, &downloadSpeed);
-    double totalTime = 0;
-    curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &totalTime);
-    long httpCode = 0;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
-    
-    brls::Logger::info("DownloadManager: Step 6 - Download result: {}, HTTP: {}, ContentLength: {:.0f}, Speed: {:.0f} B/s, Time: {:.1f}s", 
-                      static_cast<int>(res), httpCode, contentLength, downloadSpeed, totalTime);
+    while (!downloadComplete && retryCount <= maxRetries) {
+        // Controlla dimensione file attuale per resume
+        struct stat currentStat;
+        size_t currentSize = 0;
+        if (stat(localPath.c_str(), &currentStat) == 0) {
+            currentSize = currentStat.st_size;
+        }
+        
+        // Riapri file in modalità append per retry
+        if (retryCount > 0) {
+            std::fclose(file);
+            file = std::fopen(localPath.c_str(), "ab"); // append binary
+            if (!file) {
+                brls::Logger::error("DownloadManager: Failed to reopen file for retry");
+                break;
+            }
+            writeData.file = file; // Aggiorna il puntatore nel writeData
+        }
+        
+        // Configura resume se necessario
+        if (currentSize > 0 && retryCount > 0) {
+            curl_easy_setopt(curl, CURLOPT_RESUME_FROM_LARGE, static_cast<curl_off_t>(currentSize));
+            brls::Logger::info("DownloadManager: Retry {} - Resuming from {} bytes", retryCount, currentSize);
+            
+            // Aggiorna i dati di progresso per il resume
+            writeData.totalDownloaded = currentSize;
+            writeData.lastReportedSize = currentSize;
+        } else if (retryCount > 0) {
+            curl_easy_setopt(curl, CURLOPT_RESUME_FROM_LARGE, 0L);
+            brls::Logger::info("DownloadManager: Retry {} - Starting from beginning", retryCount);
+        }
+        
+        // Ottieni info su quanto scaricheremo
+        double downloadedContentLength = 0;
+        curl_easy_setopt(curl, CURLOPT_HEADER, 0L); // No headers nel output
+        
+        res = curl_easy_perform(curl);
+        
+        // Ottieni statistiche del download
+        curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &downloadedContentLength);
+        double downloadSpeed = 0;
+        curl_easy_getinfo(curl, CURLINFO_SPEED_DOWNLOAD, &downloadSpeed);
+        double totalTime = 0;
+        curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &totalTime);
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode); // Usa la variabile già dichiarata
+        
+        brls::Logger::info("DownloadManager: Step 6.{} - Download result: {}, HTTP: {}, ContentLength: {:.0f}, Speed: {:.0f} B/s, Time: {:.1f}s", 
+                          retryCount, static_cast<int>(res), httpCode, downloadedContentLength, downloadSpeed, totalTime);
+        
+        // Controlla se il download è completo
+        if (res == CURLE_OK) {
+            downloadComplete = true;
+        } else if (res == CURLE_PARTIAL_FILE && retryCount < maxRetries) {
+            retryCount++;
+            brls::Logger::warning("DownloadManager: Partial file received, retrying ({}/{})", retryCount, maxRetries);
+            // Aspetta un po' prima del retry
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+        } else {
+            break; // Errore non recoverable o troppi retry
+        }
+    }
     
     std::fclose(file);
     
@@ -1856,18 +2110,65 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
                         it->progress = (it->downloadedSize > 0) ? 100.0f : 0.0f;
                     }
                     
-                    if (httpCode == 200 || (it->totalSize > 0 && it->downloadedSize >= it->totalSize)) {
-                        it->status = DownloadStatus::COMPLETED;
-                        it->progress = 100.0f;
-                        brls::Logger::info("DownloadManager: Step 8 - Download completed successfully ({} bytes)", it->downloadedSize);
-                    } else if (it->downloadedSize > 0) {
-                        it->status = DownloadStatus::PAUSED;
-                        brls::Logger::info("DownloadManager: Step 8 - Download paused/partial ({} bytes, {:.1f}%)", 
-                                         it->downloadedSize, it->progress);
+                    it->status = DownloadStatus::COMPLETED;
+                    it->progress = 100.0f;
+                    brls::Logger::info("DownloadManager: Step 8 - Download completed successfully ({} bytes)", it->downloadedSize);
+                }
+            } else if (res == CURLE_PARTIAL_FILE && httpCode == 200) {
+                // Download parziale ma HTTP 200 - questo è normale, implementa retry automatico
+                struct stat st;
+                if (stat(localPath.c_str(), &st) == 0) {
+                    size_t currentSize = st.st_size;
+                    it->downloadedSize = currentSize;
+                    
+                    // Imposta totalSize dalla HEAD request se disponibile
+                    if (it->totalSize == 0 && contentLength > 0) {
+                        it->totalSize = static_cast<size_t>(contentLength);
+                    }
+                    
+                    if (it->totalSize > 0) {
+                        it->progress = (static_cast<float>(it->downloadedSize) / it->totalSize) * 100.0f;
+                        float completionRatio = static_cast<float>(it->downloadedSize) / it->totalSize;
+                        
+                        // Se abbiamo scaricato più del 95%, consideralo completato
+                        if (completionRatio >= 0.95f) {
+                            it->status = DownloadStatus::COMPLETED;
+                            it->progress = 100.0f;
+                            brls::Logger::info("DownloadManager: Step 8 - Download 95%+ complete ({:.1f}%), marking as completed", completionRatio * 100.0f);
+                        } else {
+                            // Metti in pausa per retry automatico
+                            it->status = DownloadStatus::PAUSED;
+                            brls::Logger::info("DownloadManager: Step 8 - Download paused for retry at {:.1f}% ({}/{} bytes)", 
+                                             it->progress, it->downloadedSize, it->totalSize);
+                            
+                            // Pianifica un retry automatico dopo 3 secondi
+                            std::thread retryThread([this, id]() {
+                                std::this_thread::sleep_for(std::chrono::seconds(3));
+                                if (!shouldStop.load()) {
+                                    brls::Logger::info("DownloadManager: Auto-retrying download {}", id);
+                                    {
+                                        std::lock_guard<std::mutex> retryLock(downloadsMutex);
+                                        auto retryIt = findDownload(id);
+                                        if (retryIt != downloads.end() && retryIt->status == DownloadStatus::PAUSED) {
+                                            retryIt->status = DownloadStatus::DOWNLOADING;
+                                        }
+                                    }
+                                    downloadWorker(id); // Riavvia il download worker
+                                }
+                            });
+                            retryThread.detach();
+                        }
                     } else {
-                        it->status = DownloadStatus::FAILED;
-                        it->error = "No data downloaded";
-                        brls::Logger::error("DownloadManager: Step 8 - No data downloaded");
+                        // Non conosciamo la dimensione totale ma abbiamo scaricato qualcosa
+                        if (currentSize > 1024 * 1024) { // Se abbiamo scaricato almeno 1MB
+                            it->status = DownloadStatus::PAUSED;
+                            it->progress = 50.0f; // Progresso sconosciuto
+                            brls::Logger::info("DownloadManager: Step 8 - Download paused (unknown total size, {} bytes downloaded)", currentSize);
+                        } else {
+                            it->status = DownloadStatus::FAILED;
+                            it->error = "Download failed: Very small partial transfer";
+                            brls::Logger::error("DownloadManager: Step 8 - Download failed: Very small partial transfer");
+                        }
                     }
                 }
             } else {
@@ -1876,6 +2177,110 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
                 brls::Logger::error("DownloadManager: Step 8 - Download failed: {} (HTTP {})", curl_easy_strerror(res), httpCode);
             }
         }
+        
+        // IMPORTANTE: Salva lo stato aggiornato nel file JSON
+        saveDownloads();
+        brls::Logger::info("DownloadManager: Saved download state to JSON file");
+    }
+    
+    // Riabilita lo screen dimming alla fine del download
+    brls::Application::getPlatform()->disableScreenDimming(false, "Download completato", "TsVitch");
+    brls::Logger::info("DownloadManager: Screen dimming re-enabled");
+    
+    // Chiama i callback appropriati fuori dal lock per evitare deadlock
+    bool isCompleted = false;
+    bool isFailed = false;
+    bool isPaused = false;
+    std::string localPathCopy;
+    std::string errorMessage;
+    
+    {
+        std::lock_guard<std::mutex> lock(downloadsMutex);
+        auto it = findDownload(id);
+        if (it != downloads.end()) {
+            isCompleted = (it->status == DownloadStatus::COMPLETED);
+            isFailed = (it->status == DownloadStatus::FAILED);
+            isPaused = (it->status == DownloadStatus::PAUSED);
+            localPathCopy = it->localPath;
+            errorMessage = it->error;
+        }
+    }
+    
+    // Chiama i callback appropriati
+    if (isCompleted) {
+        brls::Logger::info("DownloadManager: Calling completion callbacks for {}", id);
+        
+        // Callback di completamento specifico
+        DownloadManager::DownloadCompleteCallback completeCallback = nullptr;
+        {
+            std::lock_guard<std::mutex> callbackLock(downloadsMutex);
+            auto completeIt = downloadCompleteCallbacks.find(id);
+            if (completeIt != downloadCompleteCallbacks.end()) {
+                completeCallback = completeIt->second;
+            }
+        }
+        
+        if (completeCallback) {
+            try {
+                completeCallback(id, localPathCopy);
+                brls::Logger::debug("DownloadManager: Called download complete callback");
+            } catch (const std::exception& e) {
+                brls::Logger::error("DownloadManager: Exception in complete callback: {}", e.what());
+            }
+        }
+        
+        // Callback globale di completamento
+        if (globalCompleteCallback) {
+            try {
+                globalCompleteCallback(id, true);
+                brls::Logger::debug("DownloadManager: Called global complete callback");
+            } catch (const std::exception& e) {
+                brls::Logger::error("DownloadManager: Exception in global complete callback: {}", e.what());
+            }
+        }
+    } else if (isFailed) {
+        brls::Logger::warning("DownloadManager: Calling error callbacks for {}", id);
+        
+        // Callback di errore specifico
+        DownloadManager::DownloadErrorCallback errorCallback = nullptr;
+        {
+            std::lock_guard<std::mutex> callbackLock(downloadsMutex);
+            auto errorIt = downloadErrorCallbacks.find(id);
+            if (errorIt != downloadErrorCallbacks.end()) {
+                errorCallback = errorIt->second;
+            }
+        }
+        
+        if (errorCallback) {
+            try {
+                errorCallback(id, errorMessage);
+                brls::Logger::debug("DownloadManager: Called download error callback");
+            } catch (const std::exception& e) {
+                brls::Logger::error("DownloadManager: Exception in error callback: {}", e.what());
+            }
+        }
+        
+        // Callback globale di completamento (anche per errori)
+        if (globalCompleteCallback) {
+            try {
+                globalCompleteCallback(id, false);
+                brls::Logger::debug("DownloadManager: Called global complete callback for error");
+            } catch (const std::exception& e) {
+                brls::Logger::error("DownloadManager: Exception in global complete callback: {}", e.what());
+            }
+        }
+    } else if (isPaused) {
+        brls::Logger::info("DownloadManager: Download {} paused for auto-retry, not calling error callbacks", id);
+        // Non chiamare callback di errore per pause temporanee
+    }
+    
+    // Pulisci i callback per questo download SOLO se completato o fallito (non per pause)
+    if (isCompleted || isFailed) {
+        std::lock_guard<std::mutex> callbackLock(downloadsMutex);
+        downloadProgressCallbacks.erase(id);
+        downloadCompleteCallbacks.erase(id);
+        downloadErrorCallbacks.erase(id);
+        brls::Logger::debug("DownloadManager: Cleaned up callbacks for download {}", id);
     }
     
     brls::Logger::info("DownloadManager: Step 9 - Simplified download method finished");

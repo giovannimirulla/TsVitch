@@ -45,17 +45,31 @@ public:
         auto now = std::chrono::steady_clock::now();
         auto timeSinceLastUpdate = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastUpdateTime);
         
-        // Evita aggiornamenti troppo frequenti (meno di 50ms) 
-        if (timeSinceLastUpdate.count() < 50) {
+        // Evita aggiornamenti troppo frequenti (meno di 50ms) - MA SOLO se non è il primo aggiornamento
+        bool isFirstUpdate = (downloads.empty() && !newDownloads.empty());
+        if (!isFirstUpdate && timeSinceLastUpdate.count() < 50) {
             hasChanges = false;
+            brls::Logger::debug("DownloadDataSource: Skipping update due to throttling ({} ms)", timeSinceLastUpdate.count());
             return;
+        }
+        
+        if (isFirstUpdate) {
+            brls::Logger::info("DownloadDataSource: First update detected - skipping throttling");
         }
         
         // Controllo rapido con hash per evitare confronti costosi
         size_t newHash = calculateDownloadsHash(newDownloads);
-        if (newHash == lastUpdateHash && downloads.size() == newDownloads.size()) {
+        brls::Logger::debug("DownloadDataSource: Hash check - old: {}, new: {}, sizes: {} -> {}", 
+                           lastUpdateHash, newHash, downloads.size(), newDownloads.size());
+        
+        if (newHash == lastUpdateHash && downloads.size() == newDownloads.size() && !isFirstUpdate) {
             hasChanges = false;
+            brls::Logger::debug("DownloadDataSource: No changes detected (hash and size match)");
             return;
+        }
+        
+        if (isFirstUpdate) {
+            brls::Logger::info("DownloadDataSource: First update - bypassing hash check");
         }
         
         // Controlla se ci sono effettivamente delle modifiche significative
@@ -100,7 +114,16 @@ public:
             downloads = newDownloads;
             lastUpdateHash = newHash;
             lastUpdateTime = now;
-            brls::Logger::debug("DownloadDataSource::updateDownloads() updated {} downloads with changes", downloads.size());
+            brls::Logger::info("DownloadDataSource::updateDownloads() updated {} downloads with changes", downloads.size());
+            
+            // Log dettagliato dei download per debug
+            for (size_t i = 0; i < downloads.size(); i++) {
+                const auto& dl = downloads[i];
+                brls::Logger::info("  Download {}: {} - {} - {:.1f}% - Status: {}", 
+                                  i, dl.id, dl.title, dl.progress, static_cast<int>(dl.status));
+            }
+        } else {
+            brls::Logger::debug("DownloadDataSource::updateDownloads() no significant changes detected");
         }
     }
     
@@ -177,10 +200,11 @@ public:
 };
 
 HomeDownloads::HomeDownloads() {
-    brls::Logger::info("HomeDownloads: Constructor started");
+    brls::Logger::error("HomeDownloads: ============ CONSTRUCTOR STARTED ============");
+    brls::Logger::error("HomeDownloads: This should appear in logs if constructor is called!");
     
     this->inflateFromXMLRes("xml/fragment/home_downloads.xml");
-    brls::Logger::debug("HomeDownloads: XML inflated");
+    brls::Logger::error("HomeDownloads: XML inflated successfully");
     
     // Sottoscrivi l'exitEvent per shutdown rapido
     brls::Application::getExitEvent()->subscribe([this]() {
@@ -212,10 +236,24 @@ HomeDownloads::HomeDownloads() {
     // Load persisted downloads and populate UI
     DownloadManager::instance().loadDownloads();
     auto loadedDownloads = DownloadManager::instance().getAllDownloads();
+    brls::Logger::info("HomeDownloads: Constructor - loaded {} persisted downloads", loadedDownloads.size());
+    
     if (!loadedDownloads.empty()) {
+        brls::Logger::info("HomeDownloads: Constructor - populating UI with {} downloads", loadedDownloads.size());
+        
+        // Log dettagliato dei download caricati
+        for (size_t i = 0; i < loadedDownloads.size(); i++) {
+            const auto& dl = loadedDownloads[i];
+            brls::Logger::info("  Loaded Download {}: {} - {} - {:.1f}% - Status: {}", 
+                              i, dl.id, dl.title, dl.progress, static_cast<int>(dl.status));
+        }
+        
         dataSource->updateDownloads(loadedDownloads);
         dataSource->forceRefresh();
         recyclingGrid->reloadData();
+        brls::Logger::info("HomeDownloads: Constructor - forced UI refresh with loaded downloads");
+    } else {
+        brls::Logger::info("HomeDownloads: Constructor - no persisted downloads found");
     }
 
     // Initial refresh to show all downloads
@@ -288,9 +326,9 @@ HomeDownloads::~HomeDownloads() {
     
     // Rimuovi i callback globali per evitare crash
     try {
-        DownloadManager::instance().setGlobalProgressCallback(nullptr);
+        DownloadManager::instance().setGlobalProgressCallback(nullptr); // Tornerà al callback di default
         DownloadManager::instance().setGlobalCompleteCallback(nullptr);
-        brls::Logger::debug("HomeDownloads: Callbacks cleared");
+        brls::Logger::debug("HomeDownloads: Callbacks reset to default");
     } catch (const std::exception& e) {
         brls::Logger::error("HomeDownloads: Error clearing callbacks: {}", e.what());
     }
@@ -314,14 +352,14 @@ void HomeDownloads::draw(NVGcontext* vg, float x, float y, float width, float he
 }
 
 void HomeDownloads::onFocusGained() {
-    brls::Logger::info("HomeDownloads::onFocusGained() called");
+    brls::Logger::error("HomeDownloads::onFocusGained() ============ CALLED ============");
     brls::Box::onFocusGained();
     startAutoRefresh();
     
     // Forza un refresh completo quando la vista ottiene il focus
-    brls::Logger::info("HomeDownloads::onFocusGained() - forcing refresh");
+    brls::Logger::error("HomeDownloads::onFocusGained() - forcing refresh");
     auto downloads = DownloadManager::instance().getAllDownloads();
-    brls::Logger::info("HomeDownloads::onFocusGained() - {} downloads available", downloads.size());
+    brls::Logger::error("HomeDownloads::onFocusGained() - {} downloads available", downloads.size());
     
     if (dataSource && recyclingGrid) {
         dataSource->updateDownloads(downloads);
@@ -471,15 +509,18 @@ void HomeDownloads::setupRecyclingGrid() {
 }
 
 void HomeDownloads::refresh() {
+    brls::Logger::error("HomeDownloads::refresh() ============ CALLED ============");
+    
     // Controlla se l'oggetto è ancora valido
     if (!dataSource || !recyclingGrid) {
-        brls::Logger::warning("HomeDownloads::refresh() - invalid state, skipping refresh");
+        brls::Logger::error("HomeDownloads::refresh() - invalid state! dataSource: {}, recyclingGrid: {}", 
+                           (void*)dataSource, (void*)recyclingGrid);
         return;
     }
     
     try {
         auto downloads = DownloadManager::instance().getAllDownloads();
-        brls::Logger::debug("HomeDownloads::refresh() - got {} downloads from manager", downloads.size());
+        brls::Logger::error("HomeDownloads::refresh() - got {} downloads from manager", downloads.size());
         
         // Aggiorna la data source (che controllerà se ci sono modifiche)
         dataSource->updateDownloads(downloads);
