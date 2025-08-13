@@ -53,6 +53,9 @@ jobs:
             "color": "brightgreen"
           }
           EOF
+          
+          # Crea .nojekyll per disabilitare Jekyll
+          touch badges/.nojekyll
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
@@ -60,5 +63,3 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./badges
           destination_dir: badges
-          exclude_assets: '.github,docs,library,cmake,scripts,tsvitch,winrt,supabase,otherScripts,resources,build,cmake-build-switch'
-          enable_jekyll: false
