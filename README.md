@@ -8,7 +8,7 @@
 - - -
 <div align="center">
 <img src="https://img.shields.io/github/v/release/giovannimirulla/TsVitch"/>
-<img src="https://img.shields.io/endpoint?url=https://giovannimirulla.github.io/TsVitch/downloads.json">
+<img src="https://img.shields.io/endpoint?url=https://giovannimirulla.github.io/TsVitch/badges/downloads.json">
 <img src="https://img.shields.io/github/stars/giovannimirulla/TsVitch?style=flat"/>
 <img src="https://img.shields.io/github/forks/giovannimirulla/TsVitch"/>
 </div>
