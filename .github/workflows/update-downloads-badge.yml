@@ -12,6 +12,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install bc calculator
+        run: sudo apt-get update && sudo apt-get install -y bc
+
       - name: Get GitHub downloads
         id: github-downloads
         run: |
@@ -34,11 +37,15 @@ jobs:
         run: |
           TOTAL="${{ steps.total-downloads.outputs.total_downloads }}"
           
-          # Formatta il numero con separatori di migliaia
+          # Formatta il numero con K per migliaia e M per milioni
           if [ $TOTAL -ge 1000000 ]; then
-            FORMATTED=$(echo "$TOTAL" | sed 's/\B\(?=\(\d\{3\}\)+\(?!\d\)\)/,/g')
+            # Milioni (es. 1.2M)
+            MILLIONS=$(echo "scale=1; $TOTAL / 1000000" | bc)
+            FORMATTED="${MILLIONS}M"
           elif [ $TOTAL -ge 1000 ]; then
-            FORMATTED=$(echo "$TOTAL" | sed 's/\B\(?=\(\d\{3\}\)+\(?!\d\)\)/,/g')
+            # Migliaia (es. 1.2K)
+            THOUSANDS=$(echo "scale=1; $TOTAL / 1000" | bc)
+            FORMATTED="${THOUSANDS}K"
           else
             FORMATTED=$TOTAL
           fi
@@ -48,7 +55,7 @@ jobs:
           cat > badges/downloads.json << EOF
           {
             "schemaVersion": 1,
-            "label": "total downloads",
+            "label": "downloads",
             "message": "$FORMATTED",
             "color": "brightgreen"
           }
