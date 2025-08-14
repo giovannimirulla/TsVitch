@@ -2,7 +2,7 @@ name: Update Downloads Badge
 
 on:
   schedule:
-    - cron: '0 0 */3 * *'  # Aggiorna ogni 3 giorni
+    - cron: '0 */6 * * *'  # Aggiorna ogni 6 ore
   workflow_dispatch:  # Permette l'esecuzione manuale
 
 jobs:
@@ -53,13 +53,28 @@ jobs:
             "color": "brightgreen"
           }
           EOF
+
+      - name: Create orphan branch and deploy
+        run: |
+          # Configura git
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # Crea un branch orfano per evitare conflitti con il contenuto esistente
+          git checkout --orphan gh-pages-badges
+          
+          # Rimuovi tutti i file dal working tree
+          git rm -rf .
+          
+          # Copia solo il file badge
+          cp badges/downloads.json downloads.json
           
           # Crea .nojekyll per disabilitare Jekyll
-          touch badges/.nojekyll
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./badges
-          destination_dir: badges
+          touch .nojekyll
+          
+          # Aggiungi e committa
+          git add downloads.json .nojekyll
+          git commit -m "Update downloads badge"
+          
+          # Push al branch gh-pages
+          git push origin gh-pages-badges:gh-pages --force
