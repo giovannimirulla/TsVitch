@@ -517,22 +517,32 @@ void SettingsActivity::onContentAvailable() {
                                MPVCore::instance().restart();
                            });
 
+    // Inizializza il selettore modalità IPTV
+    auto iptvModeOption = conf.getOptionData(SettingItem::IPTV_MODE);
+    selectorIPTVMode->init("IPTV Mode", iptvModeOption.optionList,
+                          conf.getIntOptionIndex(SettingItem::IPTV_MODE), [this, iptvModeOption](int data) {
+                              ProgramConfig::instance().setSettingItem(SettingItem::IPTV_MODE,
+                                                                       iptvModeOption.rawOptionList[data]);
+                              this->updateIPTVSectionVisibility();
+                          });
+
+    // Inizializza i controlli M3U8
     auto m3u8Url = conf.getSettingItem(SettingItem::M3U8_URL_ITEM, std::string{""});
     btnM3U8Input->init(
-        "tsvitch/setting/tools/m3u8/input"_i18n, m3u8Url,
+        "M3U8 URL", m3u8Url,
         [](const std::string& data) {
             std::string m3u8Url = pystring::strip(data);
             ProgramConfig::instance().setM3U8Url(m3u8Url);
             OnM3U8UrlChanged.fire(); // Notifica tutte le view interessate
         },
-        "tsvitch/setting/tools/m3u8/hint"_i18n, "tsvitch/setting/tools/m3u8/hint"_i18n, 255);
+        "Enter M3U8 playlist URL", "http://example.com/playlist.m3u8", 255);
     
     // Soluzione definitiva per l'overflow del testo nell'InputCell
     btnM3U8Input->detail->setMaxWidth(140);      // Riduciamo a 140px per essere sicuri
     btnM3U8Input->detail->setSingleLine(true);   // Forza una sola linea
 
     auto m3u8TimeoutOption = conf.getOptionData(SettingItem::M3U8_TIMEOUT);
-    selectorM3U8Timeout->init("tsvitch/setting/tools/m3u8/timeout"_i18n, m3u8TimeoutOption.optionList,
+    selectorM3U8Timeout->init("M3U8 Timeout", m3u8TimeoutOption.optionList,
                               conf.getIntOptionIndex(SettingItem::M3U8_TIMEOUT), [m3u8TimeoutOption](int data) {
                                   ProgramConfig::instance().setSettingItem(SettingItem::M3U8_TIMEOUT,
                                                                            m3u8TimeoutOption.rawOptionList[data]);
@@ -566,10 +576,6 @@ void SettingsActivity::onContentAvailable() {
                          MPVCore::instance().restart();
                      });
     // Inizializza i controlli Xtream Codes IPTV
-    btnXtreamEnabled->init("Enable Xtream Codes IPTV", conf.getXtreamEnabled(), [](bool value) {
-        ProgramConfig::instance().setXtreamEnabled(value);
-    });
-    
     btnXtreamServer->init("Server URL", conf.getXtreamServerUrl(), 
         [](const std::string& data) {
             ProgramConfig::instance().setXtreamServerUrl(data);
@@ -588,10 +594,33 @@ void SettingsActivity::onContentAvailable() {
         }, 
         "Enter your password", "password", 255);
 
+    // Imposta la visibilità iniziale delle sezioni
+    this->updateIPTVSectionVisibility();
+
     // Inizializza tutti gli altri selettori...
     // (Il resto del codice esistente)
     
     brls::Logger::debug("SettingsActivity: onContentAvailable completed");
+}
+
+void SettingsActivity::updateIPTVSectionVisibility() {
+    auto& conf = ProgramConfig::instance();
+    int currentMode = conf.getIntOption(SettingItem::IPTV_MODE);
+    
+    // 0 = M3U8, 1 = Xtream
+    bool showM3U8 = (currentMode == 0);
+    bool showXtream = (currentMode == 1);
+    
+    // Mostra/nascondi le sezioni
+    if (boxM3U8Section) {
+        boxM3U8Section->setVisibility(showM3U8 ? brls::Visibility::VISIBLE : brls::Visibility::GONE);
+    }
+    
+    if (boxXtreamSection) {
+        boxXtreamSection->setVisibility(showXtream ? brls::Visibility::VISIBLE : brls::Visibility::GONE);
+    }
+    
+    brls::Logger::debug("IPTV Section Visibility updated: M3U8={}, Xtream={}", showM3U8, showXtream);
 }
 
 SettingsActivity::~SettingsActivity() {

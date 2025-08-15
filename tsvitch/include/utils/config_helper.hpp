@@ -78,6 +78,9 @@ enum class SettingItem {
     TLS_VERIFY,
     UP_FILTER,
 
+    // IPTV Mode Selection
+    IPTV_MODE,  // 0 = M3U8, 1 = Xtream
+
     // Xtream Codes IPTV Settings
     XTREAM_SERVER_URL,
     XTREAM_USERNAME,
