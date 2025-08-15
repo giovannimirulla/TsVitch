@@ -181,6 +181,9 @@ std::unordered_map<SettingItem, ProgramOption> ProgramConfig::SETTING_MAP = {
     {SettingItem::PROXY_URL_ITEM, {"proxy_url", {}, {}, 0}},
     {SettingItem::M3U8_TIMEOUT, {"m3u8_timeout", {"60", "120", "300", "600"}, {60000, 120000, 300000, 600000}, 2}}, // Default: 5 minuti
     
+    // IPTV Mode Selection
+    {SettingItem::IPTV_MODE, {"iptv_mode", {"M3U8 Playlist", "Xtream Codes"}, {0, 1}, 0}}, // Default: M3U8
+    
     // Xtream Codes IPTV Settings
     {SettingItem::XTREAM_SERVER_URL, {"xtream_server_url", {}, {}, 0}},
     {SettingItem::XTREAM_USERNAME, {"xtream_username", {}, {}, 0}},

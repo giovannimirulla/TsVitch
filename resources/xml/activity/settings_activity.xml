@@ -176,50 +176,57 @@
                                                 <brls:Header
                                                         width="auto"
                                                         height="auto"
-                                                        title="M3U8 Playlist"
+                                                        title="IPTV Configuration"
                                                         marginBottom="0px" />
                                                 <brls:Box
                                                         width="100%"
                                                         height="auto"
                                                         axis="column"
                                                         marginBottom="30px">
-
-                                                        <brls:InputCell
-                                                                id="setting/tools/m3u8/input"
-                                                                title="M3U8 URL"
-                                                        />
 
                                                         <SelectorCell
-                                                                id="setting/tools/m3u8/timeout" />
+                                                                id="setting/iptv/mode_selector"
+                                                                title="IPTV Mode" />
 
-                                                </brls:Box>
+                                                        <!-- M3U8 Section -->
+                                                        <brls:Box
+                                                                id="setting/iptv/m3u8_section"
+                                                                width="100%"
+                                                                height="auto"
+                                                                axis="column"
+                                                                marginTop="20px">
 
-                                                <brls:Header
-                                                        width="auto"
-                                                        height="auto"
-                                                        title="Xtream Codes API"
-                                                        marginBottom="0px" />
-                                                <brls:Box
-                                                        width="100%"
-                                                        height="auto"
-                                                        axis="column"
-                                                        marginBottom="30px">
+                                                                <brls:InputCell
+                                                                        id="setting/tools/m3u8/input"
+                                                                        title="M3U8 URL"
+                                                                />
 
-                                                        <brls:BooleanCell
-                                                                id="setting/iptv/xtream_enabled"
-                                                                title="Enable Xtream Codes IPTV" />
+                                                                <SelectorCell
+                                                                        id="setting/tools/m3u8/timeout" />
 
-                                                        <brls:InputCell
-                                                                id="setting/iptv/xtream_server"
-                                                                title="Server URL" />
+                                                        </brls:Box>
 
-                                                        <brls:InputCell
-                                                                id="setting/iptv/xtream_username"
-                                                                title="Username" />
+                                                        <!-- Xtream Section -->
+                                                        <brls:Box
+                                                                id="setting/iptv/xtream_section"
+                                                                width="100%"
+                                                                height="auto"
+                                                                axis="column"
+                                                                marginTop="20px">
 
-                                                        <brls:InputCell
-                                                                id="setting/iptv/xtream_password"
-                                                                title="Password" />
+                                                                <brls:InputCell
+                                                                        id="setting/iptv/xtream_server"
+                                                                        title="Server URL" />
+
+                                                                <brls:InputCell
+                                                                        id="setting/iptv/xtream_username"
+                                                                        title="Username" />
+
+                                                                <brls:InputCell
+                                                                        id="setting/iptv/xtream_password"
+                                                                        title="Password" />
+
+                                                        </brls:Box>
 
                                                 </brls:Box>
 
