@@ -71,10 +71,16 @@ int main(int argc, char* argv[]) {
 
     brls::Application::getPlatform()->disableScreenDimming(false);
 
-    if (brls::Application::getPlatform()->isApplicationMode())
+    bool isAppMode = brls::Application::getPlatform()->isApplicationMode();
+    brls::Logger::info("Application mode check: isApplicationMode = {}", isAppMode);
+
+    if (isAppMode) {
+        brls::Logger::info("Opening MainActivity (main interface)");
         Intent::openMain();
-    else
+    } else {
+        brls::Logger::info("Opening HintActivity (hint interface)");
         Intent::openHint();
+    }
 
     //check if user_id is set, if not register a new user
     if (ProgramConfig::instance().getDeviceID().empty()) {

@@ -6,6 +6,7 @@
 #include "tsvitch/result/home_live_result.h"
 #include "borealis/core/i18n.hpp"
 #include "core/ChannelManager.hpp"
+#include "utils/config_helper.hpp"
 
 using namespace brls::literals;
 
@@ -28,7 +29,9 @@ void HomeLiveRequest::requestLiveList() {
     auto isValidFlag = std::make_shared<std::atomic<bool>>(true);
     validityFlag = isValidFlag;
     
-    CLIENT::get_file_m3u8(
+    // Use the new unified function that handles both M3U8 and Xtream modes
+    brls::Logger::info("HomeLiveRequest: Requesting live channels...");
+    CLIENT::get_live_channels(
         [this, isValidFlag](const auto& result) {
             // Check if this object is still valid before accessing it
             if (!isValidFlag->load()) {
@@ -39,6 +42,7 @@ void HomeLiveRequest::requestLiveList() {
             try {
                 UNSET_REQUEST
                 tsvitch::LiveM3u8ListResult res = result;
+                brls::Logger::info("HomeLiveRequest: Successfully received {} channels", res.size());
                 this->onLiveList(res, true);
             } catch (...) {
                 brls::Logger::error("HomeLiveRequest::requestLiveList: Exception during callback");
@@ -52,6 +56,7 @@ void HomeLiveRequest::requestLiveList() {
             }
             
             try {
+                brls::Logger::error("HomeLiveRequest: Failed to fetch live channels: {}", error);
                 this->onError("Failed to fetch live list: " + error);
                 UNSET_REQUEST;
             } catch (...) {
