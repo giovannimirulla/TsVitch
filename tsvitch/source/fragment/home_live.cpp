@@ -251,6 +251,22 @@ HomeLive::HomeLive() {
         //reset index group
         this->selectGroupIndex(0);
     });
+
+    // Sottoscrivi all'evento di cambio Xtream
+    OnXtreamChanged.subscribe([this](const XtreamData& xtreamData) {
+        brls::Logger::debug("OnXtreamChanged: url={}, username={}, showing skeleton and requesting channel list", 
+                           xtreamData.url, xtreamData.username);
+        // Mostra lo skeleton per indicare che stiamo caricando
+        brls::Threading::sync([this]() {
+            recyclingGrid->showSkeleton();
+            upRecyclingGrid->setVisibility(brls::Visibility::GONE);
+        });
+        
+        ChannelManager::get()->remove();
+        this->requestLiveList();
+        //reset index group
+        this->selectGroupIndex(0);
+    });
     
     // Check if we're in Xtream mode and load channels immediately
     int iptvMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0);

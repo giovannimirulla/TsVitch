@@ -39,6 +39,13 @@ public:
 #define registerFullscreen(activity) (void)activity
 #endif
 
+// Struttura per i dati Xtream
+struct XtreamData {
+    std::string url;
+    std::string username;
+    std::string password;
+};
+
 // Evento globale per notificare il cambio M3U8
 inline brls::Event<> OnM3U8UrlChanged;
 
@@ -46,3 +53,5 @@ inline brls::Event<> OnM3U8UrlChanged;
 inline brls::Event<> OnProxyUrlChanged;
 // Evento globale per notificare il cambio modalità IPTV
 inline brls::Event<> OnIPTVModeChanged;
+// Evento globale per notificare il cambio Xtream
+inline brls::Event<XtreamData> OnXtreamChanged;
