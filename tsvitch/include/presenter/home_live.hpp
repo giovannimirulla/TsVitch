@@ -6,6 +6,8 @@
 
 #include "tsvitch/result/home_live_result.h"
 #include "presenter/presenter.h"
+#include <memory>
+#include <atomic>
 
 class HomeLiveRequest : public Presenter {
 public:
@@ -13,7 +15,10 @@ public:
 
     virtual void onError(const std::string& error) = 0;
 
-
     void requestLiveList();
+    
+    virtual ~HomeLiveRequest();
 
+protected:
+    std::shared_ptr<std::atomic<bool>> validityFlag;
 };

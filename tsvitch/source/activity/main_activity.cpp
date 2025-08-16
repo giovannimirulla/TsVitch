@@ -30,9 +30,13 @@ void MainActivity::onContentAvailable() {
         "Settings", brls::ControllerButton::BUTTON_BACK,
         [this](brls::View* view) -> bool {
             Intent::openSettings([this]() {
-                //if not focused
-                if (!this->settingBtn->isFocused()) {
-                    this->resetSettingIcon();
+                // Check if settingBtn is still bound and valid
+                try {
+                    if (this->settingBtn.getView() && !this->settingBtn->isFocused()) {
+                        this->resetSettingIcon();
+                    }
+                } catch (...) {
+                    // Ignore any exceptions from accessing destroyed objects
                 }
             });
             return true;
@@ -43,9 +47,13 @@ void MainActivity::onContentAvailable() {
         "Settings", brls::ControllerButton::BUTTON_START,
         [this](brls::View* view) -> bool {
             Intent::openSettings([this]() {
-                //if not focused
-                if (!this->settingBtn->isFocused()) {
-                    this->resetSettingIcon();
+                // Check if settingBtn is still bound and valid
+                try {
+                    if (this->settingBtn.getView() && !this->settingBtn->isFocused()) {
+                        this->resetSettingIcon();
+                    }
+                } catch (...) {
+                    // Ignore any exceptions from accessing destroyed objects
                 }
             });
             return true;
@@ -54,43 +62,74 @@ void MainActivity::onContentAvailable() {
 
     this->settingBtn->registerClickAction([this](brls::View* view) -> bool {
         Intent::openSettings([this]() {
-            //if not focused
-            if (!this->settingBtn->isFocused()) {
-                this->resetSettingIcon();
+            // Check if settingBtn is still bound and valid
+            try {
+                if (this->settingBtn.getView() && !this->settingBtn->isFocused()) {
+                    this->resetSettingIcon();
+                }
+            } catch (...) {
+                // Ignore any exceptions from accessing destroyed objects
             }
         });
         return true;
     });
 
     this->settingBtn->getFocusEvent()->subscribe([this](bool value) {
-        SVGImage* image = dynamic_cast<SVGImage*>(this->settingBtn->getChildren()[0]);
-        if (!image) return;
-        if (value) {
-            image->setImageFromSVGRes("svg/ico-setting-activate.svg");
-            //wait
-        } else {
-            image->setImageFromSVGRes("svg/ico-setting.svg");
+        // Safety check: ensure settingBtn still exists and has children
+        try {
+            if (!this->settingBtn.getView() || this->settingBtn->getChildren().empty()) {
+                return;
+            }
+            
+            SVGImage* image = dynamic_cast<SVGImage*>(this->settingBtn->getChildren()[0]);
+            if (!image) return;
+            if (value) {
+                image->setImageFromSVGRes("svg/ico-setting-activate.svg");
+                //wait
+            } else {
+                image->setImageFromSVGRes("svg/ico-setting.svg");
+            }
+        } catch (...) {
+            // Ignore any exceptions from accessing destroyed objects
         }
     });
 
     this->settingBtn->setCustomNavigation([this](brls::FocusDirection direction) {
-        if (tabFrame->getSideBarPosition() == AutoTabBarPosition::LEFT) {
-            if (direction == brls::FocusDirection::RIGHT) {
-                return (brls::View*)this->tabFrame->getActiveTab();
+        // Safety check: ensure tabFrame still exists
+        try {
+            if (!this->tabFrame.getView()) {
+                return (brls::View*)nullptr;
             }
-        } else if (tabFrame->getSideBarPosition() == AutoTabBarPosition::TOP) {
-            if (direction == brls::FocusDirection::DOWN) {
-                return (brls::View*)this->tabFrame->getActiveTab();
+            
+            if (tabFrame->getSideBarPosition() == AutoTabBarPosition::LEFT) {
+                if (direction == brls::FocusDirection::RIGHT) {
+                    return (brls::View*)this->tabFrame->getActiveTab();
+                }
+            } else if (tabFrame->getSideBarPosition() == AutoTabBarPosition::TOP) {
+                if (direction == brls::FocusDirection::DOWN) {
+                    return (brls::View*)this->tabFrame->getActiveTab();
+                }
             }
+            return (brls::View*)nullptr;
+        } catch (...) {
+            return (brls::View*)nullptr;
         }
-        return (brls::View*)nullptr;
     });
     this->settingBtn->addGestureRecognizer(new brls::TapGestureRecognizer(this->settingBtn));
 }
 
 void MainActivity::resetSettingIcon() {
-    SVGImage* image = dynamic_cast<SVGImage*>(this->settingBtn->getChildren()[0]);
-    if (!image) return;
+    // Safety check: ensure settingBtn still exists and has children
+    try {
+        if (!this->settingBtn.getView() || this->settingBtn->getChildren().empty()) {
+            return;
+        }
+        
+        SVGImage* image = dynamic_cast<SVGImage*>(this->settingBtn->getChildren()[0]);
+        if (!image) return;
 
-    image->setImageFromSVGRes("svg/ico-setting.svg");
+        image->setImageFromSVGRes("svg/ico-setting.svg");
+    } catch (...) {
+        // Ignore any exceptions from accessing destroyed objects
+    }
 }
