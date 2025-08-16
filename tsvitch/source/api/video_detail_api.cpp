@@ -4,9 +4,12 @@
 #include <vector>
 #include <algorithm>
 #include <regex>
+#include <thread>
+#include <chrono>
 
 #include "tsvitch.h"
 #include "tsvitch/util/http.hpp"
+#include "borealis/core/thread.hpp"
 
 #include "tsvitch/result/home_live_result.h"
 #include "utils/config_helper.hpp"
@@ -163,6 +166,11 @@ void TsVitchClient::get_file_m3u8(const std::function<void(LiveM3u8ListResult)>&
 
 void TsVitchClient::get_xtream_channels(const std::function<void(LiveM3u8ListResult)>& callback,
                                        const ErrorCallback& error) {
+    get_xtream_channels_with_retry(callback, error, 3); // Max 3 retry attempts
+}
+
+void TsVitchClient::get_xtream_channels_with_retry(const std::function<void(LiveM3u8ListResult)>& callback,
+                                                  const ErrorCallback& error, int maxRetries) {
     auto serverUrl = ProgramConfig::instance().getXtreamServerUrl();
     auto username = ProgramConfig::instance().getXtreamUsername();
     auto password = ProgramConfig::instance().getXtreamPassword();
@@ -181,21 +189,47 @@ void TsVitchClient::get_xtream_channels(const std::function<void(LiveM3u8ListRes
     }
     xtreamUrl += "player_api.php?username=" + username + "&password=" + password + "&action=get_live_streams";
     
-    brls::Logger::debug("Fetching Xtream channels from: {}", xtreamUrl);
+    brls::Logger::debug("Fetching Xtream channels from: {} (retries left: {})", xtreamUrl, maxRetries);
     
     auto timeoutMs = ProgramConfig::instance().getIntOption(SettingItem::M3U8_TIMEOUT);
-    HTTP::__cpr_get(
-        xtreamUrl,
-        {},
-        timeoutMs,
-        [callback, error, serverUrl, username, password](const cpr::Response& r) {
+    
+    // Use cpr::Get directly to bypass the strict status code check in __cpr_get
+    cpr::GetCallback(
+        [callback, error, maxRetries, xtreamUrl, timeoutMs, serverUrl, username, password](const cpr::Response& r) {
             try {
                 brls::Logger::debug("Xtream response status: {}, body length: {}", r.status_code, r.text.length());
+                
+                // Handle network errors
+                if (r.error) {
+                    brls::Logger::error("Xtream network error: {}", r.error.message);
+                    if (maxRetries > 0) {
+                        brls::Logger::info("Retrying Xtream request due to network error (retries left: {})", maxRetries - 1);
+                        brls::Threading::async([callback, error, maxRetries]() {
+                            std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // Wait 1 second
+                            TsVitchClient::get_xtream_channels_with_retry(callback, error, maxRetries - 1);
+                        });
+                        return;
+                    }
+                    if (error) {
+                        error("Network error: " + r.error.message, -1);
+                    }
+                    return;
+                }
+                
+                // Handle HTTP errors with retry for 503
+                if (r.status_code == 503 && maxRetries > 0) {
+                    brls::Logger::warning("Xtream server returned 503 Service Unavailable, retrying in 2 seconds (retries left: {})", maxRetries - 1);
+                    brls::Threading::async([callback, error, maxRetries]() {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(2000)); // Wait 2 seconds for 503
+                        TsVitchClient::get_xtream_channels_with_retry(callback, error, maxRetries - 1);
+                    });
+                    return;
+                }
                 
                 if (r.status_code != 200) {
                     brls::Logger::error("Xtream API error: HTTP {}, body: {}", r.status_code, r.text.substr(0, 500));
                     if (error) {
-                        error("Failed to fetch Xtream channels: HTTP " + std::to_string(r.status_code), r.status_code);
+                        error("HTTP error " + std::to_string(r.status_code) + ": " + r.text.substr(0, 200), r.status_code);
                     }
                     return;
                 }
@@ -309,7 +343,13 @@ void TsVitchClient::get_xtream_channels(const std::function<void(LiveM3u8ListRes
                 }
             }
         },
-        error);
+        cpr::Url{xtreamUrl},
+        cpr::HttpVersion{cpr::HttpVersionCode::VERSION_2_0_TLS},
+        cpr::Timeout{timeoutMs},
+        HTTP::HEADERS,
+        HTTP::COOKIES,
+        HTTP::PROXIES,
+        HTTP::VERIFY);
 }
 
 void TsVitchClient::get_live_channels(const std::function<void(LiveM3u8ListResult)>& callback,

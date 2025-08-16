@@ -214,13 +214,38 @@ private:
 HomeLive::HomeLive() {
     this->inflateFromXMLRes("xml/fragment/home_live.xml");
     brls::Logger::info("Fragment HomeLive: constructor called");
+    
+    // Inizializza il flag di validità
+    validityFlag = std::make_shared<std::atomic<bool>>(true);
+    
     recyclingGrid->registerCell("Cell", []() { return RecyclingGridItemLiveVideoCard::create(); });
 
     upRecyclingGrid->registerCell("Cell", []() { return DynamicGroupChannels::create(); });
 
     // Sottoscrivi all'evento di cambio M3U8
     OnM3U8UrlChanged.subscribe([this]() {
-        brls::Logger::debug("OnM3U8UrlChanged: requestLiveList");
+        brls::Logger::debug("OnM3U8UrlChanged: showing skeleton and requesting channel list");
+        // Mostra lo skeleton per indicare che stiamo caricando
+        brls::Threading::sync([this]() {
+            recyclingGrid->showSkeleton();
+            upRecyclingGrid->setVisibility(brls::Visibility::GONE);
+        });
+        
+        ChannelManager::get()->remove();
+        this->requestLiveList();
+        //reset index group
+        this->selectGroupIndex(0);
+    });
+
+    // Sottoscrivi all'evento di cambio modalità IPTV
+    OnIPTVModeChanged.subscribe([this]() {
+        brls::Logger::debug("OnIPTVModeChanged: showing skeleton and requesting channel list");
+        // Mostra lo skeleton per indicare che stiamo caricando
+        brls::Threading::sync([this]() {
+            recyclingGrid->showSkeleton();
+            upRecyclingGrid->setVisibility(brls::Visibility::GONE);
+        });
+        
         ChannelManager::get()->remove();
         this->requestLiveList();
         //reset index group
@@ -347,17 +372,27 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstL
     });
 
     // Precarica gli altri gruppi in background (senza bloccare la UI)
+    // Copia result localmente per evitare problemi di concorrenza
+    auto resultCopy = result;
+    auto isValidFlag = validityFlag; // Cattura una copia del flag
     for (const auto& group : groupTitles) {
         if (group == selectedGroup) continue;
         // Copia direttamente gli oggetti, non i puntatori!
         tsvitch::LiveM3u8ListResult filteredBg;
-        for (const auto& item : result) {
+        for (const auto& item : resultCopy) {
             if (item.groupTitle == group) filteredBg.push_back(item);
         }
-        // Sposta la copia nel thread asincrono
-        brls::Threading::async([this, group, filteredBg = std::move(filteredBg)]() mutable {
+        // Sposta la copia nel thread asincrono con una copia locale di `group`
+        std::string groupCopy = group;
+        brls::Threading::async([this, isValidFlag, groupCopy = std::move(groupCopy), filteredBg = std::move(filteredBg)]() mutable {
+            // Check if this object is still valid before accessing it
+            if (!isValidFlag->load()) {
+                brls::Logger::debug("HomeLive::onLiveList: Object destroyed before async callback");
+                return;
+            }
+            
             std::lock_guard<std::mutex> lock(groupCacheMutex);
-            groupCache[group] = std::move(filteredBg);
+            groupCache[groupCopy] = std::move(filteredBg);
         });
     }
 
@@ -566,7 +601,13 @@ void HomeLive::onCreate() {
     // }
 }
 
-HomeLive::~HomeLive() { brls::Logger::debug("Fragment HomeLiveActivity: delete"); }
+HomeLive::~HomeLive() { 
+    brls::Logger::debug("Fragment HomeLiveActivity: delete");
+    // Invalidate the flag to prevent callbacks from accessing this object
+    if (validityFlag) {
+        validityFlag->store(false);
+    }
+}
 
 brls::View* HomeLive::create() { 
     brls::Logger::debug("HomeLive::create() called - creating new HomeLive instance");
