@@ -32,15 +32,34 @@ void TsVitchClient::register_user(const std::function<void(const std::string&, i
     }
     std::string app_version = APPVersion::instance().git_tag;
 
-    std::string m3u8_url = ProgramConfig::instance().getM3U8Url();
-
+    // Check IPTV mode and use appropriate parameters
+    int iptvMode = ProgramConfig::instance().getIntOption(SettingItem::IPTV_MODE);
     nlohmann::json json_body = {
-        {"language", lang}, {"platform", platform}, {"app_version", app_version}, {"m3u8_url", m3u8_url}};
+        {"language", lang}, 
+        {"platform", platform}, 
+        {"app_version", app_version}
+    };
+
+    if (iptvMode == 0) {
+        // M3U8 Mode
+        std::string m3u8_url = ProgramConfig::instance().getM3U8Url();
+        json_body["m3u8_url"] = m3u8_url;
+        brls::Logger::debug("Registering user with M3U8 mode - language: {}, platform: {}, app_version: {}, m3u8_url: {}", 
+                            lang, platform, app_version, m3u8_url);
+    } else if (iptvMode == 1) {
+        // Xtream Codes Mode
+        std::string server_url = ProgramConfig::instance().getXtreamServerUrl();
+        std::string username = ProgramConfig::instance().getXtreamUsername();
+        std::string password = ProgramConfig::instance().getXtreamPassword();
+        json_body["xtream_server"] = server_url;
+        json_body["xtream_username"] = username;
+        json_body["xtream_password"] = password;
+        brls::Logger::debug("Registering user with Xtream mode - language: {}, platform: {}, app_version: {}, server: {}, username: {}", 
+                            lang, platform, app_version, server_url, username);
+    }
+
     std::string json_str = json_body.dump();
     cpr::Body body{json_str};
-
-    brls::Logger::debug("Registering user with language: {}, platform: {}, app_version: {}, m3u8_url: {}", lang,
-                        platform, app_version, m3u8_url);
 
     auto url = std::string(SERVER_URL_VALUE) + "/functions/v1/register-user";
     brls::Logger::debug("Registering user with URL: {}", url);
@@ -114,20 +133,39 @@ void TsVitchClient::check_user_id(const std::function<void(const std::string&, i
     }
     std::string app_version = APPVersion::instance().git_tag;
 
-    std::string m3u8_url = ProgramConfig::instance().getM3U8Url();
-    auto url             = std::string(SERVER_URL_VALUE) + "/functions/v1/check-user";
+    // Check IPTV mode and use appropriate parameters
+    int iptvMode = ProgramConfig::instance().getIntOption(SettingItem::IPTV_MODE);
+    auto url = std::string(SERVER_URL_VALUE) + "/functions/v1/check-user";
 
     brls::Logger::debug("Getting ad with URL: {}", url);
 
-    nlohmann::json json_body = {{"user_id", user_id},
-                                {"language", lang},
-                                {"platform", platform},
-                                {"app_version", app_version},
-                                {"m3u8_url", m3u8_url}};
-    std::string json_str     = json_body.dump();
+    nlohmann::json json_body = {
+        {"user_id", user_id},
+        {"language", lang},
+        {"platform", platform},
+        {"app_version", app_version}
+    };
+
+    if (iptvMode == 0) {
+        // M3U8 Mode
+        std::string m3u8_url = ProgramConfig::instance().getM3U8Url();
+        json_body["m3u8_url"] = m3u8_url;
+        brls::Logger::debug("Checking user ID with M3U8 mode - user_id: {}, language: {}, platform: {}, app_version: {}, m3u8_url: {}",
+                            user_id, lang, platform, app_version, m3u8_url);
+    } else if (iptvMode == 1) {
+        // Xtream Codes Mode
+        std::string server_url = ProgramConfig::instance().getXtreamServerUrl();
+        std::string username = ProgramConfig::instance().getXtreamUsername();
+        std::string password = ProgramConfig::instance().getXtreamPassword();
+        json_body["xtream_server"] = server_url;
+        json_body["xtream_username"] = username;
+        json_body["xtream_password"] = password;
+        brls::Logger::debug("Checking user ID with Xtream mode - user_id: {}, language: {}, platform: {}, app_version: {}, server: {}, username: {}",
+                            user_id, lang, platform, app_version, server_url, username);
+    }
+
+    std::string json_str = json_body.dump();
     cpr::Body body{json_str};
-    brls::Logger::debug("Checking user ID with user_id: {}, language: {}, platform: {}, app_version: {}, m3u8_url: {}",
-                        user_id, lang, platform, app_version, m3u8_url);
 
     HTTP::__cpr_post(
         url, cpr::Parameters{}, body,
@@ -196,21 +234,39 @@ void TsVitchClient::get_ad(const std::function<void(const std::string&, int)>& c
     }
     std::string app_version = APPVersion::instance().git_tag;
 
-    std::string m3u8_url = ProgramConfig::instance().getM3U8Url();
-    auto url             = std::string(SERVER_URL_VALUE) + "/functions/v1/get-ad";
+    // Check IPTV mode and use appropriate parameters
+    int iptvMode = ProgramConfig::instance().getIntOption(SettingItem::IPTV_MODE);
+    auto url = std::string(SERVER_URL_VALUE) + "/functions/v1/get-ad";
 
     brls::Logger::debug("Getting ad with URL: {}", url);
 
-    nlohmann::json json_body = {{"user_id", user_id},
-                                {"language", lang},
-                                {"platform", platform},
-                                {"app_version", app_version},
-                                {"m3u8_url", m3u8_url}};
-    std::string json_str     = json_body.dump();
-    cpr::Body body{json_str};
+    nlohmann::json json_body = {
+        {"user_id", user_id},
+        {"language", lang},
+        {"platform", platform},
+        {"app_version", app_version}
+    };
 
-    brls::Logger::debug("Getting ad with user_id: {}, language: {}, platform: {}, app_version: {}, m3u8_url: {}",
-                        user_id, lang, platform, app_version, m3u8_url);
+    if (iptvMode == 0) {
+        // M3U8 Mode
+        std::string m3u8_url = ProgramConfig::instance().getM3U8Url();
+        json_body["m3u8_url"] = m3u8_url;
+        brls::Logger::debug("Getting ad with M3U8 mode - user_id: {}, language: {}, platform: {}, app_version: {}, m3u8_url: {}",
+                            user_id, lang, platform, app_version, m3u8_url);
+    } else if (iptvMode == 1) {
+        // Xtream Codes Mode
+        std::string server_url = ProgramConfig::instance().getXtreamServerUrl();
+        std::string username = ProgramConfig::instance().getXtreamUsername();
+        std::string password = ProgramConfig::instance().getXtreamPassword();
+        json_body["xtream_server"] = server_url;
+        json_body["xtream_username"] = username;
+        json_body["xtream_password"] = password;
+        brls::Logger::debug("Getting ad with Xtream mode - user_id: {}, language: {}, platform: {}, app_version: {}, server: {}, username: {}",
+                            user_id, lang, platform, app_version, server_url, username);
+    }
+
+    std::string json_str = json_body.dump();
+    cpr::Body body{json_str};
 
     HTTP::__cpr_post(
         url, cpr::Parameters{}, body,

@@ -23,9 +23,14 @@
 #include "view/auto_tab_frame.hpp"
 #include "view/svg_image.hpp"
 
+MainActivity::MainActivity() {
+    brls::Logger::info("MainActivity constructor called");
+}
+
 MainActivity::~MainActivity() { brls::Logger::debug("del MainActivity"); }
 
 void MainActivity::onContentAvailable() {
+    brls::Logger::info("MainActivity::onContentAvailable() called");
     this->registerAction(
         "Settings", brls::ControllerButton::BUTTON_BACK,
         [this](brls::View* view) -> bool {

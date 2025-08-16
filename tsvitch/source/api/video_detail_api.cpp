@@ -2,6 +2,8 @@
 #include <sstream>
 #include <utility>
 #include <vector>
+#include <algorithm>
+#include <regex>
 
 #include "tsvitch.h"
 #include "tsvitch/util/http.hpp"
@@ -10,6 +12,45 @@
 #include "utils/config_helper.hpp"
 
 namespace tsvitch {
+
+/// Pulisce il testo rimuovendo caratteri che potrebbero causare problemi di rendering
+// Helper function to safely get string value from JSON, handling null values
+static std::string safeGetString(const nlohmann::json& json, const std::string& key, const std::string& defaultValue = "") {
+    if (!json.contains(key) || json[key].is_null()) {
+        return defaultValue;
+    }
+    if (json[key].is_string()) {
+        return json[key].get<std::string>();
+    }
+    return defaultValue;
+}
+
+// Helper function to sanitize text for safe font rendering
+static std::string sanitizeText(const std::string& text) {
+    if (text.empty()) return text;
+    
+    std::string cleaned = text;
+    
+    // Rimuovi caratteri di controllo ASCII (0-31, eccetto tab, newline, carriage return)
+    cleaned.erase(std::remove_if(cleaned.begin(), cleaned.end(), [](unsigned char c) {
+        return (c < 32 && c != 9 && c != 10 && c != 13) || c == 127;
+    }), cleaned.end());
+    
+    // Sostituisci caratteri problematici con versioni sicure
+    std::replace(cleaned.begin(), cleaned.end(), '\n', ' ');
+    std::replace(cleaned.begin(), cleaned.end(), '\r', ' ');
+    std::replace(cleaned.begin(), cleaned.end(), '\t', ' ');
+    
+    // Rimuovi spazi multipli
+    std::regex multiple_spaces("\\s+");
+    cleaned = std::regex_replace(cleaned, multiple_spaces, " ");
+    
+    // Trim
+    cleaned.erase(0, cleaned.find_first_not_of(" \t\n\r\f\v"));
+    cleaned.erase(cleaned.find_last_not_of(" \t\n\r\f\v") + 1);
+    
+    return cleaned;
+}
 
 /// Découpe une chaîne `a,b,c` -> {"a","b","c"}
 static std::vector<std::string> split_csv(const std::string& csv)
@@ -60,10 +101,12 @@ nlohmann::json parse_m3u8_to_json(const std::string& m3u8_content)
             }
             if (group_title_pos != std::string::npos) {
                 size_t end_pos              = extinf.find('"', group_title_pos + 13);
-                current_entry["groupTitle"] = extinf.substr(group_title_pos + 13, end_pos - (group_title_pos + 13));
+                std::string groupTitle = extinf.substr(group_title_pos + 13, end_pos - (group_title_pos + 13));
+                current_entry["groupTitle"] = sanitizeText(groupTitle);
             }
             if (comma_pos != std::string::npos) {
-                current_entry["title"] = extinf.substr(comma_pos + 1);
+                std::string title = extinf.substr(comma_pos + 1);
+                current_entry["title"] = sanitizeText(title);
             }
         } else if (!line.empty() && line.rfind('#', 0) != 0) {
             current_entry["url"] = line;
@@ -102,9 +145,9 @@ void TsVitchClient::get_file_m3u8(const std::function<void(LiveM3u8ListResult)>&
                     {
                         std::string groupTitle = item.value("groupTitle", "");
                         std::replace(groupTitle.begin(), groupTitle.end(), ';', ' ');
-                        live.groupTitle = groupTitle;
+                        live.groupTitle = sanitizeText(groupTitle);
                     }
-                    live.title      = item.value("title", "");
+                    live.title      = sanitizeText(item.value("title", ""));
                     live.url        = item.value("url", "");
                     result.push_back(live);
                 }
@@ -116,6 +159,179 @@ void TsVitchClient::get_file_m3u8(const std::function<void(LiveM3u8ListResult)>&
             }
         },
         error);
+}
+
+void TsVitchClient::get_xtream_channels(const std::function<void(LiveM3u8ListResult)>& callback,
+                                       const ErrorCallback& error) {
+    auto serverUrl = ProgramConfig::instance().getXtreamServerUrl();
+    auto username = ProgramConfig::instance().getXtreamUsername();
+    auto password = ProgramConfig::instance().getXtreamPassword();
+    
+    if (serverUrl.empty() || username.empty() || password.empty()) {
+        if (error) {
+            error("Xtream Codes credentials not configured properly", -1);
+        }
+        return;
+    }
+    
+    // Construct Xtream API URL for getting all live streams
+    std::string xtreamUrl = serverUrl;
+    if (xtreamUrl.back() != '/') {
+        xtreamUrl += "/";
+    }
+    xtreamUrl += "player_api.php?username=" + username + "&password=" + password + "&action=get_live_streams";
+    
+    brls::Logger::debug("Fetching Xtream channels from: {}", xtreamUrl);
+    
+    auto timeoutMs = ProgramConfig::instance().getIntOption(SettingItem::M3U8_TIMEOUT);
+    HTTP::__cpr_get(
+        xtreamUrl,
+        {},
+        timeoutMs,
+        [callback, error, serverUrl, username, password](const cpr::Response& r) {
+            try {
+                brls::Logger::debug("Xtream response status: {}, body length: {}", r.status_code, r.text.length());
+                
+                if (r.status_code != 200) {
+                    brls::Logger::error("Xtream API error: HTTP {}, body: {}", r.status_code, r.text.substr(0, 500));
+                    if (error) {
+                        error("Failed to fetch Xtream channels: HTTP " + std::to_string(r.status_code), r.status_code);
+                    }
+                    return;
+                }
+                
+                if (r.text.empty()) {
+                    brls::Logger::error("Xtream API returned empty response");
+                    if (error) {
+                        error("Empty response from Xtream server", -1);
+                    }
+                    return;
+                }
+                
+                nlohmann::json json_result;
+                try {
+                    json_result = nlohmann::json::parse(r.text);
+                } catch (const nlohmann::json::parse_error& e) {
+                    brls::Logger::error("Failed to parse Xtream JSON: {}", e.what());
+                    if (error) {
+                        error("Invalid JSON response from Xtream server", -1);
+                    }
+                    return;
+                }
+                
+                if (!json_result.is_array()) {
+                    brls::Logger::error("Xtream response is not an array, type: {}", json_result.type_name());
+                    if (error) {
+                        error("Invalid response format from Xtream server", -1);
+                    }
+                    return;
+                }
+                
+                LiveM3u8ListResult result;
+                for (size_t i = 0; i < json_result.size(); i++) {
+                    const auto& item = json_result[i];
+                    if (!item.is_object()) {
+                        brls::Logger::debug("Skipping non-object item at index {} in Xtream response", i);
+                        continue;
+                    }
+                    
+                    try {
+                        LiveM3u8 live;
+                        
+                        // Log first few items for debugging structure
+                        if (i < 3) {
+                            brls::Logger::debug("Xtream item {}: {}", i, item.dump());
+                        }
+                    
+                    // Map Xtream fields to our structure with safe access
+                    // Handle both string and number types for IDs, and null values
+                    if (item.contains("stream_id") && !item["stream_id"].is_null()) {
+                        if (item["stream_id"].is_string()) {
+                            live.id = item["stream_id"].get<std::string>();
+                        } else if (item["stream_id"].is_number()) {
+                            live.id = std::to_string(item["stream_id"].get<int>());
+                        }
+                    }
+                    
+                    // Handle both string and number types for channel numbers, and null values
+                    if (item.contains("num") && !item["num"].is_null()) {
+                        if (item["num"].is_string()) {
+                            live.chno = item["num"].get<std::string>();
+                        } else if (item["num"].is_number()) {
+                            live.chno = std::to_string(item["num"].get<int>());
+                        }
+                    }
+                    
+                    // Handle string fields with null-safe access
+                    live.title = sanitizeText(safeGetString(item, "name"));
+                    live.logo = safeGetString(item, "stream_icon");
+                    
+                    std::string categoryName = safeGetString(item, "category_name");
+                    brls::Logger::info("Xtream channel '{}' has category_name: '{}'", live.title, categoryName);
+                    live.groupTitle = sanitizeText(categoryName);
+                    
+                    // If category_name is empty, set a default group
+                    if (live.groupTitle.empty()) {
+                        live.groupTitle = "Live TV";
+                        brls::Logger::info("Set default group 'Live TV' for channel '{}'", live.title);
+                    }
+                    
+                    // Construct the stream URL for Xtream
+                    if (!live.id.empty()) {
+                        std::string streamUrl = serverUrl;
+                        if (streamUrl.back() != '/') {
+                            streamUrl += "/";
+                        }
+                        streamUrl += "live/" + username + "/" + password + "/" + live.id + ".ts";
+                        live.url = streamUrl;
+                    }
+                    
+                    // Only add channels that have required fields
+                    if (!live.id.empty() && !live.title.empty() && !live.url.empty()) {
+                        result.push_back(live);
+                    }
+                    } catch (const std::exception& e) {
+                        brls::Logger::error("Exception processing Xtream item at index {}: {}", i, e.what());
+                        brls::Logger::error("Problematic item: {}", item.dump());
+                        // Continue with next item instead of failing completely
+                        continue;
+                    }
+                }
+                
+                brls::Logger::debug("Successfully parsed {} Xtream channels", result.size());
+                if (callback) {
+                    callback(result);
+                }
+            } catch (const std::exception& e) {
+                brls::Logger::error("Exception in Xtream response handler: {}", e.what());
+                if (error) {
+                    error("Failed to parse Xtream channels response: " + std::string(e.what()), -1);
+                }
+            }
+        },
+        error);
+}
+
+void TsVitchClient::get_live_channels(const std::function<void(LiveM3u8ListResult)>& callback,
+                                     const ErrorCallback& error) {
+    // Check IPTV mode and call appropriate function
+    int iptvMode = ProgramConfig::instance().getIntOption(SettingItem::IPTV_MODE);
+    
+    if (iptvMode == 0) {
+        // M3U8 Mode
+        brls::Logger::debug("Using M3U8 mode for live channels");
+        get_file_m3u8(callback, error);
+    } else if (iptvMode == 1) {
+        // Xtream Codes Mode
+        brls::Logger::debug("Using Xtream mode for live channels");
+        get_xtream_channels(callback, error);
+    } else {
+        // Unknown mode
+        brls::Logger::error("Unknown IPTV mode: {}", iptvMode);
+        if (error) {
+            error("Unknown IPTV mode configured", -1);
+        }
+    }
 }
 
 } // namespace tsvitch
