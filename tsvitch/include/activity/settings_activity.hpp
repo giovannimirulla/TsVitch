@@ -19,6 +19,8 @@ public:
     SettingsActivity(std::function<void()> onClose = nullptr);
 
     void onContentAvailable() override;
+    
+    void willDisappear(bool resetState = false) override;
 
     ~SettingsActivity() override;
 

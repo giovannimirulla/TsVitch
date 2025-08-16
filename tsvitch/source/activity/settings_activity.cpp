@@ -623,9 +623,16 @@ void SettingsActivity::updateIPTVSectionVisibility() {
     brls::Logger::debug("IPTV Section Visibility updated: M3U8={}, Xtream={}", showM3U8, showXtream);
 }
 
-SettingsActivity::~SettingsActivity() {
-    brls::Logger::debug("SettingsActivity: destroy");
+void SettingsActivity::willDisappear(bool resetState) {
+    brls::Logger::debug("SettingsActivity: willDisappear");
     if (onCloseCallback) {
         onCloseCallback();
+        onCloseCallback = nullptr; // Clear the callback to avoid calling it again
     }
+    brls::Activity::willDisappear(resetState);
+}
+
+SettingsActivity::~SettingsActivity() {
+    brls::Logger::debug("SettingsActivity: destroy");
+    // Callback moved to willDisappear to avoid calling it during destruction
 }

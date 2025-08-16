@@ -15,17 +15,48 @@ void HomeLiveRequest::onError(const std::string& error) {
     brls::Logger::error("HomeLiveRequest: Error: {}", error);
 }
 
-void HomeLiveRequest::requestLiveList() {
-    CLIENT::get_file_m3u8(
-        [this](const auto& result) {
-            UNSET_REQUEST
+HomeLiveRequest::~HomeLiveRequest() {
+    brls::Logger::debug("HomeLiveRequest: destructor");
+    // Invalidate the flag to prevent callbacks from accessing this object
+    if (validityFlag) {
+        validityFlag->store(false);
+    }
+}
 
-            tsvitch::LiveM3u8ListResult res = result;
-            this->onLiveList(res, true);
+void HomeLiveRequest::requestLiveList() {
+    // Create a flag to track if this object is still valid
+    auto isValidFlag = std::make_shared<std::atomic<bool>>(true);
+    validityFlag = isValidFlag;
+    
+    CLIENT::get_file_m3u8(
+        [this, isValidFlag](const auto& result) {
+            // Check if this object is still valid before accessing it
+            if (!isValidFlag->load()) {
+                brls::Logger::debug("HomeLiveRequest::requestLiveList: Object destroyed before callback");
+                return;
+            }
+            
+            try {
+                UNSET_REQUEST
+                tsvitch::LiveM3u8ListResult res = result;
+                this->onLiveList(res, true);
+            } catch (...) {
+                brls::Logger::error("HomeLiveRequest::requestLiveList: Exception during callback");
+            }
         },
-        [this](const std::string &error, int code) { 
-            this->onError("Failed to fetch live list: " + error);
-            UNSET_REQUEST;
+        [this, isValidFlag](const std::string &error, int code) {
+            // Check if this object is still valid before accessing it
+            if (!isValidFlag->load()) {
+                brls::Logger::debug("HomeLiveRequest::requestLiveList: Object destroyed before error callback");
+                return;
+            }
+            
+            try {
+                this->onError("Failed to fetch live list: " + error);
+                UNSET_REQUEST;
+            } catch (...) {
+                brls::Logger::error("HomeLiveRequest::requestLiveList: Exception during error callback");
+            }
         }
     );
 }
