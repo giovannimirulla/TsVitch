@@ -44,3 +44,5 @@ inline brls::Event<> OnM3U8UrlChanged;
 
 // Evento globale per notificare il cambio Proxy
 inline brls::Event<> OnProxyUrlChanged;
+// Evento globale per notificare il cambio modalità IPTV
+inline brls::Event<> OnIPTVModeChanged;

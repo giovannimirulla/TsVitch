@@ -524,6 +524,7 @@ void SettingsActivity::onContentAvailable() {
                               ProgramConfig::instance().setSettingItem(SettingItem::IPTV_MODE,
                                                                        iptvModeOption.rawOptionList[data]);
                               this->updateIPTVSectionVisibility();
+                              OnIPTVModeChanged.fire(); // Notifica il cambio modalità IPTV
                           });
 
     // Inizializza i controlli M3U8
