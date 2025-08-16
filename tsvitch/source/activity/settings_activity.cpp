@@ -580,18 +580,36 @@ void SettingsActivity::onContentAvailable() {
     btnXtreamServer->init("Server URL", conf.getXtreamServerUrl(), 
         [](const std::string& data) {
             ProgramConfig::instance().setXtreamServerUrl(data);
+            // Notifica il cambio dei parametri Xtream
+            XtreamData xtreamData;
+            xtreamData.url = data;
+            xtreamData.username = ProgramConfig::instance().getXtreamUsername();
+            xtreamData.password = ProgramConfig::instance().getXtreamPassword();
+            OnXtreamChanged.fire(xtreamData);
         }, 
         "Enter Xtream Codes server URL", "http://server.com:8080", 255);
     
     btnXtreamUsername->init("Username", conf.getXtreamUsername(), 
         [](const std::string& data) {
             ProgramConfig::instance().setXtreamUsername(data);
+            // Notifica il cambio dei parametri Xtream
+            XtreamData xtreamData;
+            xtreamData.url = ProgramConfig::instance().getXtreamServerUrl();
+            xtreamData.username = data;
+            xtreamData.password = ProgramConfig::instance().getXtreamPassword();
+            OnXtreamChanged.fire(xtreamData);
         }, 
         "Enter your username", "username", 255);
     
     btnXtreamPassword->init("Password", conf.getXtreamPassword(), 
         [](const std::string& data) {
             ProgramConfig::instance().setXtreamPassword(data);
+            // Notifica il cambio dei parametri Xtream
+            XtreamData xtreamData;
+            xtreamData.url = ProgramConfig::instance().getXtreamServerUrl();
+            xtreamData.username = ProgramConfig::instance().getXtreamUsername();
+            xtreamData.password = data;
+            OnXtreamChanged.fire(xtreamData);
         }, 
         "Enter your password", "password", 255);
 
