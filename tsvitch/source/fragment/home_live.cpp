@@ -219,6 +219,14 @@ HomeLive::HomeLive() {
     // Inizializza il flag di validità
     validityFlag = std::make_shared<std::atomic<bool>>(true);
     
+    // Sottoscrivi all'evento di uscita per cancellare tutti i task asincroni
+    exitEventSubscription = brls::Application::getExitEvent()->subscribe([this]() {
+        brls::Logger::info("HomeLive: Exit event received, canceling all async operations");
+        if (validityFlag) {
+            validityFlag->store(false);
+        }
+    });
+    
     recyclingGrid->registerCell("Cell", []() { return RecyclingGridItemLiveVideoCard::create(); });
 
     upRecyclingGrid->registerCell("Cell", []() { return DynamicGroupChannels::create(); });
@@ -285,10 +293,22 @@ HomeLive::HomeLive() {
         brls::Logger::info("HomeLive constructor: Xtream mode detected, using smart cache approach");
         
         // Prova prima la cache intelligente anche per Xtream
-        brls::Threading::async([this] {
+        brls::Threading::async([this, validityFlag = this->validityFlag] {
+            // Controlla se l'app è ancora valida prima di procedere
+            if (!validityFlag || !validityFlag->load()) {
+                brls::Logger::debug("HomeLive: Xtream async task canceled - app exiting");
+                return;
+            }
+            
             auto cachedChannels = ChannelManager::get()->loadIfValid(); 
             
-            brls::sync([this, cachedChannels]() {
+            brls::sync([this, cachedChannels, validityFlag]() {
+                // Controlla di nuovo la validità prima di aggiornare l'UI
+                if (!validityFlag || !validityFlag->load()) {
+                    brls::Logger::debug("HomeLive: Xtream sync task canceled - app exiting");
+                    return;
+                }
+                
                 if (!cachedChannels.empty()) {
                     brls::Logger::info("HomeLive: Using valid Xtream cache with {} channels", cachedChannels.size());
                     this->onLiveList(cachedChannels, false);
@@ -303,14 +323,26 @@ HomeLive::HomeLive() {
         brls::Logger::debug("HomeLive constructor: M3U8 mode detected, will use intelligent caching");
         
         // Per M3U8 mode, usa cache intelligente con timeout più lungo
-        brls::Threading::async([this] {
+        brls::Threading::async([this, validityFlag = this->validityFlag] {
+            // Controlla se l'app è ancora valida prima di procedere
+            if (!validityFlag || !validityFlag->load()) {
+                brls::Logger::debug("HomeLive: M3U8 async task canceled - app exiting");
+                return;
+            }
+            
             brls::Logger::debug("HomeLive: Starting smart cache check in background thread");
             
             // Cache più lunga per M3U8 (1 mese) perché cambia meno frequentemente
             auto cachedChannels = ChannelManager::get()->loadIfValid();
             brls::Logger::info("HomeLive: Smart cache check completed, found {} channels", cachedChannels.size());
             
-            brls::sync([this, cachedChannels]() {
+            brls::sync([this, cachedChannels, validityFlag]() {
+                // Controlla di nuovo la validità prima di aggiornare l'UI
+                if (!validityFlag || !validityFlag->load()) {
+                    brls::Logger::debug("HomeLive: M3U8 sync task canceled - app exiting");
+                    return;
+                }
+                
                 if (!cachedChannels.empty()) {
                     brls::Logger::info("HomeLive constructor: Using valid M3U8 cache ({} channels found)", cachedChannels.size());
                     this->onLiveList(cachedChannels, false);
@@ -629,10 +661,22 @@ void HomeLive::onShow() {
         int iptvMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0);
         int maxCacheAge = (iptvMode == 1) ? 5 : 15; // Xtream: 5 min, M3U8: 15 min
         
-        brls::Threading::async([this, maxCacheAge, iptvMode] {
+        brls::Threading::async([this, maxCacheAge, iptvMode, validityFlag = this->validityFlag] {
+            // Controlla se l'app è ancora valida prima di procedere
+            if (!validityFlag || !validityFlag->load()) {
+                brls::Logger::debug("HomeLive onShow: async task canceled - app exiting");
+                return;
+            }
+            
             bool needsRefresh = !ChannelManager::get()->isCacheValid(maxCacheAge);
             
-            brls::sync([this, needsRefresh, iptvMode]() {
+            brls::sync([this, needsRefresh, iptvMode, validityFlag]() {
+                // Controlla di nuovo la validità prima di aggiornare l'UI
+                if (!validityFlag || !validityFlag->load()) {
+                    brls::Logger::debug("HomeLive onShow: sync task canceled - app exiting");
+                    return;
+                }
+                
                 if (needsRefresh) {
                     brls::Logger::info("HomeLive onShow: Cache expired, refreshing channels (IPTV mode: {})", iptvMode);
                     this->requestLiveList();
@@ -651,10 +695,22 @@ void HomeLive::onShow() {
     brls::Logger::debug("HomeLive onShow: No channels in memory and no initial load in progress, loading...");
     
     int iptvMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0);
-    brls::Threading::async([this, iptvMode] {
+    brls::Threading::async([this, iptvMode, validityFlag = this->validityFlag] {
+        // Controlla se l'app è ancora valida prima di procedere
+        if (!validityFlag || !validityFlag->load()) {
+            brls::Logger::debug("HomeLive onShow: fallback async task canceled - app exiting");
+            return;
+        }
+        
         auto cachedChannels = ChannelManager::get()->loadIfValid();
         
-        brls::sync([this, cachedChannels]() {
+        brls::sync([this, cachedChannels, validityFlag]() {
+            // Controlla di nuovo la validità prima di aggiornare l'UI
+            if (!validityFlag || !validityFlag->load()) {
+                brls::Logger::debug("HomeLive onShow: fallback sync task canceled - app exiting");
+                return;
+            }
+            
             if (!cachedChannels.empty()) {
                 brls::Logger::info("HomeLive onShow: Using valid cached channels ({} channels)", cachedChannels.size());
                 this->onLiveList(cachedChannels, false);
@@ -697,6 +753,10 @@ void HomeLive::onCreate() {
 
 HomeLive::~HomeLive() { 
     brls::Logger::debug("Fragment HomeLiveActivity: delete");
+    
+    // Cancella la sottoscrizione all'evento di uscita
+    brls::Application::getExitEvent()->unsubscribe(exitEventSubscription);
+    
     // Invalidate the flag to prevent callbacks from accessing this object
     if (validityFlag) {
         validityFlag->store(false);

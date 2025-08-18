@@ -210,10 +210,35 @@ void TsVitchClient::get_file_m3u8(const std::function<void(LiveM3u8ListResult)>&
             // Switch: usa parsing sincrono per file piccoli, asincrono per file grandi
             if (useAsyncParsing) {
                 brls::Logger::info("Large M3U8 file detected ({}MB), using async parsing on Switch", r.text.size() / (1024*1024));
-                brls::Threading::async([callback, error, responseText = std::move(r.text)]() {
+                
+                // Create a cancellation token 
+                auto cancellationToken = std::make_shared<std::atomic<bool>>(false);
+                
+                // Subscribe to exit event to cancel parsing
+                auto exitSubscription = brls::Application::getExitEvent()->subscribe([cancellationToken]() {
+                    brls::Logger::info("M3U8 parsing: Exit event received, setting cancellation flag");
+                    cancellationToken->store(true);
+                });
+                
+                brls::Threading::async([callback, error, responseText = std::move(r.text), cancellationToken, exitSubscription]() {
                     try {
+                        // Check if parsing should be canceled
+                        if (cancellationToken->load()) {
+                            brls::Logger::info("M3U8 async parsing canceled before start - application is exiting");
+                            brls::Application::getExitEvent()->unsubscribe(exitSubscription);
+                            return;
+                        }
+                        
                         auto start_time = std::chrono::high_resolution_clock::now();
                         nlohmann::json json_result = parse_m3u8_to_json(responseText);
+                        
+                        // Check again if parsing should be canceled
+                        if (cancellationToken->load()) {
+                            brls::Logger::info("M3U8 async parsing canceled during execution - application is exiting");
+                            brls::Application::getExitEvent()->unsubscribe(exitSubscription);
+                            return;
+                        }
+                        
                         auto end_time = std::chrono::high_resolution_clock::now();
                         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
                         brls::Logger::info("Switch async M3U8 parsing completed in {}ms, found {} channels", duration.count(), json_result.size());
@@ -236,14 +261,42 @@ void TsVitchClient::get_file_m3u8(const std::function<void(LiveM3u8ListResult)>&
                             result.push_back(std::move(live));
                         }
                         
-                        brls::sync([callback, result = std::move(result)]() {
+                        // Final check before calling callback
+                        if (cancellationToken->load()) {
+                            brls::Logger::info("M3U8 async parsing canceled before callback - application is exiting");
+                            brls::Application::getExitEvent()->unsubscribe(exitSubscription);
+                            return;
+                        }
+                        
+                        brls::sync([callback, result = std::move(result), cancellationToken, exitSubscription]() {
+                            // Check once more in sync context
+                            if (cancellationToken->load()) {
+                                brls::Logger::info("M3U8 sync callback canceled - application is exiting");
+                                brls::Application::getExitEvent()->unsubscribe(exitSubscription);
+                                return;
+                            }
                             CALLBACK(result);
+                            brls::Application::getExitEvent()->unsubscribe(exitSubscription);
                         });
                     } catch (const std::exception& e) {
                         brls::Logger::error("Switch async M3U8 parsing error: {}", e.what());
-                        brls::sync([error]() {
+                        
+                        // Don't call error callback if app is exiting
+                        if (cancellationToken->load()) {
+                            brls::Logger::info("M3U8 async error callback canceled - application is exiting");
+                            brls::Application::getExitEvent()->unsubscribe(exitSubscription);
+                            return;
+                        }
+                        
+                        brls::sync([error, cancellationToken, exitSubscription]() {
+                            if (cancellationToken->load()) {
+                                brls::Logger::info("M3U8 sync error callback canceled - application is exiting");
+                                brls::Application::getExitEvent()->unsubscribe(exitSubscription);
+                                return;
+                            }
                             ERROR_MSG("cannot get file m3u8", -1);
                             error("Failed to parse m3u8 content", -1);
+                            brls::Application::getExitEvent()->unsubscribe(exitSubscription);
                         });
                     }
                 });
