@@ -69,55 +69,113 @@ static std::vector<std::string> split_csv(const std::string& csv)
 
 nlohmann::json parse_m3u8_to_json(const std::string& m3u8_content)
 {
+    if (m3u8_content.empty()) {
+        return nlohmann::json::array();
+    }
+
     std::istringstream stream(m3u8_content);
     std::string        line;
     nlohmann::json     json_result = nlohmann::json::array();
     nlohmann::json     current_entry;
+    
+    // Pre-allocazione ottimizzata per migliorare prestazioni
+    size_t estimated_channels = std::count(m3u8_content.begin(), m3u8_content.end(), '\n') / 3;
+    json_result.get_ref<nlohmann::json::array_t&>().reserve(estimated_channels + 100);
+
+    // Buffer riutilizzabile per evitare allocazioni
+    std::string extinf_buffer;
+    extinf_buffer.reserve(512);
 
     while (std::getline(stream, line)) {
-        if (line.rfind("#EXTINF:", 0) == 0) {
+        // Trim veloce di \r\n alla fine
+        while (!line.empty() && (line.back() == '\r' || line.back() == '\n')) {
+            line.pop_back();
+        }
+        
+        // Controllo ultra-rapido per saltare linee vuote o commenti non EXTINF
+        if (line.empty() || (line[0] == '#' && (line.size() < 8 || line.compare(0, 8, "#EXTINF:") != 0))) {
+            continue;
+        }
+        
+        if (line.compare(0, 8, "#EXTINF:") == 0) {
             if (!current_entry.empty()) {
-                json_result.push_back(current_entry);
+                json_result.push_back(std::move(current_entry));
                 current_entry.clear();
             }
 
-            std::string extinf = line.substr(8);
-            size_t      id_pos = extinf.find("tvg-id=\"");
-            size_t      chno_pos = extinf.find("tvg-chno=\"");
-            size_t      logo_pos = extinf.find("tvg-logo=\"");
-            size_t      group_title_pos = extinf.find("group-title=\"");
-            size_t      comma_pos = extinf.find_last_of(',');
+            extinf_buffer = line.substr(8);
+            
+            // Parsing ultra-ottimizzato con una sola passata della stringa
+            const char* data = extinf_buffer.c_str();
+            const size_t len = extinf_buffer.length();
+            
+            // Cerca i pattern più comuni per primi (ottimizzazione basata su frequenza)
+            size_t comma_pos = std::string::npos;
+            size_t tvg_id_start = 0, tvg_id_len = 0;
+            size_t tvg_chno_start = 0, tvg_chno_len = 0;
+            size_t tvg_logo_start = 0, tvg_logo_len = 0;
+            size_t group_title_start = 0, group_title_len = 0;
+            
+            for (size_t i = 0; i < len; ++i) {
+                // Cerca comma (titolo) - più frequente
+                if (data[i] == ',' && comma_pos == std::string::npos) {
+                    comma_pos = i;
+                }
+                // Cerca tvg-id
+                else if (data[i] == 't' && i + 7 < len && memcmp(data + i, "tvg-id=\"", 8) == 0) {
+                    i += 8;
+                    tvg_id_start = i;
+                    while (i < len && data[i] != '"') ++i;
+                    tvg_id_len = i - tvg_id_start;
+                }
+                // Cerca group-title
+                else if (data[i] == 'g' && i + 12 < len && memcmp(data + i, "group-title=\"", 13) == 0) {
+                    i += 13;
+                    group_title_start = i;
+                    while (i < len && data[i] != '"') ++i;
+                    group_title_len = i - group_title_start;
+                }
+                // Cerca tvg-chno
+                else if (data[i] == 't' && i + 9 < len && memcmp(data + i, "tvg-chno=\"", 10) == 0) {
+                    i += 10;
+                    tvg_chno_start = i;
+                    while (i < len && data[i] != '"') ++i;
+                    tvg_chno_len = i - tvg_chno_start;
+                }
+                // Cerca tvg-logo
+                else if (data[i] == 't' && i + 9 < len && memcmp(data + i, "tvg-logo=\"", 10) == 0) {
+                    i += 10;
+                    tvg_logo_start = i;
+                    while (i < len && data[i] != '"') ++i;
+                    tvg_logo_len = i - tvg_logo_start;
+                }
+            }
 
-            if (id_pos != std::string::npos) {
-                size_t end_pos     = extinf.find('"', id_pos + 8);
-                std::string id_val = extinf.substr(id_pos + 8, end_pos - (id_pos + 8));
-                current_entry["id"]   = id_val;
-                current_entry["tags"] = split_csv(id_val);     // <- NOUVEAU
+            // Assegna i valori trovati (solo se non vuoti)
+            if (tvg_id_len > 0) {
+                current_entry["id"] = std::string(data + tvg_id_start, tvg_id_len);
             }
-            if (chno_pos != std::string::npos) {
-                size_t end_pos        = extinf.find('"', chno_pos + 10);
-                current_entry["chno"] = extinf.substr(chno_pos + 10, end_pos - (chno_pos + 10));
+            if (tvg_chno_len > 0) {
+                current_entry["chno"] = std::string(data + tvg_chno_start, tvg_chno_len);
             }
-            if (logo_pos != std::string::npos) {
-                size_t end_pos        = extinf.find('"', logo_pos + 10);
-                current_entry["logo"] = extinf.substr(logo_pos + 10, end_pos - (logo_pos + 10));
+            if (tvg_logo_len > 0) {
+                current_entry["logo"] = std::string(data + tvg_logo_start, tvg_logo_len);
             }
-            if (group_title_pos != std::string::npos) {
-                size_t end_pos              = extinf.find('"', group_title_pos + 13);
-                std::string groupTitle = extinf.substr(group_title_pos + 13, end_pos - (group_title_pos + 13));
-                current_entry["groupTitle"] = sanitizeText(groupTitle);
+            if (group_title_len > 0) {
+                current_entry["groupTitle"] = sanitizeText(std::string(data + group_title_start, group_title_len));
             }
-            if (comma_pos != std::string::npos) {
-                std::string title = extinf.substr(comma_pos + 1);
-                current_entry["title"] = sanitizeText(title);
+            if (comma_pos != std::string::npos && comma_pos + 1 < len) {
+                current_entry["title"] = sanitizeText(extinf_buffer.substr(comma_pos + 1));
             }
-        } else if (!line.empty() && line.rfind('#', 0) != 0) {
-            current_entry["url"] = line;
+        } else if (!line.empty() && line[0] != '#') {
+            current_entry["url"] = std::move(line);
         }
     }
 
-    if (!current_entry.empty() && current_entry.contains("id"))
-        json_result.push_back(current_entry);
+    // Aggiungi l'ultimo entry se presente e valido
+    if (!current_entry.empty() && current_entry.contains("id")) {
+        json_result.push_back(std::move(current_entry));
+    }
     
 
 #ifdef DEBUG
@@ -131,35 +189,138 @@ void TsVitchClient::get_file_m3u8(const std::function<void(LiveM3u8ListResult)>&
 {
     auto m3u8Url = ProgramConfig::instance().getM3U8Url();
     auto timeoutMs = ProgramConfig::instance().getIntOption(SettingItem::M3U8_TIMEOUT);
+    
+    // Timeout più intelligente basato sulla dimensione prevista
+    if (timeoutMs < 30000) timeoutMs = 30000; // Minimum 30 secondi per file M3U8 grandi
+    
+    brls::Logger::info("Fetching M3U8 playlist from: {} (timeout: {}ms)", m3u8Url, timeoutMs);
+    
     HTTP::__cpr_get(
         m3u8Url,
         {},
-        timeoutMs, // timeout configurabile per file M3U8 grandi
+        timeoutMs,
         [callback, error](const cpr::Response& r) {
-            try {
-                nlohmann::json json_result = parse_m3u8_to_json(r.text);
+            // Log dimensione risposta per debug prestazioni
+            brls::Logger::info("M3U8 download completed - Size: {} bytes, Status: {}", r.text.size(), r.status_code);
+            
+#ifdef __SWITCH__
+            // Per file molto grandi, usa sempre parsing asincrono anche su Switch
+            bool useAsyncParsing = r.text.size() > 1024 * 1024; // 1MB threshold
+            
+            // Switch: usa parsing sincrono per file piccoli, asincrono per file grandi
+            if (useAsyncParsing) {
+                brls::Logger::info("Large M3U8 file detected ({}MB), using async parsing on Switch", r.text.size() / (1024*1024));
+                brls::Threading::async([callback, error, responseText = std::move(r.text)]() {
+                    try {
+                        auto start_time = std::chrono::high_resolution_clock::now();
+                        nlohmann::json json_result = parse_m3u8_to_json(responseText);
+                        auto end_time = std::chrono::high_resolution_clock::now();
+                        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+                        brls::Logger::info("Switch async M3U8 parsing completed in {}ms, found {} channels", duration.count(), json_result.size());
 
-                LiveM3u8ListResult result;
-                for (const auto& item : json_result) {
-                    LiveM3u8 live;
-                    live.id         = item.value("id", "");
-                    live.chno       = item.value("chno", "");
-                    live.logo       = item.value("logo", "");
-                    {
-                        std::string groupTitle = item.value("groupTitle", "");
-                        std::replace(groupTitle.begin(), groupTitle.end(), ';', ' ');
-                        live.groupTitle = sanitizeText(groupTitle);
+                        LiveM3u8ListResult result;
+                        result.reserve(json_result.size());
+                        
+                        for (const auto& item : json_result) {
+                            LiveM3u8 live;
+                            live.id         = item.value("id", "");
+                            live.chno       = item.value("chno", "");
+                            live.logo       = item.value("logo", "");
+                            {
+                                std::string groupTitle = item.value("groupTitle", "");
+                                std::replace(groupTitle.begin(), groupTitle.end(), ';', ' ');
+                                live.groupTitle = sanitizeText(groupTitle);
+                            }
+                            live.title      = sanitizeText(item.value("title", ""));
+                            live.url        = item.value("url", "");
+                            result.push_back(std::move(live));
+                        }
+                        
+                        brls::sync([callback, result = std::move(result)]() {
+                            CALLBACK(result);
+                        });
+                    } catch (const std::exception& e) {
+                        brls::Logger::error("Switch async M3U8 parsing error: {}", e.what());
+                        brls::sync([error]() {
+                            ERROR_MSG("cannot get file m3u8", -1);
+                            error("Failed to parse m3u8 content", -1);
+                        });
                     }
-                    live.title      = sanitizeText(item.value("title", ""));
-                    live.url        = item.value("url", "");
-                    result.push_back(live);
+                });
+            } else {
+                // File piccoli: parsing sincrono ottimizzato
+                try {
+                    auto start_time = std::chrono::high_resolution_clock::now();
+                    nlohmann::json json_result = parse_m3u8_to_json(r.text);
+                    auto end_time = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+                    brls::Logger::info("Switch sync M3U8 parsing completed in {}ms, found {} channels", duration.count(), json_result.size());
+
+                    LiveM3u8ListResult result;
+                    result.reserve(json_result.size());
+                    
+                    for (const auto& item : json_result) {
+                        LiveM3u8 live;
+                        live.id         = item.value("id", "");
+                        live.chno       = item.value("chno", "");
+                        live.logo       = item.value("logo", "");
+                        {
+                            std::string groupTitle = item.value("groupTitle", "");
+                            std::replace(groupTitle.begin(), groupTitle.end(), ';', ' ');
+                            live.groupTitle = sanitizeText(groupTitle);
+                        }
+                        live.title      = sanitizeText(item.value("title", ""));
+                        live.url        = item.value("url", "");
+                        result.push_back(std::move(live));
+                    }
+                    
+                    CALLBACK(result);
+                } catch (const std::exception& e) {
+                    brls::Logger::error("Switch sync M3U8 parsing error: {}", e.what());
+                    ERROR_MSG("cannot get file m3u8", -1);
+                    error("Failed to parse m3u8 content", -1);
                 }
-                CALLBACK(result);
-            } catch (const std::exception&) {
-                ERROR_MSG("cannot get file m3u8", -1);
-                //return error
-                error("Failed to parse m3u8 content", -1);
             }
+#else
+            // Altre piattaforme: sempre parsing asincrono per migliori prestazioni
+            brls::Threading::async([callback, error, responseText = std::move(r.text)]() {
+                try {
+                    auto start_time = std::chrono::high_resolution_clock::now();
+                    nlohmann::json json_result = parse_m3u8_to_json(responseText);
+                    auto end_time = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+                    brls::Logger::info("M3U8 parsing completed in {}ms, found {} channels", duration.count(), json_result.size());
+
+                    LiveM3u8ListResult result;
+                    result.reserve(json_result.size());
+                    
+                    for (const auto& item : json_result) {
+                        LiveM3u8 live;
+                        live.id         = item.value("id", "");
+                        live.chno       = item.value("chno", "");
+                        live.logo       = item.value("logo", "");
+                        {
+                            std::string groupTitle = item.value("groupTitle", "");
+                            std::replace(groupTitle.begin(), groupTitle.end(), ';', ' ');
+                            live.groupTitle = sanitizeText(groupTitle);
+                        }
+                        live.title      = sanitizeText(item.value("title", ""));
+                        live.url        = item.value("url", "");
+                        result.push_back(std::move(live));
+                    }
+                    
+                    brls::sync([callback, result = std::move(result)]() {
+                        CALLBACK(result);
+                    });
+                } catch (const std::exception& e) {
+                    brls::Logger::error("M3U8 parsing error: {}", e.what());
+                    brls::sync([error]() {
+                        ERROR_MSG("cannot get file m3u8", -1);
+                        error("Failed to parse m3u8 content", -1);
+                    });
+                }
+            });
+#endif
         },
         error);
 }
@@ -192,12 +353,14 @@ void TsVitchClient::get_xtream_channels_with_retry(const std::function<void(Live
     brls::Logger::debug("Fetching Xtream channels from: {} (retries left: {})", xtreamUrl, maxRetries);
     
     auto timeoutMs = ProgramConfig::instance().getIntOption(SettingItem::M3U8_TIMEOUT);
+    // Timeout più generoso per Xtream API che spesso è più lento
+    if (timeoutMs < 45000) timeoutMs = 45000; // Minimum 45 secondi per Xtream
     
-    // Use cpr::Get directly to bypass the strict status code check in __cpr_get
+    // Use cpr::GetCallback per migliori prestazioni asincrono
     cpr::GetCallback(
         [callback, error, maxRetries, xtreamUrl, timeoutMs, serverUrl, username, password](const cpr::Response& r) {
             try {
-                brls::Logger::debug("Xtream response status: {}, body length: {}", r.status_code, r.text.length());
+                brls::Logger::info("Xtream response: status={}, size={}KB", r.status_code, r.text.length()/1024);
                 
                 // Handle network errors
                 if (r.error) {
@@ -205,7 +368,7 @@ void TsVitchClient::get_xtream_channels_with_retry(const std::function<void(Live
                     if (maxRetries > 0) {
                         brls::Logger::info("Retrying Xtream request due to network error (retries left: {})", maxRetries - 1);
                         brls::Threading::async([callback, error, maxRetries]() {
-                            std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // Wait 1 second
+                            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
                             TsVitchClient::get_xtream_channels_with_retry(callback, error, maxRetries - 1);
                         });
                         return;
@@ -216,11 +379,11 @@ void TsVitchClient::get_xtream_channels_with_retry(const std::function<void(Live
                     return;
                 }
                 
-                // Handle HTTP errors with retry for 503
-                if (r.status_code == 503 && maxRetries > 0) {
-                    brls::Logger::warning("Xtream server returned 503 Service Unavailable, retrying in 2 seconds (retries left: {})", maxRetries - 1);
+                // Handle HTTP errors with retry for 503 and 502
+                if ((r.status_code == 503 || r.status_code == 502) && maxRetries > 0) {
+                    brls::Logger::warning("Xtream server returned {} - server temporarily unavailable, retrying in 3 seconds (retries left: {})", r.status_code, maxRetries - 1);
                     brls::Threading::async([callback, error, maxRetries]() {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(2000)); // Wait 2 seconds for 503
+                        std::this_thread::sleep_for(std::chrono::milliseconds(3000)); // Wait 3 seconds for server errors
                         TsVitchClient::get_xtream_channels_with_retry(callback, error, maxRetries - 1);
                     });
                     return;
@@ -242,104 +405,114 @@ void TsVitchClient::get_xtream_channels_with_retry(const std::function<void(Live
                     return;
                 }
                 
-                nlohmann::json json_result;
-                try {
-                    json_result = nlohmann::json::parse(r.text);
-                } catch (const nlohmann::json::parse_error& e) {
-                    brls::Logger::error("Failed to parse Xtream JSON: {}", e.what());
-                    if (error) {
-                        error("Invalid JSON response from Xtream server", -1);
-                    }
-                    return;
-                }
-                
-                if (!json_result.is_array()) {
-                    brls::Logger::error("Xtream response is not an array, type: {}", json_result.type_name());
-                    if (error) {
-                        error("Invalid response format from Xtream server", -1);
-                    }
-                    return;
-                }
-                
-                LiveM3u8ListResult result;
-                for (size_t i = 0; i < json_result.size(); i++) {
-                    const auto& item = json_result[i];
-                    if (!item.is_object()) {
-                        brls::Logger::debug("Skipping non-object item at index {} in Xtream response", i);
-                        continue;
-                    }
-                    
+                // Sposta il parsing JSON in un thread asincrono per non bloccare la UI
+                brls::Threading::async([callback, error, responseText = std::move(r.text), serverUrl, username, password]() {
                     try {
-                        LiveM3u8 live;
+                        auto parse_start = std::chrono::high_resolution_clock::now();
                         
-                        // Log first few items for debugging structure
-                        if (i < 3) {
-                            brls::Logger::debug("Xtream item {}: {}", i, item.dump());
+                        nlohmann::json json_result;
+                        try {
+                            json_result = nlohmann::json::parse(responseText);
+                        } catch (const nlohmann::json::parse_error& e) {
+                            brls::Logger::error("Failed to parse Xtream JSON: {}", e.what());
+                            brls::sync([error]() {
+                                if (error) error("Invalid JSON response from Xtream server", -1);
+                            });
+                            return;
                         }
-                    
-                    // Map Xtream fields to our structure with safe access
-                    // Handle both string and number types for IDs, and null values
-                    if (item.contains("stream_id") && !item["stream_id"].is_null()) {
-                        if (item["stream_id"].is_string()) {
-                            live.id = item["stream_id"].get<std::string>();
-                        } else if (item["stream_id"].is_number()) {
-                            live.id = std::to_string(item["stream_id"].get<int>());
+                        
+                        if (!json_result.is_array()) {
+                            brls::Logger::error("Xtream response is not an array, type: {}", json_result.type_name());
+                            brls::sync([error]() {
+                                if (error) error("Invalid response format from Xtream server", -1);
+                            });
+                            return;
                         }
-                    }
-                    
-                    // Handle both string and number types for channel numbers, and null values
-                    if (item.contains("num") && !item["num"].is_null()) {
-                        if (item["num"].is_string()) {
-                            live.chno = item["num"].get<std::string>();
-                        } else if (item["num"].is_number()) {
-                            live.chno = std::to_string(item["num"].get<int>());
+                        
+                        LiveM3u8ListResult result;
+                        result.reserve(json_result.size()); // Pre-allocazione per prestazioni
+                        
+                        size_t processed = 0, skipped = 0;
+                        for (size_t i = 0; i < json_result.size(); i++) {
+                            const auto& item = json_result[i];
+                            if (!item.is_object()) {
+                                skipped++;
+                                continue;
+                            }
+                            
+                            try {
+                                LiveM3u8 live;
+                                
+                                // Map Xtream fields con controlli ottimizzati
+                                if (item.contains("stream_id") && !item["stream_id"].is_null()) {
+                                    if (item["stream_id"].is_string()) {
+                                        live.id = item["stream_id"].get<std::string>();
+                                    } else if (item["stream_id"].is_number()) {
+                                        live.id = std::to_string(item["stream_id"].get<int>());
+                                    }
+                                }
+                                
+                                if (item.contains("num") && !item["num"].is_null()) {
+                                    if (item["num"].is_string()) {
+                                        live.chno = item["num"].get<std::string>();
+                                    } else if (item["num"].is_number()) {
+                                        live.chno = std::to_string(item["num"].get<int>());
+                                    }
+                                }
+                                
+                                live.title = sanitizeText(safeGetString(item, "name"));
+                                live.logo = safeGetString(item, "stream_icon");
+                                
+                                std::string categoryName = safeGetString(item, "category_name");
+                                live.groupTitle = sanitizeText(categoryName.empty() ? "Live TV" : categoryName);
+                                
+                                // Construct the stream URL for Xtream
+                                if (!live.id.empty()) {
+                                    std::string streamUrl = serverUrl;
+                                    if (streamUrl.back() != '/') {
+                                        streamUrl += "/";
+                                    }
+                                    streamUrl += "live/" + username + "/" + password + "/" + live.id + ".ts";
+                                    live.url = streamUrl;
+                                }
+                                
+                                // Only add channels that have required fields
+                                if (!live.id.empty() && !live.title.empty() && !live.url.empty()) {
+                                    result.push_back(std::move(live));
+                                    processed++;
+                                }
+                                
+                            } catch (const std::exception& e) {
+                                brls::Logger::error("Exception processing Xtream item at index {}: {}", i, e.what());
+                                skipped++;
+                                continue;
+                            }
                         }
-                    }
-                    
-                    // Handle string fields with null-safe access
-                    live.title = sanitizeText(safeGetString(item, "name"));
-                    live.logo = safeGetString(item, "stream_icon");
-                    
-                    std::string categoryName = safeGetString(item, "category_name");
-                    brls::Logger::info("Xtream channel '{}' has category_name: '{}'", live.title, categoryName);
-                    live.groupTitle = sanitizeText(categoryName);
-                    
-                    // If category_name is empty, set a default group
-                    if (live.groupTitle.empty()) {
-                        live.groupTitle = "Live TV";
-                        brls::Logger::info("Set default group 'Live TV' for channel '{}'", live.title);
-                    }
-                    
-                    // Construct the stream URL for Xtream
-                    if (!live.id.empty()) {
-                        std::string streamUrl = serverUrl;
-                        if (streamUrl.back() != '/') {
-                            streamUrl += "/";
-                        }
-                        streamUrl += "live/" + username + "/" + password + "/" + live.id + ".ts";
-                        live.url = streamUrl;
-                    }
-                    
-                    // Only add channels that have required fields
-                    if (!live.id.empty() && !live.title.empty() && !live.url.empty()) {
-                        result.push_back(live);
-                    }
+                        
+                        auto parse_end = std::chrono::high_resolution_clock::now();
+                        auto parse_duration = std::chrono::duration_cast<std::chrono::milliseconds>(parse_end - parse_start);
+                        brls::Logger::info("Xtream parsing completed in {}ms - processed: {}, skipped: {}, total: {}", 
+                                         parse_duration.count(), processed, skipped, json_result.size());
+                        
+                        brls::sync([callback, result = std::move(result)]() {
+                            if (callback) {
+                                callback(result);
+                            }
+                        });
+                        
                     } catch (const std::exception& e) {
-                        brls::Logger::error("Exception processing Xtream item at index {}: {}", i, e.what());
-                        brls::Logger::error("Problematic item: {}", item.dump());
-                        // Continue with next item instead of failing completely
-                        continue;
+                        brls::Logger::error("Exception in Xtream async processing: {}", e.what());
+                        brls::sync([error, e]() {
+                            if (error) {
+                                error("Failed to parse Xtream channels response: " + std::string(e.what()), -1);
+                            }
+                        });
                     }
-                }
-                
-                brls::Logger::debug("Successfully parsed {} Xtream channels", result.size());
-                if (callback) {
-                    callback(result);
-                }
+                });
             } catch (const std::exception& e) {
                 brls::Logger::error("Exception in Xtream response handler: {}", e.what());
                 if (error) {
-                    error("Failed to parse Xtream channels response: " + std::string(e.what()), -1);
+                    error("Failed to process Xtream response: " + std::string(e.what()), -1);
                 }
             }
         },

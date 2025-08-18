@@ -10,7 +10,10 @@
 
 using namespace brls::literals;
 
-void HomeLiveRequest::onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstLoad) {}
+void HomeLiveRequest::onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstLoad) {
+    // Base implementation - should be overridden in derived classes
+    brls::Logger::debug("HomeLiveRequest::onLiveList: Base implementation called with {} channels, firstLoad={}", result.size(), firstLoad);
+}
 
 void HomeLiveRequest::onError(const std::string& error) {
     brls::Logger::error("HomeLiveRequest: Error: {}", error);

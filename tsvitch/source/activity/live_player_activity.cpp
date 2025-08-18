@@ -163,6 +163,7 @@ void LiveActivity::startAd(std::string adUrl) {
     this->isAd = true;
     this->video->setVideoMode();
     this->video->showVideoProgressSlider();
+    this->video->disableProgressSliderSeek(true); // Disabilita il seek durante gli annunci
     this->video->setUrl(adUrl);
 
     this->video->setOnEndCallback([this]() { this->startLive(); });
@@ -170,6 +171,9 @@ void LiveActivity::startAd(std::string adUrl) {
 
 void LiveActivity::startLive() {
     this->isAd = false;
+    
+    // Riabilita il seek quando non è più un annuncio
+    this->video->disableProgressSliderSeek(false);
     
     this->video->setCustomToggleAction([this]() {
         if (MPVCore::instance().isStopped()) {

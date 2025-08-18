@@ -1,4 +1,5 @@
 #include <utility>
+#include <unordered_map>
 #include <borealis/core/touch/tap_gesture.hpp>
 #include <borealis/views/dialog.hpp>
 #include <borealis/core/thread.hpp>
@@ -268,28 +269,53 @@ HomeLive::HomeLive() {
         this->selectGroupIndex(0);
     });
     
+    // Mostra sempre lo skeleton all'inizio per UI non-bloccante
+    brls::Logger::debug("HomeLive constructor: Showing skeleton for non-blocking UI");
+    recyclingGrid->showSkeleton();
+    upRecyclingGrid->setVisibility(brls::Visibility::GONE);
+    
     // Check if we're in Xtream mode and load channels immediately
     int iptvMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0);
     brls::Logger::info("HomeLive constructor: IPTV mode is {}", iptvMode);
     
     if (iptvMode == 1) {
-        brls::Logger::info("HomeLive constructor: Xtream mode detected, loading channels immediately");
-        // Clear cache first
-        ChannelManager::get()->remove();
-        // Load channels directly
-        brls::Logger::info("HomeLive constructor: Requesting live list...");
-        this->requestLiveList();
+        brls::Logger::info("HomeLive constructor: Xtream mode detected, using smart cache approach");
+        
+        // Prova prima la cache intelligente anche per Xtream
+        brls::Threading::async([this] {
+            auto cachedChannels = ChannelManager::get()->loadIfValid(5); // Cache valida per 5 minuti per Xtream
+            
+            brls::sync([this, cachedChannels]() {
+                if (!cachedChannels.empty()) {
+                    brls::Logger::info("HomeLive: Using valid Xtream cache with {} channels", cachedChannels.size());
+                    this->onLiveList(cachedChannels, false);
+                } else {
+                    brls::Logger::info("HomeLive: Xtream cache invalid/empty, requesting fresh data");
+                    this->requestLiveList();
+                }
+            });
+        });
     } else {
-        brls::Logger::debug("HomeLive constructor: M3U8 mode detected, will load cached channels or request new ones");
-        // For M3U8 mode, try to load cached channels first
-        auto cachedChannels = ChannelManager::get()->load();
-        if (cachedChannels.empty()) {
-            brls::Logger::debug("HomeLive constructor: No cached channels, requesting live list");
-            this->requestLiveList();
-        } else {
-            brls::Logger::debug("HomeLive constructor: Found {} cached channels", cachedChannels.size());
-            this->onLiveList(cachedChannels, false);
-        }
+        brls::Logger::debug("HomeLive constructor: M3U8 mode detected, will use intelligent caching");
+        
+        // Per M3U8 mode, usa cache intelligente con timeout più lungo
+        brls::Threading::async([this] {
+            brls::Logger::debug("HomeLive: Starting smart cache check in background thread");
+            
+            // Cache più lunga per M3U8 (15 minuti) perché cambia meno frequentemente
+            auto cachedChannels = ChannelManager::get()->loadIfValid(15);
+            brls::Logger::info("HomeLive: Smart cache check completed, found {} channels", cachedChannels.size());
+            
+            brls::sync([this, cachedChannels]() {
+                if (!cachedChannels.empty()) {
+                    brls::Logger::info("HomeLive constructor: Using valid M3U8 cache ({} channels found)", cachedChannels.size());
+                    this->onLiveList(cachedChannels, false);
+                } else {
+                    brls::Logger::info("HomeLive constructor: M3U8 cache is invalid or empty, requesting fresh channels");
+                    this->requestLiveList();
+                }
+            });
+        });
     }
 }
 
@@ -341,21 +367,46 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstL
         return true;
     });
 
-    if (!firstLoad) {
-        brls::Threading::async([result] { ChannelManager::get()->save(result); });
+    if (firstLoad) {
+        // Salva con timestamp solo quando è un caricamento fresco (non da cache)
+        brls::Logger::info("HomeLive: First load detected, will save {} channels with timestamp", result.size());
+        
+        // Salva immediatamente per assicurarci che non si perda
+        try {
+            ChannelManager::get()->saveWithTimestamp(result);
+            brls::Logger::info("HomeLive: Immediate saveWithTimestamp completed successfully");
+        } catch (const std::exception& e) {
+            brls::Logger::error("HomeLive: Exception in immediate saveWithTimestamp: {}", e.what());
+        } catch (...) {
+            brls::Logger::error("HomeLive: Unknown exception in immediate saveWithTimestamp");
+        }
+    } else {
+        brls::Logger::info("HomeLive: Not first load ({}), skipping save", firstLoad);
     }
 
-    // Raggruppa i canali per groupTitle SENZA COPIARE i dati
-    std::map<std::string, std::vector<const tsvitch::LiveM3u8*>> groupMap;
-    for (const auto& item : result) {
-        groupMap[item.groupTitle].push_back(&item);
-    }
-    std::vector<std::string> groupTitles;
-    for (const auto& item : groupMap) {
-        groupTitles.push_back(item.first);
+    // Raggruppa i canali per groupTitle OTTIMIZZATO - un'unica passata
+    auto grouping_start = std::chrono::high_resolution_clock::now();
+    
+    std::unordered_map<std::string, std::vector<size_t>> groupIndices; // Usa indici invece di puntatori
+    groupIndices.reserve(100); // Stima ragionevole del numero di gruppi
+    
+    for (size_t i = 0; i < result.size(); ++i) {
+        const std::string& groupTitle = result[i].groupTitle;
+        groupIndices[groupTitle].push_back(i);
     }
     
-    brls::Logger::info("HomeLive: Found {} groups", groupTitles.size());
+    std::vector<std::string> groupTitles;
+    groupTitles.reserve(groupIndices.size());
+    for (const auto& pair : groupIndices) {
+        groupTitles.push_back(pair.first);
+    }
+    
+    // Ordina i gruppi alfabeticamente per UX migliore
+    std::sort(groupTitles.begin(), groupTitles.end());
+    
+    auto grouping_end = std::chrono::high_resolution_clock::now();
+    auto grouping_duration = std::chrono::duration_cast<std::chrono::milliseconds>(grouping_end - grouping_start);
+    brls::Logger::info("HomeLive: Grouping completed in {}ms - Found {} groups", grouping_duration.count(), groupTitles.size());
 
     // Carica solo il gruppo selezionato in sync
     int lastIndex = ProgramConfig::instance().getSettingItem(SettingItem::GROUP_SELECTED_INDEX, 0);
@@ -363,9 +414,11 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstL
     std::string selectedGroup = groupTitles.empty() ? "" : groupTitles[lastIndex];
 
     tsvitch::LiveM3u8ListResult filtered;
-    if (!selectedGroup.empty()) {
-        for (const auto* ptr : groupMap[selectedGroup]) {
-            filtered.push_back(*ptr);
+    if (!selectedGroup.empty() && groupIndices.count(selectedGroup)) {
+        const auto& indices = groupIndices[selectedGroup];
+        filtered.reserve(indices.size());
+        for (size_t idx : indices) {
+            filtered.push_back(result[idx]);
         }
     }
     
@@ -387,34 +440,52 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstL
             recyclingGrid->setDataSource(new DataSourceLiveVideoList(filtered));
     });
 
-    // Precarica gli altri gruppi in background (senza bloccare la UI)
-    // Copia result localmente per evitare problemi di concorrenza
-    auto resultCopy = result;
-    auto isValidFlag = validityFlag; // Cattura una copia del flag
-    for (const auto& group : groupTitles) {
-        if (group == selectedGroup) continue;
-        // Copia direttamente gli oggetti, non i puntatori!
-        tsvitch::LiveM3u8ListResult filteredBg;
-        for (const auto& item : resultCopy) {
-            if (item.groupTitle == group) filteredBg.push_back(item);
-        }
-        // Sposta la copia nel thread asincrono con una copia locale di `group`
-        std::string groupCopy = group;
-        brls::Threading::async([this, isValidFlag, groupCopy = std::move(groupCopy), filteredBg = std::move(filteredBg)]() mutable {
-            // Check if this object is still valid before accessing it
-            if (!isValidFlag->load()) {
-                brls::Logger::debug("HomeLive::onLiveList: Object destroyed before async callback");
-                return;
+    // Precarica gli altri gruppi in background OTTIMIZZATO - parallelo e batch
+    if (groupTitles.size() > 1) {
+        auto resultCopy = result; // Copia per thread safety
+        auto isValidFlag = validityFlag; 
+        
+        brls::Threading::async([this, isValidFlag, groupTitles, groupIndices, resultCopy = std::move(resultCopy), selectedGroup]() {
+            if (!isValidFlag->load()) return;
+            
+            auto preload_start = std::chrono::high_resolution_clock::now();
+            size_t groupsProcessed = 0;
+            
+            for (const auto& group : groupTitles) {
+                if (!isValidFlag->load()) return; // Check periodico
+                if (group == selectedGroup) continue;
+                
+                tsvitch::LiveM3u8ListResult filteredBg;
+                if (groupIndices.count(group)) {
+                    const auto& indices = groupIndices.at(group);
+                    filteredBg.reserve(indices.size());
+                    for (size_t idx : indices) {
+                        filteredBg.push_back(resultCopy[idx]);
+                    }
+                }
+                
+                {
+                    std::lock_guard<std::mutex> lock(groupCacheMutex);
+                    groupCache[group] = std::move(filteredBg);
+                }
+                
+                groupsProcessed++;
+                
+                // Yielding periodico per non monopolizzare il thread
+                if (groupsProcessed % 5 == 0) {
+                    std::this_thread::yield();
+                }
             }
             
-            std::lock_guard<std::mutex> lock(groupCacheMutex);
-            groupCache[groupCopy] = std::move(filteredBg);
+            auto preload_end = std::chrono::high_resolution_clock::now();
+            auto preload_duration = std::chrono::duration_cast<std::chrono::milliseconds>(preload_end - preload_start);
+            brls::Logger::info("HomeLive: Background group preloading completed in {}ms ({} groups)", preload_duration.count(), groupsProcessed);
         });
     }
 
     // UI gruppi
     brls::Threading::sync([this, groupTitles, lastIndex]() {
-        if (groupTitles.size() == 1) {
+        if (groupTitles.size() <= 1) {
             upRecyclingGrid->setVisibility(brls::Visibility::GONE);
         } else {
             upRecyclingGrid->setVisibility(brls::Visibility::VISIBLE);
@@ -425,7 +496,10 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstL
                     std::lock_guard<std::mutex> lock(groupCacheMutex);
                     if (groupCache.count(group)) {
                         filtered = groupCache[group];
+                        brls::Logger::debug("HomeLive: Using cached group '{}' with {} channels", group, filtered.size());
                     } else {
+                        // Fallback: filtra al volo (non dovrebbe succedere spesso)
+                        brls::Logger::warning("HomeLive: Cache miss for group '{}', filtering on-demand", group);
                         for (const auto& item : this->channelsList) {
                             if (item.groupTitle == group) filtered.push_back(item);
                         }
@@ -536,66 +610,61 @@ void HomeLive::filter(const std::string& key) {
 void HomeLive::onShow() {
     brls::Logger::info("Fragment HomeLive: onShow called");
     
-    // Carica i canali in background ogni volta che la vista viene mostrata
-    brls::Threading::async([this] {
-        // Se siamo in modalità Xtream, forza sempre l'aggiornamento per ora
+    // Smart refresh: controlla se abbiamo già canali in memoria
+    if (!channelsList.empty()) {
+        brls::Logger::debug("HomeLive onShow: Already have {} channels in memory, checking if refresh needed", channelsList.size());
+        
+        // Per decidere se ricaricare, controlla l'età della cache
         int iptvMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0);
-        brls::Logger::debug("HomeLive onShow: Current IPTV mode: {}", iptvMode);
+        int maxCacheAge = (iptvMode == 1) ? 5 : 15; // Xtream: 5 min, M3U8: 15 min
         
-        if (iptvMode == 1) {
-            brls::Logger::debug("HomeLive onShow: Xtream mode detected, forcing fresh data fetch");
-            ChannelManager::get()->remove();
-            brls::Logger::debug("HomeLive onShow: Cache cleared, requesting live list...");
+        brls::Threading::async([this, maxCacheAge, iptvMode] {
+            bool needsRefresh = !ChannelManager::get()->isCacheValid(maxCacheAge);
             
-            // Esegui requestLiveList in sync per essere sicuri che l'UI venga aggiornata
-            brls::sync([this]() {
-                brls::Logger::debug("HomeLive onShow: Calling requestLiveList()...");
-                this->requestLiveList();
-                brls::Logger::debug("HomeLive onShow: requestLiveList() called");
+            brls::sync([this, needsRefresh, iptvMode]() {
+                if (needsRefresh) {
+                    brls::Logger::info("HomeLive onShow: Cache expired, refreshing channels (IPTV mode: {})", iptvMode);
+                    this->requestLiveList();
+                } else {
+                    brls::Logger::debug("HomeLive onShow: Cache still valid, no refresh needed");
+                    // Solo ricarica i dati delle grid per aggiornare la UI
+                    this->recyclingGrid->reloadData();
+                    this->upRecyclingGrid->reloadData();
+                }
             });
-            return;
-        }
+        });
+        return;
+    }
+    
+    // Se non abbiamo canali, usa lo stesso meccanismo del costruttore
+    brls::Logger::debug("HomeLive onShow: No channels in memory, loading...");
+    
+    int iptvMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0);
+    brls::Threading::async([this, iptvMode] {
+        int maxCacheAge = (iptvMode == 1) ? 5 : 15; // Xtream: 5 min, M3U8: 15 min
+        auto cachedChannels = ChannelManager::get()->loadIfValid(maxCacheAge);
         
-        auto cachedChannels = ChannelManager::get()->load();
         brls::sync([this, cachedChannels]() {
-            if (cachedChannels.empty()) {
-                brls::Logger::debug("HomeLive onShow: No cached channels found, requesting live list.");
-                this->requestLiveList();
-            } else {
-                brls::Logger::debug("HomeLive onShow: Found {} cached channels, displaying them.", cachedChannels.size());
+            if (!cachedChannels.empty()) {
+                brls::Logger::info("HomeLive onShow: Using valid cached channels ({} channels)", cachedChannels.size());
                 this->onLiveList(cachedChannels, false);
+            } else {
+                brls::Logger::info("HomeLive onShow: No valid cache, requesting fresh channels");
+                this->requestLiveList();
             }
         });
     });
     
-    brls::Logger::debug("HomeLive onShow: Reloading RecyclingGrid data...");
-    this->recyclingGrid->reloadData();
-    this->upRecyclingGrid->reloadData();
     brls::Logger::debug("HomeLive onShow: onShow completed");
 }
 
 void HomeLive::onCreate() {
     brls::Logger::debug("Fragment HomeLive: onCreate called");
 
-    // Check if we're in Xtream mode and trigger loading immediately
-    int iptvMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0);
-    brls::Logger::debug("HomeLive onCreate: IPTV mode is {}", iptvMode);
-    
-    if (iptvMode == 1) {
-        brls::Logger::debug("HomeLive onCreate: Xtream mode detected, requesting channels immediately");
-        ChannelManager::get()->remove();
-        this->requestLiveList();
-    } else {
-        brls::Logger::debug("HomeLive onCreate: M3U8 mode, loading from cache");
-        auto cachedChannels = ChannelManager::get()->load();
-        if (cachedChannels.empty()) {
-            brls::Logger::debug("HomeLive onCreate: No cached channels, requesting live list");
-            this->requestLiveList();
-        } else {
-            brls::Logger::debug("HomeLive onCreate: Found {} cached channels", cachedChannels.size());
-            this->onLiveList(cachedChannels, false);
-        }
-    }
+    // Non fare niente qui - il caricamento è già gestito nel costruttore
+    // in modo completamente asincrono per evitare blocchi dell'UI
+    brls::Logger::debug("HomeLive onCreate: Delegating to constructor for async loading");
+}
 
     // for (int i = 0; i < 100; ++i) {
     //     // Crea la sidebar item (puoi personalizzare label e stile)
@@ -615,7 +684,6 @@ void HomeLive::onCreate() {
     //         return box;
     //     });
     // }
-}
 
 HomeLive::~HomeLive() { 
     brls::Logger::debug("Fragment HomeLiveActivity: delete");

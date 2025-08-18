@@ -775,6 +775,12 @@ void VideoView::hideVideoProgressSlider() { osdSlider->setVisibility(brls::Visib
 
 void VideoView::showVideoProgressSlider() { osdSlider->setVisibility(brls::Visibility::VISIBLE); }
 
+void VideoView::disableProgressSliderSeek(bool disabled) {
+    brls::Logger::debug("VideoView: disableProgressSliderSeek = {}", disabled);
+    this->disabledSliderGesture = disabled;
+    osdSlider->setDisabledPointerGesture(disabled);
+}
+
 void VideoView::setTitle(const std::string& title) { this->videoTitleLabel->setText(title); }
 
 std::string VideoView::getTitle() { return this->videoTitleLabel->getFullText(); }
