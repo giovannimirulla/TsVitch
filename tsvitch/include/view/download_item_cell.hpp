@@ -16,6 +16,9 @@ public:
     void setDownloadItem(const DownloadItem& item);
     void updateProgress(float progress);
     void updateStatus(DownloadStatus status);
+    
+    // Metodo per ottenere l'ID del download corrente
+    std::string getCurrentDownloadId() const { return currentItem.id; }
 
     static RecyclingGridItem* create();
 

@@ -9,6 +9,7 @@
 #include <mutex>
 #include <unordered_map>
 #include <set>
+#include <chrono>
 #include <borealis/core/singleton.hpp>
 #include <borealis/core/event.hpp>
 
@@ -42,6 +43,7 @@ struct DownloadItem {
     size_t totalSize;
     size_t downloadedSize;
     std::string error;
+    std::chrono::steady_clock::time_point startTime; // Timestamp di inizio download
     
     // Supporto per download a chunk (Switch)
     bool useChunkedDownload;
@@ -49,7 +51,8 @@ struct DownloadItem {
     size_t chunkSize;
     
     DownloadItem() : status(DownloadStatus::PENDING), progress(0.0f), 
-                     totalSize(0), downloadedSize(0), useChunkedDownload(false), chunkSize(0) {}
+                     totalSize(0), downloadedSize(0), useChunkedDownload(false), chunkSize(0),
+                     startTime(std::chrono::steady_clock::now()) {}
 };
 
 class DownloadManager : public brls::Singleton<DownloadManager> {
@@ -93,6 +96,12 @@ public:
     
     // Elimina un download completato
     void deleteDownload(const std::string& id);
+    
+    // Pulisce i download problematici (bloccati, errori, ecc.)
+    void cleanupStaleDownloads();
+    
+    // Forza il riavvio di un download bloccato
+    void forceRestartDownload(const std::string& id);
     
     // Ottiene tutti i download
     std::vector<DownloadItem> getAllDownloads() const;
