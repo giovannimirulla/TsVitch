@@ -161,7 +161,7 @@ void LiveActivity::onContentAvailable() {
 void LiveActivity::startAd(std::string adUrl) {
     brls::Logger::debug("LiveActivity: adUrl: {}", adUrl);
     this->isAd = true;
-    this->video->setVideoMode();
+    this->video->setAdMode();
     this->video->showVideoProgressSlider();
     this->video->disableProgressSliderSeek(true); // Disabilita il seek durante gli annunci
     this->video->setUrl(adUrl);

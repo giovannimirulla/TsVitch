@@ -28,6 +28,12 @@ HomeLiveRequest::~HomeLiveRequest() {
 }
 
 void HomeLiveRequest::requestLiveList() {
+    // Prevent duplicate requests
+    if (isRequestInProgress.exchange(true)) {
+        brls::Logger::debug("HomeLiveRequest::requestLiveList: Request already in progress, skipping duplicate");
+        return;
+    }
+    
     // Create a flag to track if this object is still valid
     auto isValidFlag = std::make_shared<std::atomic<bool>>(true);
     validityFlag = isValidFlag;
@@ -39,6 +45,7 @@ void HomeLiveRequest::requestLiveList() {
             // Check if this object is still valid before accessing it
             if (!isValidFlag->load()) {
                 brls::Logger::debug("HomeLiveRequest::requestLiveList: Object destroyed before callback");
+                isRequestInProgress = false; // Reset the flag even if object is destroyed
                 return;
             }
             
@@ -47,14 +54,17 @@ void HomeLiveRequest::requestLiveList() {
                 tsvitch::LiveM3u8ListResult res = result;
                 brls::Logger::info("HomeLiveRequest: Successfully received {} channels", res.size());
                 this->onLiveList(res, true);
+                isRequestInProgress = false; // Reset the flag on success
             } catch (...) {
                 brls::Logger::error("HomeLiveRequest::requestLiveList: Exception during callback");
+                isRequestInProgress = false; // Reset the flag on exception
             }
         },
         [this, isValidFlag](const std::string &error, int code) {
             // Check if this object is still valid before accessing it
             if (!isValidFlag->load()) {
                 brls::Logger::debug("HomeLiveRequest::requestLiveList: Object destroyed before error callback");
+                isRequestInProgress = false; // Reset the flag even if object is destroyed
                 return;
             }
             
@@ -62,8 +72,10 @@ void HomeLiveRequest::requestLiveList() {
                 brls::Logger::error("HomeLiveRequest: Failed to fetch live channels: {}", error);
                 this->onError("Failed to fetch live list: " + error);
                 UNSET_REQUEST;
+                isRequestInProgress = false; // Reset the flag on error
             } catch (...) {
                 brls::Logger::error("HomeLiveRequest::requestLiveList: Exception during error callback");
+                isRequestInProgress = false; // Reset the flag on exception
             }
         }
     );

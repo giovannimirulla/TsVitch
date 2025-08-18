@@ -725,6 +725,8 @@ void VideoView::setLiveMode() {
     leftStatusLabel->setVisibility(brls::Visibility::GONE);
     centerStatusLabel->setVisibility(brls::Visibility::GONE);
     rightStatusLabel->setVisibility(brls::Visibility::GONE);
+    // Nascondi il pointer per le live
+    osdSlider->setPointerVisible(false);
     _setTvControlMode(false);
 }
 
@@ -733,7 +735,19 @@ void VideoView::setVideoMode() {
     leftStatusLabel->setVisibility(brls::Visibility::VISIBLE);
     centerStatusLabel->setVisibility(brls::Visibility::VISIBLE);
     rightStatusLabel->setVisibility(brls::Visibility::VISIBLE);
+    // Mostra il pointer per i video
+    osdSlider->setPointerVisible(true);
     _setTvControlMode(isTvControlMode && !isLiveMode);
+}
+
+void VideoView::setAdMode() {
+    isLiveMode = false;
+    leftStatusLabel->setVisibility(brls::Visibility::VISIBLE);
+    centerStatusLabel->setVisibility(brls::Visibility::VISIBLE);
+    rightStatusLabel->setVisibility(brls::Visibility::VISIBLE);
+    // Nascondi il pointer per gli ad
+    osdSlider->setPointerVisible(false);
+    _setTvControlMode(false);
 }
 
 void VideoView::setTvControlMode(bool state) {

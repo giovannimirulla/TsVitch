@@ -292,6 +292,13 @@ void VideoProgressSlider::setDisabledPointerGesture(bool disabled) {
     pointer->setFocusable(!disabled);
 }
 
+void VideoProgressSlider::setPointerVisible(bool visible) {
+    if (pointer) {
+        pointer->setVisibility(visible ? brls::Visibility::VISIBLE : brls::Visibility::GONE);
+        brls::Logger::debug("VideoProgressSlider: Pointer visibility set to {}", visible ? "visible" : "hidden");
+    }
+}
+
 void VideoProgressSlider::updateGestures() {
     // Metodo per aggiornamenti futuri se necessario
 }

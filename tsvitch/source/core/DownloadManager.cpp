@@ -206,21 +206,52 @@ static size_t SimplifiedWriteCallback(void* contents, size_t size, size_t nmemb,
                         it->progress = progress;
                         it->downloadedSize = data->totalDownloaded;
                         it->totalSize = data->totalExpected;
+                        
+                        // Se il download è completato, aggiorna lo status
+                        if (progress >= 100.0f && it->status == DownloadStatus::DOWNLOADING) {
+                            it->status = DownloadStatus::COMPLETED;
+                            brls::Logger::info("SimplifiedWriteCallback: Download {} completed at {:.1f}%", data->progressData->downloadId, progress);
+                        }
                     }
                 }
                 
-                // Chiama il callback globale se presente
+                // Chiama il callback globale se presente, ma solo se non è già completato
+                bool isDownloadCompleted = (progress >= 100.0f);
                 if (data->progressData->manager && data->progressData->manager->globalProgressCallback) {
-                    brls::Logger::debug("SimplifiedWriteCallback: Calling global progress callback with {:.1f}%", progress);
-                    try {
-                        data->progressData->manager->globalProgressCallback(data->progressData->downloadId, progress, data->totalDownloaded, data->totalExpected);
-                    } catch (const std::exception& e) {
-                        brls::Logger::error("SimplifiedWriteCallback: Exception in global progress callback: {}", e.what());
-                    } catch (...) {
-                        brls::Logger::error("SimplifiedWriteCallback: Unknown exception in global progress callback");
+                    // Evita chiamate multiple del callback al completamento
+                    bool alreadyCompleted = false;
+                    {
+                        std::lock_guard<std::mutex> completedLock(data->progressData->manager->completedDownloadsMutex);
+                        alreadyCompleted = data->progressData->manager->completedDownloads.count(data->progressData->downloadId) > 0;
+                    }
+                    
+                    if (!isDownloadCompleted || !alreadyCompleted) {
+                        brls::Logger::debug("SimplifiedWriteCallback: Calling global progress callback with {:.1f}%", progress);
+                        try {
+                            data->progressData->manager->globalProgressCallback(data->progressData->downloadId, progress, data->totalDownloaded, data->totalExpected);
+                            
+                            // Segna come completato se raggiunge il 100%
+                            if (isDownloadCompleted) {
+                                std::lock_guard<std::mutex> completedLock(data->progressData->manager->completedDownloadsMutex);
+                                data->progressData->manager->completedDownloads.insert(data->progressData->downloadId);
+                                brls::Logger::info("SimplifiedWriteCallback: Download completed, marked to avoid duplicate callbacks");
+                            }
+                        } catch (const std::exception& e) {
+                            brls::Logger::error("SimplifiedWriteCallback: Exception in global progress callback: {}", e.what());
+                        } catch (...) {
+                            brls::Logger::error("SimplifiedWriteCallback: Unknown exception in global progress callback");
+                        }
+                    } else {
+                        brls::Logger::debug("SimplifiedWriteCallback: Skipping callback for already completed download {}", data->progressData->downloadId);
                     }
                 } else {
                     brls::Logger::debug("SimplifiedWriteCallback: No global progress callback available");
+                }
+                
+                // Se il download è completato, continua a restituire il numero di bytes scritti
+                if (isDownloadCompleted) {
+                    brls::Logger::info("SimplifiedWriteCallback: Download completed, but continuing to return written bytes");
+                    // Non restituire 0 qui, continua con il normal flow per restituire 'written'
                 }
             }
         }
@@ -424,6 +455,12 @@ void DownloadManager::cancelDownload(const std::string& id) {
             globalRetryCount.erase(id);
         }
         
+        // Clean up completed downloads tracking
+        {
+            std::lock_guard<std::mutex> completedLock(completedDownloadsMutex);
+            completedDownloads.erase(id);
+        }
+        
         brls::Logger::info("DownloadManager: Cancelled and removed download {}", id);
         saveDownloads();
     }
@@ -449,6 +486,12 @@ void DownloadManager::deleteDownload(const std::string& id) {
         {
             std::lock_guard<std::mutex> retryLock(retryCountMutex);
             globalRetryCount.erase(id);
+        }
+        
+        // Clean up completed downloads tracking
+        {
+            std::lock_guard<std::mutex> completedLock(completedDownloadsMutex);
+            completedDownloads.erase(id);
         }
         
         brls::Logger::info("DownloadManager: Deleted download {}", id);
@@ -1507,6 +1550,13 @@ void DownloadManager::setGlobalCompleteCallback(GlobalCompleteCallback callback)
     std::lock_guard<std::mutex> lock(downloadsMutex);
     globalCompleteCallback = callback;
     brls::Logger::info("DownloadManager: Global complete callback set");
+}
+
+bool DownloadManager::hasGlobalProgressCallback() const {
+    std::lock_guard<std::mutex> lock(downloadsMutex);
+    // Considera come "non disponibile" solo se il callback è nullptr 
+    // (il callback di default conta come disponibile per evitare sovrascrizioni)
+    return globalProgressCallback != nullptr;
 }
 
 #ifdef __SWITCH__

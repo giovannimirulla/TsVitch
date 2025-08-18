@@ -134,10 +134,21 @@ void ChannelManager::remove() const {
 
 tsvitch::LiveM3u8ListResult ChannelManager::load() const {
     tsvitch::LiveM3u8ListResult channels;
-    if (std::ifstream in{file_}; in) {
-        json j;
-        in >> j;
-        channels = j.get<tsvitch::LiveM3u8ListResult>();
+    try {
+        if (std::ifstream in{file_}; in) {
+            brls::Logger::debug("ChannelManager: Reading cache file");
+            json j;
+            in >> j;
+            brls::Logger::debug("ChannelManager: JSON parsed successfully");
+            channels = j.get<tsvitch::LiveM3u8ListResult>();
+            brls::Logger::debug("ChannelManager: Channels deserialized successfully");
+        } else {
+            brls::Logger::debug("ChannelManager: Could not open cache file");
+        }
+    } catch (const std::exception& e) {
+        brls::Logger::error("ChannelManager: Error loading cache: {}", e.what());
+        // Remove corrupted cache file
+        remove();
     }
     return channels;
 }

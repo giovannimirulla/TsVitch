@@ -54,6 +54,9 @@ public:
     
     // Check if any download is currently visible
     bool hasActiveDownloads() const;
+    
+    // Check if the manager is initialized
+    bool getIsInitialized() const { return isInitialized; }
 
 private:
     static DownloadProgressManager* instance;
