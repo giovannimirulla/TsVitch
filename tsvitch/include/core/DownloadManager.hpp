@@ -8,6 +8,7 @@
 #include <thread>
 #include <mutex>
 #include <unordered_map>
+#include <set>
 #include <borealis/core/singleton.hpp>
 #include <borealis/core/event.hpp>
 
@@ -109,6 +110,7 @@ public:
     // Callback globali per tutti i download
     void setGlobalProgressCallback(GlobalProgressCallback callback);
     void setGlobalCompleteCallback(GlobalCompleteCallback callback);
+    bool hasGlobalProgressCallback() const;
 
     // Membri pubblici per il callback di progresso
     std::vector<DownloadItem> downloads;
@@ -129,6 +131,10 @@ public:
     
     // Flag di shutdown accessibile dai callback
     std::atomic<bool> shouldStop{false};
+    
+    // Set per tracciare i download completati ed evitare callback duplicati
+    std::set<std::string> completedDownloads;
+    mutable std::mutex completedDownloadsMutex;
     
 private:
     

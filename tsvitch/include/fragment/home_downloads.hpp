@@ -25,6 +25,7 @@ public:
     void refresh();
     void forceRefresh(); // Forza un refresh immediato
     void onDownloadItemSelected(const DownloadItem& item);
+    void notifyNewDownloadStarted(); // Notifica il thread di refresh che è iniziato un nuovo download
 
     static brls::View* create();
 

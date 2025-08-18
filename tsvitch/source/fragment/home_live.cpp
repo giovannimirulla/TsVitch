@@ -274,6 +274,9 @@ HomeLive::HomeLive() {
     recyclingGrid->showSkeleton();
     upRecyclingGrid->setVisibility(brls::Visibility::GONE);
     
+    // Imposta il flag per indicare che il caricamento è in corso
+    isInitialLoadInProgress = true;
+    
     // Check if we're in Xtream mode and load channels immediately
     int iptvMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0);
     brls::Logger::info("HomeLive constructor: IPTV mode is {}", iptvMode);
@@ -283,7 +286,7 @@ HomeLive::HomeLive() {
         
         // Prova prima la cache intelligente anche per Xtream
         brls::Threading::async([this] {
-            auto cachedChannels = ChannelManager::get()->loadIfValid(5); // Cache valida per 5 minuti per Xtream
+            auto cachedChannels = ChannelManager::get()->loadIfValid(); 
             
             brls::sync([this, cachedChannels]() {
                 if (!cachedChannels.empty()) {
@@ -293,6 +296,7 @@ HomeLive::HomeLive() {
                     brls::Logger::info("HomeLive: Xtream cache invalid/empty, requesting fresh data");
                     this->requestLiveList();
                 }
+                isInitialLoadInProgress = false; // Reset flag quando completato
             });
         });
     } else {
@@ -302,8 +306,8 @@ HomeLive::HomeLive() {
         brls::Threading::async([this] {
             brls::Logger::debug("HomeLive: Starting smart cache check in background thread");
             
-            // Cache più lunga per M3U8 (15 minuti) perché cambia meno frequentemente
-            auto cachedChannels = ChannelManager::get()->loadIfValid(15);
+            // Cache più lunga per M3U8 (1 mese) perché cambia meno frequentemente
+            auto cachedChannels = ChannelManager::get()->loadIfValid();
             brls::Logger::info("HomeLive: Smart cache check completed, found {} channels", cachedChannels.size());
             
             brls::sync([this, cachedChannels]() {
@@ -314,6 +318,7 @@ HomeLive::HomeLive() {
                     brls::Logger::info("HomeLive constructor: M3U8 cache is invalid or empty, requesting fresh channels");
                     this->requestLiveList();
                 }
+                isInitialLoadInProgress = false; // Reset flag quando completato
             });
         });
     }
@@ -610,6 +615,12 @@ void HomeLive::filter(const std::string& key) {
 void HomeLive::onShow() {
     brls::Logger::info("Fragment HomeLive: onShow called");
     
+    // Se il caricamento iniziale è ancora in corso, non fare nulla
+    if (isInitialLoadInProgress) {
+        brls::Logger::debug("HomeLive onShow: Initial load still in progress, skipping");
+        return;
+    }
+    
     // Smart refresh: controlla se abbiamo già canali in memoria
     if (!channelsList.empty()) {
         brls::Logger::debug("HomeLive onShow: Already have {} channels in memory, checking if refresh needed", channelsList.size());
@@ -636,13 +647,12 @@ void HomeLive::onShow() {
         return;
     }
     
-    // Se non abbiamo canali, usa lo stesso meccanismo del costruttore
-    brls::Logger::debug("HomeLive onShow: No channels in memory, loading...");
+    // Se non abbiamo canali e il caricamento iniziale non è in corso, usa lo stesso meccanismo del costruttore
+    brls::Logger::debug("HomeLive onShow: No channels in memory and no initial load in progress, loading...");
     
     int iptvMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0);
     brls::Threading::async([this, iptvMode] {
-        int maxCacheAge = (iptvMode == 1) ? 5 : 15; // Xtream: 5 min, M3U8: 15 min
-        auto cachedChannels = ChannelManager::get()->loadIfValid(maxCacheAge);
+        auto cachedChannels = ChannelManager::get()->loadIfValid();
         
         brls::sync([this, cachedChannels]() {
             if (!cachedChannels.empty()) {

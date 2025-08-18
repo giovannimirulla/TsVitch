@@ -21,4 +21,5 @@ public:
 
 protected:
     std::shared_ptr<std::atomic<bool>> validityFlag;
+    std::atomic<bool> isRequestInProgress{false};
 };

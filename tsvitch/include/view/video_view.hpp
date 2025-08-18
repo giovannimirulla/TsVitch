@@ -120,6 +120,8 @@ public:
 
     void setVideoMode();
 
+    void setAdMode();
+
     void setTvControlMode(bool state);
 
     bool getTvControlMode() const;

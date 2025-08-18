@@ -31,6 +31,18 @@ MainActivity::~MainActivity() { brls::Logger::debug("del MainActivity"); }
 
 void MainActivity::onContentAvailable() {
     brls::Logger::info("MainActivity::onContentAvailable() called");
+    
+    // Controlla la connettività internet
+    bool hasInternet = brls::Application::getPlatform()->hasEthernetConnection() || 
+                      brls::Application::getPlatform()->hasWirelessConnection();
+    
+    if (!hasInternet) {
+        brls::Logger::info("No internet connection detected, navigating to Downloads tab");
+        // Se non c'è internet, vai direttamente al tab Downloads (indice 2)
+        if (this->tabFrame) {
+            this->tabFrame->focusTab(2); // Assumendo che Downloads sia il 3° tab (indice 2)
+        }
+    }
     this->registerAction(
         "Settings", brls::ControllerButton::BUTTON_BACK,
         [this](brls::View* view) -> bool {

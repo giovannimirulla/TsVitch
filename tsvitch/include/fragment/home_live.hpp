@@ -49,6 +49,7 @@ public:
 private:
     int selectedGroupIndex = 0;
     bool isSearchActive    = false;
+    bool isInitialLoadInProgress = false;
     tsvitch::LiveM3u8ListResult channelsList;
     std::map<std::string, tsvitch::LiveM3u8ListResult> groupCache;
     std::mutex groupCacheMutex;

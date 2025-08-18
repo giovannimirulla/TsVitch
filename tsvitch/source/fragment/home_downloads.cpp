@@ -2,6 +2,7 @@
 #include "view/recycling_grid.hpp"
 #include "view/download_item_cell.hpp"
 #include "core/DownloadManager.hpp"
+#include "core/DownloadProgressManager.hpp"
 #include "utils/activity_helper.hpp"
 #include <borealis/core/i18n.hpp>
 #include <borealis/core/thread.hpp>
@@ -9,6 +10,7 @@
 #include <borealis/views/label.hpp>
 #include <borealis/views/button.hpp>
 #include <borealis/views/dialog.hpp>
+#include <fmt/format.h>
 #include <fstream>
 #include <thread>
 #include <chrono>
@@ -17,6 +19,23 @@
 #include <functional> // per std::hash
 
 using namespace brls::literals;
+
+// Helper function to format bytes into human-readable format
+std::string formatBytes(size_t bytes) {
+    const double KB = 1024.0;
+    const double MB = KB * 1024.0;
+    const double GB = MB * 1024.0;
+    
+    if (bytes >= GB) {
+        return fmt::format("{:.2f} GB", bytes / GB);
+    } else if (bytes >= MB) {
+        return fmt::format("{:.1f} MB", bytes / MB);
+    } else if (bytes >= KB) {
+        return fmt::format("{:.1f} KB", bytes / KB);
+    } else {
+        return fmt::format("{} B", bytes);
+    }
+}
 
 // Data source personalizzata per i download
 class DownloadDataSource : public RecyclingGridDataSource {
@@ -33,7 +52,10 @@ private:
         for (const auto& item : items) {
             hash ^= std::hash<std::string>{}(item.id) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
             hash ^= std::hash<int>{}(static_cast<int>(item.status)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
-            hash ^= std::hash<size_t>{}(static_cast<size_t>(item.progress * 100)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            // Per i download completati usa 100, per gli altri usa il progresso troncato
+            size_t progressHash = (item.status == DownloadStatus::COMPLETED) ? 100 : 
+                                 static_cast<size_t>(item.progress);
+            hash ^= std::hash<size_t>{}(progressHash) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
         }
         return hash;
     }
@@ -62,9 +84,26 @@ public:
         brls::Logger::debug("DownloadDataSource: Hash check - old: {}, new: {}, sizes: {} -> {}", 
                            lastUpdateHash, newHash, downloads.size(), newDownloads.size());
         
-        if (newHash == lastUpdateHash && downloads.size() == newDownloads.size() && !isFirstUpdate) {
+        // Controlla se ci sono download appena completati che richiedono aggiornamento
+        bool hasRecentlyCompleted = false;
+        for (const auto& newItem : newDownloads) {
+            if (newItem.status == DownloadStatus::COMPLETED || newItem.progress >= 100.0f) {
+                // Trova lo stesso download nella lista precedente
+                for (const auto& oldItem : downloads) {
+                    if (oldItem.id == newItem.id && (oldItem.status != DownloadStatus::COMPLETED || oldItem.progress < 100.0f)) {
+                        hasRecentlyCompleted = true;
+                        brls::Logger::info("DownloadDataSource: Detected newly completed download: {} ({}% -> {}%)", 
+                                         newItem.id, oldItem.progress, newItem.progress);
+                        break;
+                    }
+                }
+                if (hasRecentlyCompleted) break;
+            }
+        }
+        
+        if (newHash == lastUpdateHash && downloads.size() == newDownloads.size() && !isFirstUpdate && !hasRecentlyCompleted) {
             hasChanges = false;
-            brls::Logger::debug("DownloadDataSource: No changes detected (hash and size match)");
+            brls::Logger::debug("DownloadDataSource: No changes detected (hash and size match, no recently completed)");
             return;
         }
         
@@ -226,8 +265,34 @@ HomeDownloads::HomeDownloads() {
     brls::Logger::debug("HomeDownloads: Recycling grid setup completed");
 
     // Register global callbacks to update UI on progress and completion
-    DownloadManager::instance().setGlobalProgressCallback([this](const std::string& id, float progress, size_t /*downloaded*/, size_t /*total*/) {
+    DownloadManager::instance().setGlobalProgressCallback([this](const std::string& id, float progress, size_t downloaded, size_t total) {
+        // Aggiorna HomeDownloads
         this->onDownloadProgress(id, progress);
+        
+        // Aggiorna anche il banner del DownloadProgressManager solo se è inizializzato
+        auto* manager = tsvitch::DownloadProgressManager::getInstance();
+        if (manager && manager->getIsInitialized()) {
+            // Se il download è completato, nascondi il banner solo se è attivo per questo download
+            if (progress >= 100.0f) {
+                if (manager->hasActiveDownloads()) {
+                    brls::Logger::info("HomeDownloads: Download {} completed, hiding progress banner", id);
+                    manager->hideDownloadProgress(id);
+                } else {
+                    brls::Logger::debug("HomeDownloads: Download {} completed, but no active progress banner to hide", id);
+                }
+            } else {
+                // Formatta le dimensioni in MB/GB usando la funzione helper
+                std::string downloadedStr = formatBytes(downloaded);
+                std::string totalStr = formatBytes(total);
+                std::string progressText = fmt::format("{:.1f}%", progress);
+                std::string statusText = fmt::format("{} / {}", downloadedStr, totalStr);
+                try {
+                    manager->updateProgress(id, progress, statusText, progressText);
+                } catch (const std::exception& e) {
+                    brls::Logger::error("HomeDownloads: Error updating progress manager: {}", e.what());
+                }
+            }
+        }
     });
     DownloadManager::instance().setGlobalCompleteCallback([this](const std::string& id, bool success) {
         this->onDownloadComplete(id, success);
@@ -440,12 +505,15 @@ void HomeDownloads::refreshWorker() {
             // Controlla se ci sono download attivi
             auto downloads = DownloadManager::instance().getAllDownloads();
             bool hasActiveDownloads = false;
+            bool hasCompletedDownloads = false;
             
             for (const auto& download : downloads) {
                 if (download.status == DownloadStatus::DOWNLOADING || 
                     download.status == DownloadStatus::PENDING) {
                     hasActiveDownloads = true;
                     break; // Non loggare ogni download per performance
+                } else if (download.status == DownloadStatus::COMPLETED) {
+                    hasCompletedDownloads = true;
                 }
             }
         
@@ -462,10 +530,23 @@ void HomeDownloads::refreshWorker() {
                 refreshCondition.wait_for(lock, std::chrono::milliseconds(750), [this] {
                     return !refreshThreadRunning.load() || !shouldAutoRefresh.load();
                 });
-            } else {
-                // Aspetta meno tempo se non ci sono download attivi per uscire più velocemente
+            } else if (hasCompletedDownloads) {
+                // Esegui un ultimo refresh per assicurarsi che l'UI sia aggiornata con i download completati
+                brls::sync([this]() {
+                    if (shouldAutoRefresh.load() && dataSource && recyclingGrid) {
+                        refresh();
+                    }
+                });
+                
+                // Se ci sono solo download completati, aspetta molto di più (10 secondi) o fino a quando non viene riattivato
                 std::unique_lock<std::mutex> lock(refreshMutex);
-                refreshCondition.wait_for(lock, std::chrono::milliseconds(2000), [this] {
+                refreshCondition.wait_for(lock, std::chrono::milliseconds(10000), [this] {
+                    return !refreshThreadRunning.load() || !shouldAutoRefresh.load();
+                });
+            } else {
+                // Nessun download: aspetta indefinitamente fino a quando non viene notificato di un nuovo download
+                std::unique_lock<std::mutex> lock(refreshMutex);
+                refreshCondition.wait_for(lock, std::chrono::milliseconds(30000), [this] {
                     return !refreshThreadRunning.load() || !shouldAutoRefresh.load();
                 });
             }
@@ -571,8 +652,14 @@ void HomeDownloads::onDownloadProgress(const std::string& id, float progress) {
             auto now = std::chrono::steady_clock::now();
             auto timeSinceLastRefresh = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastRefreshTime);
             
-            // Aggiorna più frequentemente (200ms) per vedere i progressi
-            if (timeSinceLastRefresh.count() >= 200) {
+            // Se il download è completato al 100%, forza un refresh immediato
+            if (progress >= 100.0f) {
+                brls::Logger::info("HomeDownloads::onDownloadProgress - download {} completed at {:.1f}%, forcing immediate refresh", id, progress);
+                refresh();
+                lastRefreshTime = now;
+            }
+            // Altrimenti aggiorna più frequentemente (200ms) per vedere i progressi
+            else if (timeSinceLastRefresh.count() >= 200) {
                 brls::Logger::debug("HomeDownloads::onDownloadProgress - refreshing for download {} at {:.1f}%", id, progress);
                 refresh();
                 lastRefreshTime = now;
@@ -651,7 +738,13 @@ void HomeDownloads::onDownloadItemSelected(const DownloadItem& item) {
     }
     
     dialog->addButton("Annulla", []() {});
+    
     dialog->open();
+}
+
+void HomeDownloads::notifyNewDownloadStarted() {
+    // Risveglia il thread di refresh quando inizia un nuovo download
+    refreshCondition.notify_all();
 }
 
 brls::View* HomeDownloads::create() {
