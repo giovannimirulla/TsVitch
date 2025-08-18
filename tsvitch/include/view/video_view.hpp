@@ -112,6 +112,8 @@ public:
 
     void showVideoProgressSlider();
 
+    void disableProgressSliderSeek(bool disabled);
+
     void hideStatusLabel();
 
     void setLiveMode();
