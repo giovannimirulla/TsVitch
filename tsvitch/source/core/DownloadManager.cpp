@@ -13,6 +13,7 @@
 #include <thread>
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
+#include <fmt/format.h>
 #include <atomic>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -39,6 +40,23 @@
 #endif
 
 using json = nlohmann::json;
+
+// Helper function to format file sizes
+std::string formatFileSize(size_t bytes) {
+    const double KB = 1024.0;
+    const double MB = KB * 1024.0;
+    const double GB = MB * 1024.0;
+    
+    if (bytes >= GB) {
+        return fmt::format("{:.2f} GB", bytes / GB);
+    } else if (bytes >= MB) {
+        return fmt::format("{:.1f} MB", bytes / MB);
+    } else if (bytes >= KB) {
+        return fmt::format("{:.1f} KB", bytes / KB);
+    } else {
+        return fmt::format("{} B", bytes);
+    }
+}
 
 // Global retry counter for downloads to persist across function calls
 static std::map<std::string, int> globalRetryCount;
@@ -174,7 +192,22 @@ static size_t SimplifiedWriteCallback(void* contents, size_t size, size_t nmemb,
     }
     
     size_t totalSize = size * nmemb;
-    size_t written = std::fwrite(contents, 1, totalSize, data->file);
+    
+    // Se il download è già stato completato (100%), ferma immediatamente
+    if (data->totalExpected > 0 && data->totalDownloaded >= data->totalExpected) {
+        brls::Logger::debug("SimplifiedWriteCallback: Download already completed ({}/{}), stopping further writes", 
+                           data->totalDownloaded, data->totalExpected);
+        return 0; // Ferma il download restituendo 0
+    }
+    
+    // Calcola quanti byte scrivere per non superare la dimensione attesa
+    size_t bytesToWrite = totalSize;
+    if (data->totalExpected > 0 && data->totalDownloaded + totalSize > data->totalExpected) {
+        bytesToWrite = data->totalExpected - data->totalDownloaded;
+        brls::Logger::debug("SimplifiedWriteCallback: Limiting write to {} bytes to not exceed expected size", bytesToWrite);
+    }
+    
+    size_t written = std::fwrite(contents, 1, bytesToWrite, data->file);
     
     if (written > 0) {
         data->totalDownloaded += written;
@@ -248,13 +281,20 @@ static size_t SimplifiedWriteCallback(void* contents, size_t size, size_t nmemb,
                     brls::Logger::debug("SimplifiedWriteCallback: No global progress callback available");
                 }
                 
-                // Se il download è completato, continua a restituire il numero di bytes scritti
+                // Se il download è completato, ferma il trasferimento
                 if (isDownloadCompleted) {
-                    brls::Logger::info("SimplifiedWriteCallback: Download completed, but continuing to return written bytes");
-                    // Non restituire 0 qui, continua con il normal flow per restituire 'written'
+                    brls::Logger::info("SimplifiedWriteCallback: Download completed, stopping transfer to prevent infinite loop");
+                    return 0; // Ferma il download - CURL interpreterà questo come CURLE_WRITE_ERROR ma noi lo gestiamo
                 }
             }
         }
+    }
+    
+    // Controllo finale: se abbiamo raggiunto o superato la dimensione attesa, ferma il download
+    if (data->totalExpected > 0 && data->totalDownloaded >= data->totalExpected) {
+        brls::Logger::info("SimplifiedWriteCallback: Download completed ({}/{}), terminating transfer", 
+                          data->totalDownloaded, data->totalExpected);
+        return 0; // Ferma completamente il download - questo causerà CURLE_WRITE_ERROR ma è intenzionale
     }
     
     return written;
@@ -349,17 +389,28 @@ std::string DownloadManager::startDownload(const std::string& title, const std::
     
     std::lock_guard<std::mutex> lock(downloadsMutex);
     
-    std::string id = generateDownloadId();
-    DownloadItem item;
-    item.id = id;
-    item.title = title;
-    item.url = cleanUrl; // Usa l'URL pulito
-    item.imageUrl = imageUrl; // Aggiungi l'URL dell'immagine
-    item.status = DownloadStatus::PENDING;
-    item.progress = 0.0f;
+    // Controlla se esiste già un download per lo stesso titolo e URL
+    for (const auto& existingDownload : downloads) {
+        if (existingDownload.title == title && existingDownload.url == cleanUrl) {
+            if (existingDownload.status == DownloadStatus::COMPLETED) {
+                brls::Logger::warning("DownloadManager: Download '{}' already completed, skipping duplicate", title);
+                if (completeCallback) {
+                    completeCallback(existingDownload.id, "Already completed");
+                }
+                return existingDownload.id;
+            } else if (existingDownload.status == DownloadStatus::DOWNLOADING || existingDownload.status == DownloadStatus::PENDING) {
+                brls::Logger::warning("DownloadManager: Download '{}' already in progress, skipping duplicate", title);
+                return existingDownload.id;
+            } else if (existingDownload.status == DownloadStatus::PAUSED) {
+                brls::Logger::info("DownloadManager: Found paused download '{}', resuming instead of creating duplicate", title);
+                resumeDownload(existingDownload.id);
+                return existingDownload.id;
+            }
+        }
+    }
     
-    // Genera il path locale - la directory verrà creata automaticamente quando necessario
-    std::string filename = title + "_" + id + ".mp4"; // Assumiamo formato MP4
+    // Controlla se il file esiste già sul disco
+    std::string filename = title + ".mp4"; // Assumiamo formato MP4
     
     // Rimuovi caratteri non validi dal filename e limita la lunghezza
     std::replace_if(filename.begin(), filename.end(), [](char c) {
@@ -370,15 +421,80 @@ std::string DownloadManager::startDownload(const std::string& title, const std::
     
     // Limita la lunghezza del nome file per evitare problemi
     if (filename.length() > 200) {
+        // Mantieni l'estensione
+        std::string extension = ".mp4";
+        std::string titlePart = title.substr(0, 200 - extension.length());
+        filename = titlePart + extension;
+    }
+    
+    std::string potentialPath = getDownloadDirectory() + "/" + filename;
+    
+    // Controlla se il file esiste già e ha una dimensione ragionevole (>1MB)
+    if (std::filesystem::exists(potentialPath)) {
+        std::error_code ec;
+        auto fileSize = std::filesystem::file_size(potentialPath, ec);
+        if (!ec && fileSize > 1024 * 1024) { // Più di 1MB
+            brls::Logger::warning("DownloadManager: File '{}' already exists on disk ({}), creating completed download entry", 
+                                 filename, formatFileSize(fileSize));
+            
+            // Crea un nuovo download entry per il file esistente
+            std::string id = generateDownloadId();
+            brls::Logger::info("DownloadManager: Generated ID {} for existing file '{}'", id, title);
+            DownloadItem item;
+            item.id = id;
+            item.title = title;
+            item.url = cleanUrl;
+            item.imageUrl = imageUrl;
+            item.status = DownloadStatus::COMPLETED;
+            item.progress = 100.0f;
+            item.localPath = potentialPath;
+            item.downloadedSize = fileSize;
+            item.totalSize = fileSize;
+            
+            downloads.push_back(item);
+            saveDownloads();
+            
+            brls::Logger::info("DownloadManager: Created completed download entry for existing file '{}'", title);
+            
+            if (completeCallback) {
+                completeCallback(id, "File already exists");
+            }
+            
+            return id;
+        }
+    }
+    
+    std::string id = generateDownloadId();
+    brls::Logger::info("DownloadManager: Generated ID {} for new download '{}'", id, title);
+    DownloadItem item;
+    item.id = id;
+    item.title = title;
+    item.url = cleanUrl; // Usa l'URL pulito
+    item.imageUrl = imageUrl; // Aggiungi l'URL dell'immagine
+    item.status = DownloadStatus::PENDING;
+    item.progress = 0.0f;
+    
+    // Genera il path locale - la directory verrà creata automaticamente quando necessario
+    std::string downloadFilename = title + "_" + id + ".mp4"; // Assumiamo formato MP4
+    
+    // Rimuovi caratteri non validi dal downloadFilename e limita la lunghezza
+    std::replace_if(downloadFilename.begin(), downloadFilename.end(), [](char c) {
+        // Caratteri non validi per i nomi file su diversi sistemi operativi
+        return c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || 
+               c == '<' || c == '>' || c == '|' || c == '\0' || c < 32;
+    }, '_');
+    
+    // Limita la lunghezza del nome file per evitare problemi
+    if (downloadFilename.length() > 200) {
         // Mantieni l'estensione e l'ID
         std::string extension = ".mp4";
         std::string idPart = "_" + id;
         size_t maxTitleLength = 200 - extension.length() - idPart.length();
         std::string titlePart = title.substr(0, maxTitleLength);
-        filename = titlePart + idPart + extension;
+        downloadFilename = titlePart + idPart + extension;
     }
     
-    item.localPath = getDownloadDirectory() + "/" + filename;
+    item.localPath = getDownloadDirectory() + "/" + downloadFilename;
     
     downloads.push_back(item);
     
@@ -499,6 +615,81 @@ void DownloadManager::deleteDownload(const std::string& id) {
     }
 }
 
+void DownloadManager::cleanupStaleDownloads() {
+    std::lock_guard<std::mutex> lock(downloadsMutex);
+    
+    auto now = std::chrono::steady_clock::now();
+    auto staleDownloads = std::vector<std::string>();
+    
+    for (auto& download : downloads) {
+        // Considera un download "stale" se è in stato DOWNLOADING da più di 5 minuti senza progresso
+        if (download.status == DownloadStatus::DOWNLOADING) {
+            auto timeSinceStart = now - download.startTime;
+            auto minutesSinceStart = std::chrono::duration_cast<std::chrono::minutes>(timeSinceStart).count();
+            
+            if (minutesSinceStart > 5 && download.progress < 1.0f) {
+                brls::Logger::warning("DownloadManager: Found stale download {} - {} minutes old with {:.1f}% progress", 
+                                    download.id, minutesSinceStart, download.progress);
+                staleDownloads.push_back(download.id);
+            }
+        }
+    }
+    
+    // Metti in pausa i download stale per permettere un riavvio manuale
+    for (const auto& id : staleDownloads) {
+        auto it = findDownload(id);
+        if (it != downloads.end()) {
+            it->status = DownloadStatus::PAUSED;
+            it->error = "Download stalled - can be resumed manually";
+            brls::Logger::info("DownloadManager: Paused stale download {}", id);
+        }
+    }
+    
+    if (!staleDownloads.empty()) {
+        saveDownloads();
+        brls::Logger::info("DownloadManager: Cleaned up {} stale downloads", staleDownloads.size());
+    }
+}
+
+void DownloadManager::forceRestartDownload(const std::string& id) {
+    std::lock_guard<std::mutex> lock(downloadsMutex);
+    
+    auto it = findDownload(id);
+    if (it == downloads.end()) {
+        brls::Logger::error("DownloadManager: Cannot force restart - download {} not found", id);
+        return;
+    }
+    
+    // Reset il download allo stato iniziale
+    it->status = DownloadStatus::PENDING;
+    it->progress = 0.0f;
+    it->downloadedSize = 0;
+    it->error.clear();
+    it->startTime = std::chrono::steady_clock::now();
+    
+    // Cancella il retry count
+    {
+        std::lock_guard<std::mutex> retryLock(retryCountMutex);
+        globalRetryCount.erase(id);
+    }
+    
+    // Rimuovi dal set dei completati se presente
+    {
+        std::lock_guard<std::mutex> completedLock(completedDownloadsMutex);
+        completedDownloads.erase(id);
+    }
+    
+    brls::Logger::info("DownloadManager: Forcing restart of download {} - reset to initial state", id);
+    saveDownloads();
+    
+    // Avvia il download worker in un nuovo thread
+    std::thread([this, id]() {
+        if (!shouldStop.load()) {
+            downloadWorker(id);
+        }
+    }).detach();
+}
+
 std::vector<DownloadItem> DownloadManager::getAllDownloads() const {
     std::lock_guard<std::mutex> lock(downloadsMutex);
     brls::Logger::debug("DownloadManager::getAllDownloads - returning {} downloads", downloads.size());
@@ -538,6 +729,7 @@ void DownloadManager::downloadWorker(const std::string& id) {
             return;
         }
         it->status = DownloadStatus::DOWNLOADING;
+        it->startTime = std::chrono::steady_clock::now(); // Aggiorna il timestamp di inizio
     }
     
     // Check if we should use chunked download (Switch only)
@@ -1031,6 +1223,19 @@ void DownloadManager::downloadWorker(const std::string& id) {
                 if (res == CURLE_OK) {
                     // Download completed without errors
                     downloadSuccessful = true;
+                } else if (res == CURLE_WRITE_ERROR) {
+                    // Check if this is a controlled termination (download completed)
+                    // If we have the expected content length and downloaded the right amount, consider it successful
+                    brls::Logger::info("DownloadManager: CURLE_WRITE_ERROR analysis - contentLength: {}, totalDownloaded: {}, downloadSize: {}", 
+                                     contentLength, totalDownloaded, downloadSize);
+                    if (contentLength > 0 && totalDownloaded >= contentLength) {
+                        brls::Logger::info("DownloadManager: CURLE_WRITE_ERROR detected but download is complete ({}/{} bytes) - treating as successful", 
+                                         totalDownloaded, contentLength);
+                        downloadSuccessful = true;
+                    } else {
+                        brls::Logger::warning("DownloadManager: CURLE_WRITE_ERROR with incomplete download ({}/{} bytes)", 
+                                            totalDownloaded, contentLength);
+                    }
                 } else if (res == CURLE_PARTIAL_FILE && contentLength > 0) {
                     // Partial download: check if we should retry or pause
                     float completionRatio = static_cast<float>(totalDownloaded) / static_cast<float>(contentLength);
@@ -1101,22 +1306,10 @@ void DownloadManager::downloadWorker(const std::string& id) {
                         // Save current state before retry
                         saveDownloads();
                         
-                        // Schedule a new download task instead of recursive call
-                        std::thread retryThread([this, id]() {
-                            // Double-check that download still exists and is not cancelled
-                            {
-                                std::lock_guard<std::mutex> lock(downloadsMutex);
-                                auto it = findDownload(id);
-                                if (it == downloads.end() || shouldStop.load()) {
-                                    brls::Logger::info("DownloadManager: Download {} no longer exists or shutdown requested, cancelling retry", id);
-                                    return;
-                                }
-                            }
-                            
-                            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                            this->downloadWorker(id);
-                        });
-                        retryThread.detach();
+                        // Invece di usare thread detached pericolosi, segniamo per retry immediato
+                        // L'utente può riavviare il download dalla UI o verrà gestito dal sistema di polling
+                        brls::Logger::info("DownloadManager: Download {} can be retried immediately", id);
+                        it->status = DownloadStatus::PAUSED;
                         return;
                     } else {
                         // Too many retries or close to completion or no progress made, pause for manual resume
@@ -1306,11 +1499,30 @@ std::string DownloadManager::generateDownloadId() const {
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(0, 15);
     
-    std::stringstream ss;
-    for (int i = 0; i < 8; ++i) {
-        ss << std::hex << dis(gen);
-    }
-    return ss.str();
+    std::string id;
+    int maxAttempts = 100; // Limite per evitare loop infiniti
+    int attempts = 0;
+    
+    do {
+        std::stringstream ss;
+        // Genera un ID più lungo (16 caratteri invece di 8) per ridurre collisioni
+        for (int i = 0; i < 16; ++i) {
+            ss << std::hex << dis(gen);
+        }
+        id = ss.str();
+        attempts++;
+        
+        // Se raggiungiamo il limite, aggiungi timestamp per garantire unicità
+        if (attempts >= maxAttempts) {
+            auto now = std::chrono::system_clock::now();
+            auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+            id = ss.str() + "_" + std::to_string(timestamp);
+            break;
+        }
+    } while (findDownload(id) != downloads.end()); // Continua se l'ID esiste già
+    
+    brls::Logger::debug("DownloadManager: Generated unique ID: {}", id);
+    return id;
 }
 
 std::vector<DownloadItem>::iterator DownloadManager::findDownload(const std::string& id) {
@@ -2188,25 +2400,12 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
                         } else {
                             // Metti in pausa per retry automatico
                             it->status = DownloadStatus::PAUSED;
-                            brls::Logger::info("DownloadManager: Step 8 - Download paused for retry at {:.1f}% ({}/{} bytes)", 
+                            brls::Logger::info("DownloadManager: Step 8 - Download paused for manual retry at {:.1f}% ({}/{} bytes)", 
                                              it->progress, it->downloadedSize, it->totalSize);
                             
-                            // Pianifica un retry automatico dopo 3 secondi
-                            std::thread retryThread([this, id]() {
-                                std::this_thread::sleep_for(std::chrono::seconds(3));
-                                if (!shouldStop.load()) {
-                                    brls::Logger::info("DownloadManager: Auto-retrying download {}", id);
-                                    {
-                                        std::lock_guard<std::mutex> retryLock(downloadsMutex);
-                                        auto retryIt = findDownload(id);
-                                        if (retryIt != downloads.end() && retryIt->status == DownloadStatus::PAUSED) {
-                                            retryIt->status = DownloadStatus::DOWNLOADING;
-                                        }
-                                    }
-                                    downloadWorker(id); // Riavvia il download worker
-                                }
-                            });
-                            retryThread.detach();
+                            // Invece di creare thread detached pericolosi, segniamo solo per retry manuale
+                            // L'utente può riavviare manualmente il download dalla UI
+                            brls::Logger::info("DownloadManager: Download {} paused, can be resumed manually", id);
                         }
                     } else {
                         // Non conosciamo la dimensione totale ma abbiamo scaricato qualcosa
@@ -2220,6 +2419,44 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
                             brls::Logger::error("DownloadManager: Step 8 - Download failed: Very small partial transfer");
                         }
                     }
+                }
+            } else if (res == CURLE_WRITE_ERROR && httpCode == 200) {
+                // CURLE_WRITE_ERROR può indicare che abbiamo fermato intenzionalmente il download al completamento
+                struct stat st;
+                if (stat(localPath.c_str(), &st) == 0) {
+                    size_t currentSize = st.st_size;
+                    it->downloadedSize = currentSize;
+                    
+                    // Verifica se il download è completo confrontando con il Content-Length
+                    // Usa la dimensione dai dati header se disponibile, altrimenti usa contentLength dalla HEAD
+                    size_t expectedFileSize = 0;
+                    if (headerData.contentLengthFound) {
+                        expectedFileSize = headerData.contentLength;
+                    } else if (contentLength > 0) {
+                        expectedFileSize = static_cast<size_t>(contentLength);
+                    } else if (it->totalSize > 0) {
+                        expectedFileSize = it->totalSize;
+                    }
+                    
+                    if (expectedFileSize > 0 && currentSize >= expectedFileSize) {
+                        // Download completo - CURLE_WRITE_ERROR era intenzionale per fermare il trasferimento
+                        it->totalSize = expectedFileSize;
+                        it->progress = 100.0f;
+                        it->status = DownloadStatus::COMPLETED;
+                        brls::Logger::info("DownloadManager: Step 8 - CURLE_WRITE_ERROR with complete download ({}/{} bytes) - marking as successful", 
+                                         currentSize, expectedFileSize);
+                    } else {
+                        // Download incompleto - CURLE_WRITE_ERROR indica un errore reale
+                        it->status = DownloadStatus::FAILED;
+                        it->error = "Download failed: Write error with incomplete transfer";
+                        brls::Logger::error("DownloadManager: Step 8 - CURLE_WRITE_ERROR with incomplete download ({} bytes, expected {})", 
+                                          currentSize, expectedFileSize);
+                    }
+                } else {
+                    // Non riesco a leggere il file - errore
+                    it->status = DownloadStatus::FAILED;
+                    it->error = "Download failed: Cannot access downloaded file";
+                    brls::Logger::error("DownloadManager: Step 8 - CURLE_WRITE_ERROR and cannot stat file");
                 }
             } else {
                 it->status = DownloadStatus::FAILED;

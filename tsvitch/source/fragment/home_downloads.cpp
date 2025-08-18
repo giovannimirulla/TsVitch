@@ -590,7 +590,24 @@ void HomeDownloads::setupRecyclingGrid() {
 }
 
 void HomeDownloads::refresh() {
-    brls::Logger::error("HomeDownloads::refresh() ============ CALLED ============");
+    // Implementa throttling aggressivo per evitare chiamate eccessive
+    static std::chrono::steady_clock::time_point lastRefreshTime;
+    static std::mutex refreshMutex;
+    
+    {
+        std::lock_guard<std::mutex> lock(refreshMutex);
+        auto now = std::chrono::steady_clock::now();
+        auto timeSinceLastRefresh = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastRefreshTime);
+        
+        // Limita i refresh a max una volta ogni 500ms per evitare sovraccarico
+        if (timeSinceLastRefresh.count() < 500) {
+            brls::Logger::debug("HomeDownloads::refresh() - throttled ({}ms since last refresh)", timeSinceLastRefresh.count());
+            return;
+        }
+        lastRefreshTime = now;
+    }
+    
+    brls::Logger::debug("HomeDownloads::refresh() ============ CALLED ============");
     
     // Controlla se l'oggetto è ancora valido
     if (!dataSource || !recyclingGrid) {
@@ -601,7 +618,7 @@ void HomeDownloads::refresh() {
     
     try {
         auto downloads = DownloadManager::instance().getAllDownloads();
-        brls::Logger::error("HomeDownloads::refresh() - got {} downloads from manager", downloads.size());
+        brls::Logger::debug("HomeDownloads::refresh() - got {} downloads from manager", downloads.size());
         
         // Aggiorna la data source (che controllerà se ci sono modifiche)
         dataSource->updateDownloads(downloads);
@@ -642,30 +659,53 @@ void HomeDownloads::forceRefresh() {
 
 void HomeDownloads::onDownloadProgress(const std::string& id, float progress) {
     // Usa sync per eseguire l'aggiornamento sul thread UI principale
-    // Fai un refresh throttled per evitare troppi aggiornamenti
-    static std::chrono::steady_clock::time_point lastRefreshTime;
-    static std::mutex refreshMutex;
-    
     brls::sync([this, id, progress]() {
-        if (shouldAutoRefresh.load()) {
-            std::lock_guard<std::mutex> lock(refreshMutex);
-            auto now = std::chrono::steady_clock::now();
-            auto timeSinceLastRefresh = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastRefreshTime);
+        // Controlla che l'oggetto sia ancora valido e non in fase di distruzione
+        if (!shouldAutoRefresh.load() || !recyclingGrid) {
+            brls::Logger::debug("HomeDownloads::onDownloadProgress - skipping update, object invalid or auto refresh disabled");
+            return;
+        }
+        
+        try {
+            // Cerca la cella specifica per questo download ID tra le celle attualmente visualizzate
+            bool foundCell = false;
+            auto& gridItems = recyclingGrid->getGridItems();
+            for (auto* item : gridItems) {
+                auto* cell = dynamic_cast<DownloadItemCell*>(item);
+                if (cell && cell->getCurrentDownloadId() == id) {
+                    brls::Logger::debug("HomeDownloads::onDownloadProgress - updating specific cell for download {} at {:.1f}%", id, progress);
+                    cell->updateProgress(progress);
+                    foundCell = true;
+                    break;
+                }
+            }
             
-            // Se il download è completato al 100%, forza un refresh immediato
-            if (progress >= 100.0f) {
-                brls::Logger::info("HomeDownloads::onDownloadProgress - download {} completed at {:.1f}%, forcing immediate refresh", id, progress);
-                refresh();
-                lastRefreshTime = now;
+            // Se non abbiamo trovato la cella (potrebbe essere fuori dallo schermo), fai un refresh completo
+            // ma solo se il download è completato o a intervalli più lunghi
+            if (!foundCell) {
+                static std::chrono::steady_clock::time_point lastRefreshTime;
+                static std::mutex refreshMutex;
+                std::lock_guard<std::mutex> lock(refreshMutex);
+                auto now = std::chrono::steady_clock::now();
+                auto timeSinceLastRefresh = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastRefreshTime);
+                
+                // Se il download è completato al 100%, forza un refresh immediato
+                if (progress >= 100.0f) {
+                    brls::Logger::info("HomeDownloads::onDownloadProgress - download {} completed at {:.1f}%, forcing refresh (cell not visible)", id, progress);
+                    refresh();
+                    lastRefreshTime = now;
+                }
+                // Altrimenti aggiorna solo ogni 1 secondo per le celle non visibili
+                else if (timeSinceLastRefresh.count() >= 1000) {
+                    brls::Logger::debug("HomeDownloads::onDownloadProgress - refreshing for hidden download {} at {:.1f}%", id, progress);
+                    refresh();
+                    lastRefreshTime = now;
+                }
             }
-            // Altrimenti aggiorna più frequentemente (200ms) per vedere i progressi
-            else if (timeSinceLastRefresh.count() >= 200) {
-                brls::Logger::debug("HomeDownloads::onDownloadProgress - refreshing for download {} at {:.1f}%", id, progress);
-                refresh();
-                lastRefreshTime = now;
-            } else {
-                brls::Logger::debug("HomeDownloads::onDownloadProgress - skipping refresh for download {} (throttled)", id);
-            }
+        } catch (const std::exception& e) {
+            brls::Logger::error("HomeDownloads::onDownloadProgress - Exception updating progress for {}: {}", id, e.what());
+        } catch (...) {
+            brls::Logger::error("HomeDownloads::onDownloadProgress - Unknown exception updating progress for {}", id);
         }
     });
 }
