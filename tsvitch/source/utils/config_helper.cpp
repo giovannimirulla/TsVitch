@@ -794,6 +794,7 @@ void ProgramConfig::setProxyUrl(const std::string& url) {
     OnProxyUrlChanged.fire();
     
     GA("proxy_url", {{"url", proxyUrl}});
+}
 // Xtream Codes IPTV getters and setters
 std::string ProgramConfig::getXtreamServerUrl() {
     return getSettingItem(SettingItem::XTREAM_SERVER_URL, std::string(""));
