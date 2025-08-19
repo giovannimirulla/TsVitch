@@ -800,10 +800,17 @@ void HomeLive::downloadVideo() {
         [](const std::string& id, const std::string& filePath) {
             // Callback di completamento
             brls::Logger::info("Download {} completed: {}", id, filePath);
-            brls::sync([id]() {
+            
+            brls::sync([id, filePath]() {
                 // Nascondi l'overlay
                 tsvitch::DownloadProgressManager::getInstance()->hideDownloadProgress(id);
-                brls::Application::notify("Download completato!");
+                
+                // Non mostrare notifica se è un download già completato (duplicato)
+                if (filePath != "Already completed") {
+                    brls::Application::notify("Download completato!");
+                } else {
+                    brls::Application::notify("File già scaricato!");
+                }
             });
         },
         [](const std::string& id, const std::string& error) {
@@ -818,13 +825,21 @@ void HomeLive::downloadVideo() {
     );
     
     if (!downloadId.empty()) {
-        // Mostra l'overlay globale
-        tsvitch::DownloadProgressManager::getInstance()->showDownloadProgress(
-            downloadId, channel.title, channel.url
-        );
+        // Controlla lo stato del download per vedere se è già completato
+        auto downloadItem = DownloadManager::instance().getDownload(downloadId);
         
-        brls::Application::notify("Download avviato: " + channel.title);
-        brls::Logger::info("HomeLive: Started download {} for {}", downloadId, channel.title);
+        if (downloadItem.status == DownloadStatus::COMPLETED) {
+            // È un download già completato, non mostrare overlay
+            brls::Logger::info("HomeLive: Skipped showing overlay for already completed download {} ({})", downloadId, channel.title);
+        } else {
+            // È un nuovo download o uno in corso, mostra l'overlay
+            tsvitch::DownloadProgressManager::getInstance()->showDownloadProgress(
+                downloadId, channel.title, channel.url
+            );
+            
+            brls::Application::notify("Download avviato: " + channel.title);
+            brls::Logger::info("HomeLive: Started download {} for {}", downloadId, channel.title);
+        }
     } else {
         brls::Application::notify("Errore nell'avvio del download");
         brls::Logger::error("HomeLive: Failed to start download for {}", channel.title);
