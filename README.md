@@ -19,6 +19,12 @@
 </div>
 <br>
 
+<div align="center">
+<a href="https://discord.gg/etUeUJXkm3">
+    <img src="https://img.shields.io/badge/Join%20on%20Discord-5865F2?logo=discord&logoColor=white&style=for-the-badge" alt="Join on Discord"/>
+</a>
+</div>
+<br>
 <p align="center">
 <img src="docs/images/screenshot-NX.png" alt="screenshot">
 </p>
