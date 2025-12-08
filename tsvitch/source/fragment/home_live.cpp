@@ -189,7 +189,7 @@ public:
     explicit DataSourceLiveVideoList(const tsvitch::LiveM3u8ListResult& result) : videoList(result) {}
     RecyclingGridItem* cellForRow(RecyclingGrid* recycler, size_t index) override {
         tsvitch::LiveM3u8& r = this->videoList[index];
-        brls::Logger::info("cellForRow: {} [{}]", r.title, index);
+        // brls::Logger::info("cellForRow: {} [{}]", r.title, index);
         RecyclingGridItemLiveVideoCard* item = (RecyclingGridItemLiveVideoCard*)recycler->dequeueReusableCell("Cell");
         item->setChannel(r);
         return item;
@@ -369,7 +369,7 @@ void HomeLive::onError(const std::string& error) {
     dialog->open();
 }
 
-void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstLoad) {
+void HomeLive::onLiveList(tsvitch::LiveM3u8ListResult result, bool firstLoad) {
     brls::Logger::info("Fragment HomeLive: onLiveList - received {} channels", result.size());
     if (result.empty()) {
         recyclingGrid->setEmpty();
@@ -404,130 +404,74 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstL
         return true;
     });
 
-    if (firstLoad) {
-        // Salva con timestamp solo quando è un caricamento fresco (non da cache)
-        brls::Logger::info("HomeLive: First load detected, will save {} channels with timestamp", result.size());
+    // Salva channelsList SUBITO per accesso thread-safe
+    this->channelsList = std::move(result); // Move invece di copy!
+    
+    // Fai il grouping e UI update SUL MAIN THREAD per evitare il delay di 36s del brls::sync()
+    // Meglio bloccare 600ms che aspettare 36 secondi!
+    auto isValidFlag = validityFlag;
+    brls::sync([this, isValidFlag, firstLoad]() {
+        if (!isValidFlag->load()) return;
         
-        // Salva immediatamente per assicurarci che non si perda
-        try {
-            ChannelManager::get()->saveWithTimestamp(result);
-            brls::Logger::info("HomeLive: Immediate saveWithTimestamp completed successfully");
-        } catch (const std::exception& e) {
-            brls::Logger::error("HomeLive: Exception in immediate saveWithTimestamp: {}", e.what());
-        } catch (...) {
-            brls::Logger::error("HomeLive: Unknown exception in immediate saveWithTimestamp");
+        auto grouping_start = std::chrono::high_resolution_clock::now();
+        
+        // Raggruppa i canali per groupTitle - unica passata
+        std::unordered_map<std::string, std::vector<size_t>> groupIndices;
+        groupIndices.reserve(100);
+        
+        for (size_t i = 0; i < this->channelsList.size(); ++i) {
+            const std::string& groupTitle = this->channelsList[i].groupTitle;
+            groupIndices[groupTitle].push_back(i);
         }
-    } else {
-        brls::Logger::info("HomeLive: Not first load ({}), skipping save", firstLoad);
-    }
-
-    // Raggruppa i canali per groupTitle OTTIMIZZATO - un'unica passata
-    auto grouping_start = std::chrono::high_resolution_clock::now();
-    
-    std::unordered_map<std::string, std::vector<size_t>> groupIndices; // Usa indici invece di puntatori
-    groupIndices.reserve(100); // Stima ragionevole del numero di gruppi
-    
-    for (size_t i = 0; i < result.size(); ++i) {
-        const std::string& groupTitle = result[i].groupTitle;
-        groupIndices[groupTitle].push_back(i);
-    }
-    
-    std::vector<std::string> groupTitles;
-    groupTitles.reserve(groupIndices.size());
-    for (const auto& pair : groupIndices) {
-        groupTitles.push_back(pair.first);
-    }
-    
-    // Ordina i gruppi alfabeticamente per UX migliore
-    std::sort(groupTitles.begin(), groupTitles.end());
-    
-    auto grouping_end = std::chrono::high_resolution_clock::now();
-    auto grouping_duration = std::chrono::duration_cast<std::chrono::milliseconds>(grouping_end - grouping_start);
-    brls::Logger::info("HomeLive: Grouping completed in {}ms - Found {} groups", grouping_duration.count(), groupTitles.size());
-
-    // Carica solo il gruppo selezionato in sync
-    int lastIndex = ProgramConfig::instance().getSettingItem(SettingItem::GROUP_SELECTED_INDEX, 0);
-    if (lastIndex >= groupTitles.size()) lastIndex = 0;
-    std::string selectedGroup = groupTitles.empty() ? "" : groupTitles[lastIndex];
-
-    tsvitch::LiveM3u8ListResult filtered;
-    if (!selectedGroup.empty() && groupIndices.count(selectedGroup)) {
-        const auto& indices = groupIndices[selectedGroup];
-        filtered.reserve(indices.size());
-        for (size_t idx : indices) {
-            filtered.push_back(result[idx]);
+        
+        std::vector<std::string> groupTitles;
+        groupTitles.reserve(groupIndices.size());
+        for (const auto& pair : groupIndices) {
+            groupTitles.push_back(pair.first);
         }
-    }
-    
-    brls::Logger::info("HomeLive: Selected group '{}' with {} channels", selectedGroup, filtered.size());
-
-    {
-        std::lock_guard<std::mutex> lock(groupCacheMutex);
-        groupCache.clear();
-        groupCache[selectedGroup] = filtered;
-    }
-    this->channelsList = result;
-
-    // Mostra solo il gruppo selezionato
-    brls::Threading::sync([this, filtered]() {
+        
+        // Ordina alfabeticamente
+        std::sort(groupTitles.begin(), groupTitles.end());
+        
+        auto grouping_end = std::chrono::high_resolution_clock::now();
+        auto grouping_duration = std::chrono::duration_cast<std::chrono::milliseconds>(grouping_end - grouping_start);
+        brls::Logger::info("HomeLive: Grouping completed in {}ms - Found {} groups", grouping_duration.count(), groupTitles.size());
+        
+        // Leggi lastIndex dal config
+        int lastIndex = ProgramConfig::instance().getSettingItem(SettingItem::GROUP_SELECTED_INDEX, 0);
+        if (lastIndex >= (int)groupTitles.size()) lastIndex = 0;
+        std::string selectedGroup = groupTitles.empty() ? "" : groupTitles[lastIndex];
+        
+        // Prepara il gruppo selezionato
+        tsvitch::LiveM3u8ListResult filtered;
+        if (!selectedGroup.empty() && groupIndices.count(selectedGroup)) {
+            const auto& indices = groupIndices[selectedGroup];
+            filtered.reserve(indices.size());
+            for (size_t idx : indices) {
+                filtered.push_back(this->channelsList[idx]);
+            }
+        }
+        
+        brls::Logger::info("HomeLive: Selected group '{}' with {} channels", selectedGroup, filtered.size());
+        
+        // Cache il gruppo selezionato
+        {
+            std::lock_guard<std::mutex> lock(groupCacheMutex);
+            groupCache.clear();
+            groupCache[selectedGroup] = filtered;
+        }
+        
+        // Imposta il DataSource principale (già sul main thread, no brls::sync necessario)
         brls::Logger::info("HomeLive: Setting DataSource with {} filtered channels", filtered.size());
         if (filtered.empty())
             recyclingGrid->setEmpty();
         else
-            recyclingGrid->setDataSource(new DataSourceLiveVideoList(filtered));
-    });
-
-    // Precarica gli altri gruppi in background OTTIMIZZATO - parallelo e batch
-    if (groupTitles.size() > 1) {
-        auto resultCopy = result; // Copia per thread safety
-        auto isValidFlag = validityFlag; 
+            recyclingGrid->setDataSource(new DataSourceLiveVideoList(std::move(filtered)));
         
-        brls::Threading::async([this, isValidFlag, groupTitles, groupIndices, resultCopy = std::move(resultCopy), selectedGroup]() {
-            if (!isValidFlag->load()) return;
-            
-            auto preload_start = std::chrono::high_resolution_clock::now();
-            size_t groupsProcessed = 0;
-            
-            for (const auto& group : groupTitles) {
-                if (!isValidFlag->load()) return; // Check periodico
-                if (group == selectedGroup) continue;
-                
-                tsvitch::LiveM3u8ListResult filteredBg;
-                if (groupIndices.count(group)) {
-                    const auto& indices = groupIndices.at(group);
-                    filteredBg.reserve(indices.size());
-                    for (size_t idx : indices) {
-                        filteredBg.push_back(resultCopy[idx]);
-                    }
-                }
-                
-                {
-                    std::lock_guard<std::mutex> lock(groupCacheMutex);
-                    groupCache[group] = std::move(filteredBg);
-                }
-                
-                groupsProcessed++;
-                
-                // Yielding periodico per non monopolizzare il thread
-                if (groupsProcessed % 5 == 0) {
-                    std::this_thread::yield();
-                }
-            }
-            
-            auto preload_end = std::chrono::high_resolution_clock::now();
-            auto preload_duration = std::chrono::duration_cast<std::chrono::milliseconds>(preload_end - preload_start);
-            brls::Logger::info("HomeLive: Background group preloading completed in {}ms ({} groups)", preload_duration.count(), groupsProcessed);
-        });
-    }
-
-    // UI gruppi
-    brls::Threading::sync([this, groupTitles, lastIndex]() {
-        if (groupTitles.size() <= 1) {
-            upRecyclingGrid->setVisibility(brls::Visibility::GONE);
-        } else {
+        // Setup UI gruppi
+        if (groupTitles.size() > 1) {
             upRecyclingGrid->setVisibility(brls::Visibility::VISIBLE);
             auto* upList = new DataSourceUpList(groupTitles, [this](const std::string& group) {
-                // Cambio gruppo: usa cache se presente, altrimenti filtra ora
                 tsvitch::LiveM3u8ListResult filtered;
                 {
                     std::lock_guard<std::mutex> lock(groupCacheMutex);
@@ -535,7 +479,6 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstL
                         filtered = groupCache[group];
                         brls::Logger::debug("HomeLive: Using cached group '{}' with {} channels", group, filtered.size());
                     } else {
-                        // Fallback: filtra al volo (non dovrebbe succedere spesso)
                         brls::Logger::warning("HomeLive: Cache miss for group '{}', filtering on-demand", group);
                         for (const auto& item : this->channelsList) {
                             if (item.groupTitle == group) filtered.push_back(item);
@@ -550,9 +493,68 @@ void HomeLive::onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstL
             });
             upRecyclingGrid->setDataSource(upList);
             this->selectGroupIndex(static_cast<size_t>(lastIndex));
+        } else {
+            upRecyclingGrid->setVisibility(brls::Visibility::GONE);
+        }
+        
+        // Precarica gli altri gruppi in background - IN UN THREAD ASYNC SEPARATO per non bloccare l'UI
+        brls::Threading::async([this, groupTitles = std::move(groupTitles), groupIndices = std::move(groupIndices), 
+                                selectedGroup, isValidFlag]() {
+            if (groupTitles.size() <= 1) return;
+            
+            auto preload_start = std::chrono::high_resolution_clock::now();
+            size_t groupsProcessed = 0;
+            
+            for (const auto& group : groupTitles) {
+                if (!isValidFlag->load()) return;
+                if (group == selectedGroup) continue;
+                
+                tsvitch::LiveM3u8ListResult filteredBg;
+                if (groupIndices.count(group)) {
+                    const auto& indices = groupIndices.at(group);
+                    filteredBg.reserve(indices.size());
+                    
+                    for (size_t idx : indices) {
+                        if (idx < this->channelsList.size()) {
+                            filteredBg.push_back(this->channelsList[idx]);
+                        }
+                    }
+                }
+                
+                {
+                    std::lock_guard<std::mutex> lock(groupCacheMutex);
+                    groupCache[group] = std::move(filteredBg);
+                }
+                
+                groupsProcessed++;
+                if (groupsProcessed % 10 == 0) {
+                    std::this_thread::yield();
+                }
+            }
+            
+            auto preload_end = std::chrono::high_resolution_clock::now();
+            auto preload_duration = std::chrono::duration_cast<std::chrono::milliseconds>(preload_end - preload_start);
+            brls::Logger::info("HomeLive: Background group preloading completed in {}ms ({} groups)", preload_duration.count(), groupsProcessed);
+        });
+        
+        // Salva in background se firstLoad (non blocca UI)
+        if (firstLoad) {
+            brls::Logger::info("HomeLive: First load detected, will save {} channels with timestamp (async)", this->channelsList.size());
+            auto toSave = this->channelsList;
+            brls::Threading::async([data = std::move(toSave)]() {
+                try {
+                    ChannelManager::get()->saveWithTimestamp(data);
+                    brls::Logger::info("HomeLive: Async saveWithTimestamp completed successfully");
+                } catch (const std::exception& e) {
+                    brls::Logger::error("HomeLive: Exception in async saveWithTimestamp: {}", e.what());
+                } catch (...) {
+                    brls::Logger::error("HomeLive: Unknown exception in async saveWithTimestamp");
+                }
+            });
         }
     });
 }
+
 void HomeLive::selectGroupIndex(size_t index) {
     auto* datasource = dynamic_cast<DataSourceUpList*>(upRecyclingGrid->getDataSource());
     if (!datasource) return;

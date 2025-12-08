@@ -20,7 +20,7 @@ class HomeLive : public AttachedView, public HomeLiveRequest {
 public:
     HomeLive();
 
-    void onLiveList(const tsvitch::LiveM3u8ListResult &result, bool firstLoad) override;
+    void onLiveList(tsvitch::LiveM3u8ListResult result, bool firstLoad) override;
 
     ~HomeLive() override;
 
