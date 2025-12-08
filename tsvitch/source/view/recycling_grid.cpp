@@ -236,7 +236,7 @@ void RecyclingGrid::registerCell(std::string identifier, std::function<Recycling
 }
 
 void RecyclingGrid::addCellAt(size_t index, bool downSide) {
-        brls::Logger::info("addCellAt: index={}", index);
+        // brls::Logger::info("addCellAt: index={}", index);
             
     RecyclingGridItem* cell;
 
@@ -680,7 +680,7 @@ void RecyclingGrid::queueReusableCell(RecyclingGridItem* cell) {
         return;
     }
     
-    brls::Logger::info("queueReusableCell: index={}", cell->getIndex());
+    // brls::Logger::info("queueReusableCell: index={}", cell->getIndex());
     
     try {
         auto it = queueMap.find(cell->reuseIdentifier);

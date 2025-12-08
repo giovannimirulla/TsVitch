@@ -1,5 +1,6 @@
 #pragma once
 #include <deque>
+#include <unordered_set>
 #include <filesystem>
 #include <string>
 #include <nlohmann/json.hpp>
@@ -23,4 +24,5 @@ public:
 private:
     std::filesystem::path file_;
     std::deque<tsvitch::LiveM3u8> set_;
+    std::unordered_set<std::string> urlCache_; // Cache O(1) per isFavorite
 };

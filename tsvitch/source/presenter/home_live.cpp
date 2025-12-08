@@ -10,7 +10,7 @@
 
 using namespace brls::literals;
 
-void HomeLiveRequest::onLiveList(const tsvitch::LiveM3u8ListResult& result, bool firstLoad) {
+void HomeLiveRequest::onLiveList(tsvitch::LiveM3u8ListResult result, bool firstLoad) {
     // Base implementation - should be overridden in derived classes
     brls::Logger::debug("HomeLiveRequest::onLiveList: Base implementation called with {} channels, firstLoad={}", result.size(), firstLoad);
 }
@@ -51,9 +51,9 @@ void HomeLiveRequest::requestLiveList() {
             
             try {
                 UNSET_REQUEST
-                tsvitch::LiveM3u8ListResult res = result;
+                tsvitch::LiveM3u8ListResult res = result; // copy once from client
                 brls::Logger::info("HomeLiveRequest: Successfully received {} channels", res.size());
-                this->onLiveList(res, true);
+                this->onLiveList(std::move(res), true); // move into handler to avoid extra copies
                 isRequestInProgress = false; // Reset the flag on success
             } catch (...) {
                 brls::Logger::error("HomeLiveRequest::requestLiveList: Exception during callback");
