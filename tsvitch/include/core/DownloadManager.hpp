@@ -38,6 +38,7 @@ struct DownloadItem {
     std::string url;
     std::string localPath;
     std::string imageUrl;  // URL dell'immagine del film
+    std::string imagePath; // Path locale dell'immagine scaricata
     DownloadStatus status;
     float progress;
     size_t totalSize;
@@ -151,6 +152,9 @@ private:
     
     // Thread worker per il download
     void downloadWorker(const std::string& id);
+    
+    // Metodo per scaricare l'immagine/copertina
+    void downloadCoverImage(const std::string& id, const std::string& imageUrl, const std::string& imagePath);
     
 #ifdef __SWITCH__
     // Metodi per download a chunk (Switch)

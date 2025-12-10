@@ -496,6 +496,29 @@ std::string DownloadManager::startDownload(const std::string& title, const std::
     
     item.localPath = getDownloadDirectory() + "/" + downloadFilename;
     
+    // Genera il path per l'immagine se è fornito l'URL
+    if (!imageUrl.empty()) {
+        // Estrai l'estensione dall'URL dell'immagine o usa un default
+        std::string imageExtension = ".jpg"; // Default
+        size_t lastDot = imageUrl.find_last_of('.');
+        if (lastDot != std::string::npos) {
+            std::string ext = imageUrl.substr(lastDot);
+            // Controlla se è un'estensione valida per immagini
+            if (ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp" || ext == ".gif") {
+                imageExtension = ext;
+            }
+        }
+        
+        std::string imageFilename = title + "_" + id + "_cover" + imageExtension;
+        // Pulisci il nome file dell'immagine allo stesso modo
+        std::replace_if(imageFilename.begin(), imageFilename.end(), [](char c) {
+            return c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || 
+                   c == '<' || c == '>' || c == '|' || c == '\0' || c < 32;
+        }, '_');
+        
+        item.imagePath = getDownloadDirectory() + "/" + imageFilename;
+    }
+    
     downloads.push_back(item);
     
     // Registra i callback specifici per questo download
@@ -1368,6 +1391,12 @@ void DownloadManager::downloadWorker(const std::string& id) {
                         std::lock_guard<std::mutex> retryLock(retryCountMutex);
                         globalRetryCount.erase(id);
                     }
+                    
+                    // Download cover image synchronously after video download is completed
+                    if (!it->imageUrl.empty() && !it->imagePath.empty()) {
+                        brls::Logger::info("DownloadManager: Starting cover image download for {}", id);
+                        downloadCoverImage(id, it->imageUrl, it->imagePath);
+                    }
                 }
                 
                 saveDownloads();
@@ -1555,6 +1584,7 @@ void DownloadManager::saveDownloads() {
             item["downloadedSize"] = download.downloadedSize;
             item["error"] = download.error;
             item["imageUrl"] = download.imageUrl;
+            item["imagePath"] = download.imagePath;
             
             // Salva informazioni sui chunk per Switch
             item["useChunkedDownload"] = download.useChunkedDownload;
@@ -1632,6 +1662,13 @@ void DownloadManager::loadDownloads() {
                 download.imageUrl = item["imageUrl"];
             } else {
                 download.imageUrl = ""; // Default to empty string for backward compatibility
+            }
+            
+            // Handle imagePath field (might not exist in older saves)
+            if (item.contains("imagePath")) {
+                download.imagePath = item["imagePath"];
+            } else {
+                download.imagePath = ""; // Default to empty string for backward compatibility
             }
             
             // Carica informazioni sui chunk per Switch
@@ -2573,3 +2610,87 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
     brls::Logger::info("DownloadManager: Step 9 - Simplified download method finished");
 }
 #endif
+
+void DownloadManager::downloadCoverImage(const std::string& id, const std::string& imageUrl, const std::string& imagePath) {
+    if (imageUrl.empty() || imagePath.empty()) {
+        brls::Logger::debug("DownloadManager: Skipping cover image download - empty URL or path");
+        return;
+    }
+    
+    // Controlla se l'immagine esiste già
+    if (std::filesystem::exists(imagePath)) {
+        std::error_code ec;
+        auto fileSize = std::filesystem::file_size(imagePath, ec);
+        if (!ec && fileSize > 0) {
+            brls::Logger::info("DownloadManager: Cover image already exists: {}", imagePath);
+            return;
+        }
+    }
+    
+    brls::Logger::info("DownloadManager: Downloading cover image from {} to {}", imageUrl, imagePath);
+    
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        brls::Logger::error("DownloadManager: Failed to initialize CURL for image download");
+        return;
+    }
+    
+    // Apri il file per scrivere l'immagine
+    std::ofstream imageFile(imagePath, std::ios::binary);
+    if (!imageFile.is_open()) {
+        brls::Logger::error("DownloadManager: Failed to open image file: {}", imagePath);
+        curl_easy_cleanup(curl);
+        return;
+    }
+    
+    // Configura CURL per il download dell'immagine
+    curl_easy_setopt(curl, CURLOPT_URL, imageUrl.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &imageFile);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (compatible; TsVitch/1.0)");
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L); // Timeout di 30 secondi per le immagini
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L); // Timeout di connessione di 10 secondi
+    
+    // Headers appropriati per il download di immagini
+    struct curl_slist* headers = NULL;
+    headers = curl_slist_append(headers, "Accept: image/webp,image/apng,image/*,*/*;q=0.8");
+    headers = curl_slist_append(headers, "Accept-Language: en-US,en;q=0.9");
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    
+    // Esegui il download
+    CURLcode res = curl_easy_perform(curl);
+    
+    // Controlla il risultato
+    long response_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    
+    if (headers) {
+        curl_slist_free_all(headers);
+    }
+    curl_easy_cleanup(curl);
+    imageFile.close();
+    
+    if (res != CURLE_OK || response_code != 200) {
+        brls::Logger::warning("DownloadManager: Failed to download cover image: CURL error {} / HTTP {}", static_cast<int>(res), response_code);
+        // Rimuovi il file parziale/vuoto
+        std::remove(imagePath.c_str());
+    } else {
+        // Verifica che il file scaricato abbia una dimensione ragionevole
+        std::error_code ec;
+        auto fileSize = std::filesystem::file_size(imagePath, ec);
+        if (!ec && fileSize > 1024) { // Almeno 1KB
+            brls::Logger::info("DownloadManager: Successfully downloaded cover image: {} ({} bytes)", imagePath, fileSize);
+            
+            // Aggiorna il database/stato del download con il path dell'immagine
+            std::lock_guard<std::mutex> lock(downloadsMutex);
+            auto it = findDownload(id);
+            if (it != downloads.end()) {
+                it->imagePath = imagePath;
+            }
+        } else {
+            brls::Logger::warning("DownloadManager: Downloaded image file is too small or invalid, removing: {}", imagePath);
+            std::remove(imagePath.c_str());
+        }
+    }
+}

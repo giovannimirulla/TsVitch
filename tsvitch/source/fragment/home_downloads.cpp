@@ -742,10 +742,6 @@ void HomeDownloads::onDownloadItemSelected(const DownloadItem& item) {
         });
     }
     
-    dialog->addButton("Elimina", [this, item]() {
-        DownloadManager::instance().deleteDownload(item.id);
-        this->refresh();
-    });
     
     if (item.status == DownloadStatus::COMPLETED) {
         dialog->addButton("Riproduci", [this, item]() {
@@ -777,7 +773,10 @@ void HomeDownloads::onDownloadItemSelected(const DownloadItem& item) {
         });
     }
     
-    dialog->addButton("Annulla", []() {});
+        dialog->addButton("Elimina", [this, item]() {
+        DownloadManager::instance().deleteDownload(item.id);
+        this->refresh();
+    });
     
     dialog->open();
 }
