@@ -50,7 +50,7 @@
                                                 <brls:Header
                                                         width="auto"
                                                         height="auto"
-                                                        title="@i18n/tsvitch/setting/tools/m3u8/header"
+                                                        title="@i18n/tsvitch/setting/tools/proxy/header"
                                                         marginBottom="0px" />
                                                 <brls:Box
                                                         width="100%"
@@ -59,7 +59,7 @@
                                                         marginBottom="30px">
 
                                                         <brls:InputCell
-                                                                id="setting/tools/m3u8/input"
+                                                                id="setting/tools/proxy/input"
                                                         />
 
 
@@ -104,6 +104,10 @@
                                                                 title="@i18n/tsvitch/setting/tools/test/net" />
 
                                                         <brls:RadioCell
+                                                                id="tools/proxy_test"
+                                                                title="@i18n/tsvitch/setting/tools/test/proxy" />
+
+                                                        <brls:RadioCell
                                                                 id="tools/vibration_test"
                                                                 title="@i18n/tsvitch/setting/tools/test/vibration" />
 
@@ -124,6 +128,88 @@
                                                 <brls:RadioCell
                                                         id="tools/quit"
                                                         title="@i18n/hints/exit" />
+                                        </brls:Box>
+                                </brls:ScrollingFrame>
+                        </Tab>
+
+                        <Tab label="IPTV Settings"
+                                style="inline"
+                                icon="@res/svg/setting_tools.svg"
+                                iconActivate="@res/svg/setting_tools_active.svg"
+                                fontSize="22">
+                                <brls:ScrollingFrame
+                                        width="auto"
+                                        height="auto"
+                                        marginTop="10"
+                                        grow="1.0">
+
+                                        <brls:Box
+                                                width="auto"
+                                                height="auto"
+                                                axis="column"
+                                                alignItems="stretch"
+                                                paddingLeft="@style/brls/tab_frame/content_padding_sides"
+                                                paddingRight="@style/brls/tab_frame/content_padding_sides"
+                                                paddingTop="@style/brls/tab_frame/content_padding_top_bottom"
+                                                paddingBottom="@style/brls/tab_frame/content_padding_top_bottom">
+                                                
+                                                <brls:Header
+                                                        width="auto"
+                                                        height="auto"
+                                                        title="IPTV Configuration"
+                                                        marginBottom="0px" />
+                                                <brls:Box
+                                                        width="100%"
+                                                        height="auto"
+                                                        axis="column"
+                                                        marginBottom="30px">
+
+                                                        <SelectorCell
+                                                                id="setting/iptv/mode_selector"
+                                                                title="IPTV Mode" />
+
+                                                        <!-- M3U8 Section -->
+                                                        <brls:Box
+                                                                id="setting/iptv/m3u8_section"
+                                                                width="100%"
+                                                                height="auto"
+                                                                axis="column"
+                                                                marginTop="20px">
+
+                                                                <brls:InputCell
+                                                                        id="setting/tools/m3u8/input"
+                                                                        title="M3U8 URL"
+                                                                />
+
+                                                                <SelectorCell
+                                                                        id="setting/tools/m3u8/timeout" />
+
+                                                        </brls:Box>
+
+                                                        <!-- Xtream Section -->
+                                                        <brls:Box
+                                                                id="setting/iptv/xtream_section"
+                                                                width="100%"
+                                                                height="auto"
+                                                                axis="column"
+                                                                marginTop="20px">
+
+                                                                <brls:InputCell
+                                                                        id="setting/iptv/xtream_server"
+                                                                        title="Server URL" />
+
+                                                                <brls:InputCell
+                                                                        id="setting/iptv/xtream_username"
+                                                                        title="Username" />
+
+                                                                <brls:InputCell
+                                                                        id="setting/iptv/xtream_password"
+                                                                        title="Password" />
+
+                                                        </brls:Box>
+
+                                                </brls:Box>
+
                                         </brls:Box>
                                 </brls:ScrollingFrame>
                         </Tab>

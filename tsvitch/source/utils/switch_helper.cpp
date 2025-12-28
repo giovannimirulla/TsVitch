@@ -1,5 +1,7 @@
 #ifdef __SWITCH__
 #include "utils/switch_helper.hpp"
+#include <cstring>
+
 HidsysNotificationLedPattern SwitchHelper::getBreathePattern() {
     HidsysNotificationLedPattern pattern;
     memset(&pattern, 0, sizeof(pattern));

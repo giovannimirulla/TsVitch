@@ -228,7 +228,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 )
 set_source_files_properties(
         tsvitch/source/utils/config_helper.cpp
-        tsvitch/source/activity/setting_activity.cpp
+        tsvitch/source/utils/xtream_helper.cpp
+        tsvitch/source/activity/settings_activity.cpp
         tsvitch/source/activity/dlna_activity.cpp
         PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 
@@ -336,6 +337,7 @@ elseif (PLATFORM_SWITCH)
 endif ()
 
 target_include_directories(${PROJECT_NAME} PRIVATE tsvitch/include tsvitch/include/api ${APP_PLATFORM_INCLUDE})
+target_compile_definitions(${PROJECT_NAME} PRIVATE APP_NAME="${PROJECT_NAME}")
 target_compile_options(${PROJECT_NAME} PRIVATE -ffunction-sections -fdata-sections -Wunused-variable ${APP_PLATFORM_OPTION})
 target_link_libraries(${PROJECT_NAME} PRIVATE wiliwiliLibExtra borealis lunasvg pystring z ${APP_PLATFORM_LIB})
 target_link_options(${PROJECT_NAME} PRIVATE ${APP_PLATFORM_LINK_OPTION})

@@ -725,6 +725,8 @@ void VideoView::setLiveMode() {
     leftStatusLabel->setVisibility(brls::Visibility::GONE);
     centerStatusLabel->setVisibility(brls::Visibility::GONE);
     rightStatusLabel->setVisibility(brls::Visibility::GONE);
+    // Nascondi il pointer per le live
+    osdSlider->setPointerVisible(false);
     _setTvControlMode(false);
 }
 
@@ -733,7 +735,19 @@ void VideoView::setVideoMode() {
     leftStatusLabel->setVisibility(brls::Visibility::VISIBLE);
     centerStatusLabel->setVisibility(brls::Visibility::VISIBLE);
     rightStatusLabel->setVisibility(brls::Visibility::VISIBLE);
+    // Mostra il pointer per i video
+    osdSlider->setPointerVisible(true);
     _setTvControlMode(isTvControlMode && !isLiveMode);
+}
+
+void VideoView::setAdMode() {
+    isLiveMode = false;
+    leftStatusLabel->setVisibility(brls::Visibility::VISIBLE);
+    centerStatusLabel->setVisibility(brls::Visibility::VISIBLE);
+    rightStatusLabel->setVisibility(brls::Visibility::VISIBLE);
+    // Nascondi il pointer per gli ad
+    osdSlider->setPointerVisible(false);
+    _setTvControlMode(false);
 }
 
 void VideoView::setTvControlMode(bool state) {
@@ -774,6 +788,12 @@ void VideoView::hideHighlightLineSetting() { showHighlightLineSetting = false; }
 void VideoView::hideVideoProgressSlider() { osdSlider->setVisibility(brls::Visibility::GONE); }
 
 void VideoView::showVideoProgressSlider() { osdSlider->setVisibility(brls::Visibility::VISIBLE); }
+
+void VideoView::disableProgressSliderSeek(bool disabled) {
+    brls::Logger::debug("VideoView: disableProgressSliderSeek = {}", disabled);
+    this->disabledSliderGesture = disabled;
+    osdSlider->setDisabledPointerGesture(disabled);
+}
 
 void VideoView::setTitle(const std::string& title) { this->videoTitleLabel->setText(title); }
 
@@ -969,7 +989,9 @@ void VideoView::registerMpvEvent() {
             case MpvEventEnum::MPV_FILE_ERROR: {
                 this->hideLoading();
                 this->showOSD(false);
-                auto dialog = new brls::Dialog("hints/live_error"_i18n);
+                // Mostra messaggio di errore diverso per live e video
+                std::string errorKey = this->isLiveMode ? "hints/live_error"_i18n : "hints/video_error"_i18n;
+                auto dialog = new brls::Dialog(errorKey);
                 dialog->addButton("hints/back"_i18n,
                                   []() { brls::Application::popActivity(brls::TransitionAnimation::NONE); });
                 dialog->open();

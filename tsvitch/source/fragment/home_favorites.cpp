@@ -14,7 +14,8 @@
 #include "fragment/home_favorites.hpp"
 #include "core/FavoriteManager.hpp"
 #include "core/HistoryManager.hpp"
-#include "api/tsvitch/result/home_live_result.h"  // aggiungi questa riga
+#include "core/DownloadManager.hpp"
+#include "api/tsvitch/result/home_live_result.h"
 
 using namespace brls::literals;
 
@@ -59,6 +60,11 @@ HomeFavorites::HomeFavorites() {
 
     this->registerAction("hints/toggle_favorite"_i18n, brls::BUTTON_X, [this](...) {
         this->toggleFavorite();
+        return true;
+    });
+
+    this->registerAction("Scarica video", brls::BUTTON_RT, [this](...) {
+        this->downloadVideo();
         return true;
     });
 }
@@ -108,6 +114,83 @@ void HomeFavorites::toggleFavorite() {
            //focus sidebar
             brls::Application::giveFocus(this->getTabBar());
         }
+    }
+}
+
+void HomeFavorites::downloadVideo() {
+    // Ottieni l'item attualmente focalizzato
+    auto* item = dynamic_cast<RecyclingGridItemLiveVideoCard*>(this->recyclingGrid->getFocusedItem());
+    if (!item) {
+        brls::Logger::warning("HomeFavorites::downloadVideo: No focused item");
+        return;
+    }
+
+    // Ottieni il canale
+    tsvitch::LiveM3u8 channel = item->getChannel();
+    
+    // Controlla se è una live stream in corso
+    std::string url = channel.url;
+    std::string title = channel.title;
+    
+    // Converte tutto in minuscolo per confronto case-insensitive
+    std::string urlLower = url;
+    std::string titleLower = title;
+    std::transform(urlLower.begin(), urlLower.end(), urlLower.begin(), ::tolower);
+    std::transform(titleLower.begin(), titleLower.end(), titleLower.begin(), ::tolower);
+    
+    // Determina se è una live stream
+    bool isLiveStream = false;
+    
+    // Indicatori di live stream negli URL e titoli
+    if (urlLower.find("live") != std::string::npos || 
+        urlLower.find("stream") != std::string::npos ||
+        urlLower.find(".m3u8") != std::string::npos ||
+        urlLower.find(".ts") != std::string::npos ||
+        titleLower.find("live") != std::string::npos ||
+        titleLower.find("diretta") != std::string::npos) {
+        isLiveStream = true;
+    }
+    
+    // Se è una live stream, mostra errore e blocca il download
+    if (isLiveStream) {
+        brls::Logger::warning("HomeFavorites: Cannot download live streams");
+        brls::Dialog* dialog = new brls::Dialog("Impossibile scaricare una diretta in corso.\nIl download è disponibile solo per i contenuti on-demand.");
+        dialog->addButton("OK", []() {});
+        dialog->open();
+        return;
+    }
+    
+    // Avvia il download
+    std::string downloadId = DownloadManager::instance().startDownload(
+        channel.title, 
+        channel.url, 
+        channel.logo,  // URL dell'immagine
+        [](const std::string& id, float progress, size_t downloaded, size_t total) {
+            // Callback di progresso
+            brls::Logger::debug("Download {}: {:.1f}% ({}/{} bytes)", id, progress, downloaded, total);
+        },
+        [](const std::string& id, const std::string& filePath) {
+            // Callback di completamento
+            brls::Logger::info("Download {} completed: {}", id, filePath);
+            brls::sync([]() {
+                brls::Application::notify("Download completato!");
+            });
+        },
+        [](const std::string& id, const std::string& error) {
+            // Callback di errore
+            brls::Logger::error("Download {} failed: {}", id, error);
+            brls::sync([error]() {
+                brls::Application::notify("Errore download: " + error);
+            });
+        }
+    );
+    
+    if (!downloadId.empty()) {
+        brls::Application::notify("Download avviato: " + channel.title);
+        brls::Logger::info("HomeFavorites: Started download {} for {}", downloadId, channel.title);
+    } else {
+        brls::Application::notify("Errore nell'avvio del download");
+        brls::Logger::error("HomeFavorites: Failed to start download for {}", channel.title);
     }
 }
 

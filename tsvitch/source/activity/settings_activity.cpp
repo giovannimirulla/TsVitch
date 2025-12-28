@@ -6,9 +6,10 @@
 #include <borealis/views/dialog.hpp>
 #include <borealis/views/cells/cell_bool.hpp>
 #include <borealis/views/cells/cell_input.hpp>
+#include <cpr/cpr.h>
 
 #include "tsvitch.h"
-#include "activity/setting_activity.hpp"
+#include "activity/settings_activity.hpp"
 #include "fragment/setting_network.hpp"
 #include "fragment/test_rumble.hpp"
 #include "utils/config_helper.hpp"
@@ -87,13 +88,13 @@ const std::map<std::string, std::map<std::string, std::string>> OPENSOURCE = {
 #endif
 };
 
-SettingActivity::SettingActivity(std::function<void()> onClose) : onCloseCallback(onClose) {
-    brls::Logger::debug("SettingActivity: create");
+SettingsActivity::SettingsActivity(std::function<void()> onClose) : onCloseCallback(onClose) {
+    brls::Logger::debug("SettingsActivity: create");
     GA("open_setting")
 }
 
-void SettingActivity::onContentAvailable() {
-    brls::Logger::debug("SettingActivity: onContentAvailable");
+void SettingsActivity::onContentAvailable() {
+    brls::Logger::debug("SettingsActivity: onContentAvailable");
 
 #ifdef __SWITCH__
     btnTutorialOpenApp->registerClickAction([](...) -> bool {
@@ -151,6 +152,37 @@ void SettingActivity::onContentAvailable() {
         auto dialog = new brls::Dialog((brls::Box*)new SettingNetwork());
         dialog->addButton("hints/ok"_i18n, []() {});
         dialog->open();
+        return true;
+    });
+
+    btnProxyTest->registerClickAction([](...) -> bool {
+        // Testa o proxy fazendo uma requisição simples
+        std::string proxyUrl = ProgramConfig::instance().getProxyUrl();
+        
+        if (proxyUrl.empty()) {
+            brls::Application::notify("tsvitch/setting/tools/test/proxy_none"_i18n);
+            return true;
+        }
+        
+        brls::Application::notify("tsvitch/setting/tools/test/proxy_testing"_i18n + ": " + proxyUrl);
+        
+        // Faz o teste usando a configuração atual do sistema
+        try {
+            // Usa a configuração de proxy atual que já foi aplicada ao sistema
+            auto response = cpr::Get(cpr::Url{"http://httpbin.org/ip"}, 
+                                   cpr::Timeout{5000});
+            
+            if (response.status_code == 200) {
+                brls::Application::notify("tsvitch/setting/tools/test/proxy_success"_i18n);
+            } else if (response.status_code == 0) {
+                brls::Application::notify("tsvitch/setting/tools/test/proxy_error"_i18n + ": " + response.error.message);
+            } else {
+                brls::Application::notify("tsvitch/setting/tools/test/proxy_failed"_i18n + ": " + std::to_string(response.status_code));
+            }
+        } catch (const std::exception& e) {
+            brls::Application::notify("tsvitch/setting/tools/test/proxy_error"_i18n + ": " + std::string(e.what()));
+        }
+        
         return true;
     });
 
@@ -485,15 +517,46 @@ void SettingActivity::onContentAvailable() {
                                MPVCore::instance().restart();
                            });
 
+    // Inizializza il selettore modalità IPTV
+    auto iptvModeOption = conf.getOptionData(SettingItem::IPTV_MODE);
+    selectorIPTVMode->init("IPTV Mode", iptvModeOption.optionList,
+                          conf.getIntOptionIndex(SettingItem::IPTV_MODE), [this, iptvModeOption](int data) {
+                              ProgramConfig::instance().setSettingItem(SettingItem::IPTV_MODE,
+                                                                       iptvModeOption.rawOptionList[data]);
+                              this->updateIPTVSectionVisibility();
+                              OnIPTVModeChanged.fire(); // Notifica il cambio modalità IPTV
+                          });
+
+    // Inizializza i controlli M3U8
     auto m3u8Url = conf.getSettingItem(SettingItem::M3U8_URL_ITEM, std::string{""});
     btnM3U8Input->init(
-        "tsvitch/setting/tools/m3u8/input"_i18n, m3u8Url,
+        "M3U8 URL", m3u8Url,
         [](const std::string& data) {
             std::string m3u8Url = pystring::strip(data);
             ProgramConfig::instance().setM3U8Url(m3u8Url);
             OnM3U8UrlChanged.fire(); // Notifica tutte le view interessate
         },
-        "tsvitch/setting/tools/m3u8/hint"_i18n, "tsvitch/setting/tools/m3u8/hint"_i18n, 255);
+        "Enter M3U8 playlist URL", "http://example.com/playlist.m3u8", 255);
+    
+    // Soluzione definitiva per l'overflow del testo nell'InputCell
+    btnM3U8Input->detail->setMaxWidth(140);      // Riduciamo a 140px per essere sicuri
+    btnM3U8Input->detail->setSingleLine(true);   // Forza una sola linea
+
+    auto m3u8TimeoutOption = conf.getOptionData(SettingItem::M3U8_TIMEOUT);
+    selectorM3U8Timeout->init("M3U8 Timeout", m3u8TimeoutOption.optionList,
+                              conf.getIntOptionIndex(SettingItem::M3U8_TIMEOUT), [m3u8TimeoutOption](int data) {
+                                  ProgramConfig::instance().setSettingItem(SettingItem::M3U8_TIMEOUT,
+                                                                           m3u8TimeoutOption.rawOptionList[data]);
+                              });
+
+    auto proxyUrl = conf.getSettingItem(SettingItem::PROXY_URL_ITEM, std::string{""});
+    btnProxyInput->init(
+        "tsvitch/setting/tools/proxy/input"_i18n, proxyUrl,
+        [](const std::string& data) {
+            std::string proxyUrl = pystring::strip(data);
+            ProgramConfig::instance().setProxyUrl(proxyUrl);
+        },
+        "tsvitch/setting/tools/proxy/hint"_i18n, "tsvitch/setting/tools/proxy/hint"_i18n, 255);
 
 #if defined(PS4) || defined(__PSV__)
     btnHWDEC->setVisibility(brls::Visibility::GONE);
@@ -513,9 +576,82 @@ void SettingActivity::onContentAvailable() {
                          MPVCore::LOW_QUALITY = value;
                          MPVCore::instance().restart();
                      });
+    // Inizializza i controlli Xtream Codes IPTV
+    btnXtreamServer->init("Server URL", conf.getXtreamServerUrl(), 
+        [](const std::string& data) {
+            ProgramConfig::instance().setXtreamServerUrl(data);
+            // Notifica il cambio dei parametri Xtream
+            XtreamData xtreamData;
+            xtreamData.url = data;
+            xtreamData.username = ProgramConfig::instance().getXtreamUsername();
+            xtreamData.password = ProgramConfig::instance().getXtreamPassword();
+            OnXtreamChanged.fire(xtreamData);
+        }, 
+        "Enter Xtream Codes server URL", "http://server.com:8080", 255);
+    
+    btnXtreamUsername->init("Username", conf.getXtreamUsername(), 
+        [](const std::string& data) {
+            ProgramConfig::instance().setXtreamUsername(data);
+            // Notifica il cambio dei parametri Xtream
+            XtreamData xtreamData;
+            xtreamData.url = ProgramConfig::instance().getXtreamServerUrl();
+            xtreamData.username = data;
+            xtreamData.password = ProgramConfig::instance().getXtreamPassword();
+            OnXtreamChanged.fire(xtreamData);
+        }, 
+        "Enter your username", "username", 255);
+    
+    btnXtreamPassword->init("Password", conf.getXtreamPassword(), 
+        [](const std::string& data) {
+            ProgramConfig::instance().setXtreamPassword(data);
+            // Notifica il cambio dei parametri Xtream
+            XtreamData xtreamData;
+            xtreamData.url = ProgramConfig::instance().getXtreamServerUrl();
+            xtreamData.username = ProgramConfig::instance().getXtreamUsername();
+            xtreamData.password = data;
+            OnXtreamChanged.fire(xtreamData);
+        }, 
+        "Enter your password", "password", 255);
+
+    // Imposta la visibilità iniziale delle sezioni
+    this->updateIPTVSectionVisibility();
+
+    // Inizializza tutti gli altri selettori...
+    // (Il resto del codice esistente)
+    
+    brls::Logger::debug("SettingsActivity: onContentAvailable completed");
 }
 
-SettingActivity::~SettingActivity() {
-    brls::Logger::debug("SettingActivity: delete");
-    if (onCloseCallback) onCloseCallback();
+void SettingsActivity::updateIPTVSectionVisibility() {
+    auto& conf = ProgramConfig::instance();
+    int currentMode = conf.getIntOption(SettingItem::IPTV_MODE);
+    
+    // 0 = M3U8, 1 = Xtream
+    bool showM3U8 = (currentMode == 0);
+    bool showXtream = (currentMode == 1);
+    
+    // Mostra/nascondi le sezioni
+    if (boxM3U8Section) {
+        boxM3U8Section->setVisibility(showM3U8 ? brls::Visibility::VISIBLE : brls::Visibility::GONE);
+    }
+    
+    if (boxXtreamSection) {
+        boxXtreamSection->setVisibility(showXtream ? brls::Visibility::VISIBLE : brls::Visibility::GONE);
+    }
+    
+    brls::Logger::debug("IPTV Section Visibility updated: M3U8={}, Xtream={}", showM3U8, showXtream);
+}
+
+void SettingsActivity::willDisappear(bool resetState) {
+    brls::Logger::debug("SettingsActivity: willDisappear");
+    if (onCloseCallback) {
+        onCloseCallback();
+        onCloseCallback = nullptr; // Clear the callback to avoid calling it again
+    }
+    brls::Activity::willDisappear(resetState);
+}
+
+SettingsActivity::~SettingsActivity() {
+    brls::Logger::debug("SettingsActivity: destroy");
+    // Callback moved to willDisappear to avoid calling it during destruction
 }

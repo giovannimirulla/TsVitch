@@ -29,9 +29,7 @@ void RecyclingGridItemLiveVideoCard::setChannel(tsvitch::LiveM3u8 liveData) {
 
     bool isFavorite = FavoriteManager::get()->isFavorite(liveData.url);
 
-    brls::Logger::debug("isFavorite: {}", isFavorite);
-
-    if (FavoriteManager::get()->isFavorite(liveData.url)) {
+    if (isFavorite) {
         this->svgFavoriteIcon->setImageFromSVGRes("svg/ico-favorite-activate.svg");
         this->svgFavoriteIcon->setVisibility(brls::Visibility::VISIBLE);
     } else

@@ -24,6 +24,8 @@ public:
 
     void toggleFavorite();
 
+    void downloadVideo();
+
 private:
     BRLS_BIND(RecyclingGrid, recyclingGrid, "home/history/recyclingGrid");
 };

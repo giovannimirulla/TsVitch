@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="bpx-svg-sprite-thumb" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 15 17.8">
+  <!-- Generator: Adobe Illustrator 29.0.1, SVG Export Plug-In . SVG Version: 2.1.0 Build 192)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: #fff;
+      }
+    </style>
+  </defs>
+  <path class="st0" d="M15,1.5c0,.8-.6,1.4-1.4,1.5l-2.6,5.3c.9.4,1.5,1.3,1.5,2.4v4.5c0,1-1,2.6-3,2.6h-4.2c-2,0-3-1.6-3-2.6v-4.5c0-1,.6-2,1.5-2.4L1.4,3c-.8,0-1.4-.7-1.4-1.5S.7,0,1.5,0h0c.8,0,1.5.7,1.5,1.5s0,.6-.3.8l2.8,5.8h4l2.7-5.8c-.2-.2-.2,0-.2-.8s.7-1.5,1.5-1.5,1.5.7,1.5,1.5Z"/>
+</svg>

@@ -14,6 +14,7 @@
 
 #include "core/HistoryManager.hpp"
 #include "core/FavoriteManager.hpp"
+#include "core/DownloadProgressManager.hpp"
 
 #ifdef IOS
 #include <SDL2/SDL_main.h>
@@ -30,7 +31,7 @@ int main(int argc, char* argv[]) {
         } else if (std::strcmp(argv[i], "-t") == 0) {
             MPVCore::TERMINAL = true;
         } else if (std::strcmp(argv[i], "-o") == 0) {
-            const char* path = (i + 1 < argc) ? argv[++i] : "tsvitch.log";
+            const char* path = (i + 1 < argc) ? argv[++i] : APP_NAME ".log";
             brls::Logger::setLogOutput(std::fopen(path, "w+"));
         }
     }
@@ -57,8 +58,12 @@ int main(int argc, char* argv[]) {
     }
 
     brls::Application::getPlatform()->exitToHomeMode(true);
-    brls::Application::createWindow("tsvitch");
+    brls::Application::createWindow(APP_NAME);
     brls::Logger::info("createWindow done");
+
+    // Initialize global download progress manager
+    tsvitch::DownloadProgressManager::getInstance()->initialize();
+    brls::Logger::info("DownloadProgressManager initialized");
 
     Register::initCustomView();
     Register::initCustomTheme();
@@ -66,10 +71,16 @@ int main(int argc, char* argv[]) {
 
     brls::Application::getPlatform()->disableScreenDimming(false);
 
-    if (brls::Application::getPlatform()->isApplicationMode())
+    bool isAppMode = brls::Application::getPlatform()->isApplicationMode();
+    brls::Logger::info("Application mode check: isApplicationMode = {}", isAppMode);
+
+    if (isAppMode) {
+        brls::Logger::info("Opening MainActivity (main interface)");
         Intent::openMain();
-    else
+    } else {
+        brls::Logger::info("Opening HintActivity (hint interface)");
         Intent::openHint();
+    }
 
     //check if user_id is set, if not register a new user
     if (ProgramConfig::instance().getDeviceID().empty()) {
@@ -112,6 +123,10 @@ int main(int argc, char* argv[]) {
     }
 
     brls::Logger::info("mainLoop done");
+    
+    // Cleanup download progress manager
+    tsvitch::DownloadProgressManager::getInstance()->cleanup();
+    
     ProgramConfig::instance().exit(argv);
 
     HistoryManager::get()->save();

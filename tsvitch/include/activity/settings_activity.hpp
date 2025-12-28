@@ -1,5 +1,3 @@
-
-
 #pragma once
 
 #include <borealis/core/activity.hpp>
@@ -14,30 +12,50 @@ class Label;
 class TextBox;
 class TsVitchSelectorCell;
 
-class SettingActivity : public brls::Activity {
+class SettingsActivity : public brls::Activity {
 public:
-    CONTENT_FROM_XML_RES("activity/setting_activity.xml");
+    CONTENT_FROM_XML_RES("activity/settings_activity.xml");
 
-    SettingActivity(std::function<void()> onClose = nullptr);
+    SettingsActivity(std::function<void()> onClose = nullptr);
 
     void onContentAvailable() override;
+    
+    void willDisappear(bool resetState = false) override;
 
-    ~SettingActivity() override;
+    ~SettingsActivity() override;
 
 private:
     std::function<void()> onCloseCallback;
+    
+    void updateIPTVSectionVisibility();
     
     BRLS_BIND(brls::RadioCell, btnTutorialOpenApp, "tools/tutorial_open");
     BRLS_BIND(brls::RadioCell, btnTutorialError, "tools/tutorial_error");
     BRLS_BIND(brls::RadioCell, btnTutorialFont, "tools/tutorial_font");
     BRLS_BIND(brls::RadioCell, btnNetworkChecker, "tools/network_checker");
+    BRLS_BIND(brls::RadioCell, btnProxyTest, "tools/proxy_test");
     BRLS_BIND(brls::RadioCell, btnReleaseChecker, "tools/release_checker");
     BRLS_BIND(brls::RadioCell, btnQuit, "tools/quit");
     BRLS_BIND(brls::RadioCell, btnOpenConfig, "tools/config_dir");
     BRLS_BIND(brls::RadioCell, btnVibrationTest, "tools/vibration_test");
     BRLS_BIND(brls::BooleanCell, btnTls, "setting/network/tls");
     BRLS_BIND(brls::BooleanCell, btnProxy, "setting/network/proxy");
+    
+    // IPTV Configuration
+    BRLS_BIND(TsVitchSelectorCell, selectorIPTVMode, "setting/iptv/mode_selector");
+    BRLS_BIND(brls::Box, boxM3U8Section, "setting/iptv/m3u8_section");
+    BRLS_BIND(brls::Box, boxXtreamSection, "setting/iptv/xtream_section");
+    
+    // M3U8 Controls
     BRLS_BIND(brls::InputCell, btnM3U8Input, "setting/tools/m3u8/input");
+    BRLS_BIND(brls::InputCell, btnProxyInput, "setting/tools/proxy/input");
+    BRLS_BIND(TsVitchSelectorCell, selectorM3U8Timeout, "setting/tools/m3u8/timeout");
+    
+    // Xtream Controls
+    BRLS_BIND(brls::InputCell, btnXtreamServer, "setting/iptv/xtream_server");
+    BRLS_BIND(brls::InputCell, btnXtreamUsername, "setting/iptv/xtream_username");
+    BRLS_BIND(brls::InputCell, btnXtreamPassword, "setting/iptv/xtream_password");
+    
     BRLS_BIND(TsVitchSelectorCell, selectorLang, "setting/language");
     BRLS_BIND(TsVitchSelectorCell, selectorTheme, "setting/ui/theme");
     BRLS_BIND(TsVitchSelectorCell, selectorCustomTheme, "setting/custom/theme");
