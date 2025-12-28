@@ -42,7 +42,7 @@ inline void showLiveStreamDownloadError() {
                           brls::getStr("tsvitch/cast/live_download_error_desc");
     
     brls::Dialog* dialog = new brls::Dialog(message);
-    dialog->addButton("brls/hints/ok"_i18n, []() {});
+    dialog->addButton(brls::getStr("brls/hints/ok"), []() {});
     dialog->open();
 }
 
