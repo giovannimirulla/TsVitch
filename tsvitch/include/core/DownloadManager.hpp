@@ -51,9 +51,10 @@ struct DownloadItem {
     std::vector<DownloadChunk> chunks;
     size_t chunkSize;
     
-    DownloadItem() : status(DownloadStatus::PENDING), progress(0.0f), 
-                     totalSize(0), downloadedSize(0), useChunkedDownload(false), chunkSize(0),
-                     startTime(std::chrono::steady_clock::now()) {}
+    DownloadItem() : status(DownloadStatus::PENDING), progress(0.0f),
+                     totalSize(0), downloadedSize(0), error(),
+                     startTime(std::chrono::steady_clock::now()),
+                     useChunkedDownload(false), chunkSize(0) {}
 };
 
 class DownloadManager : public brls::Singleton<DownloadManager> {

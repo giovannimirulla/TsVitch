@@ -171,8 +171,8 @@ void SponsorsView::renderList(const json& arr) {
             if (!brls::isSteamDeck())
 #endif
             {
-                auto* p = (brls::DesktopPlatform*)brls::Application::getPlatform();
-                p->openBrowser(url);
+                auto* platform = brls::Application::getPlatform();
+                if (platform) platform->openBrowser(url);
             }
 #endif
             return true;
@@ -213,8 +213,8 @@ void SponsorsView::renderFallback() {
         if (!brls::isSteamDeck())
 #endif
         {
-            auto* p = (brls::DesktopPlatform*)brls::Application::getPlatform();
-            p->openBrowser(url);
+            auto* platform = brls::Application::getPlatform();
+            if (platform) platform->openBrowser(url);
         }
 #endif
         return true;

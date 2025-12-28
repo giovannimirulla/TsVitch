@@ -133,8 +133,8 @@ void SettingsActivity::onContentAvailable() {
         if (!brls::isSteamDeck())
 #endif
         {
-            auto* p = (brls::DesktopPlatform*)brls::Application::getPlatform();
-            p->openBrowser(configPath);
+            auto* platform = brls::Application::getPlatform();
+            if (platform) platform->openBrowser(configPath);
         }
 #endif
         return true;
