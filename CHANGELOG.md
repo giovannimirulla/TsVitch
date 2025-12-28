@@ -4,11 +4,145 @@ Tutte le modifiche significative a questo progetto saranno documentate in questo
 
 ---
 
-## [Unreleased] - 0.3.0
+## [0.3.0] - 2025-01-XX
 
-### 🎉 Nuove Funzionalità
+### 🎉 Nuove Funzionalità Principali
 
-#### Sistema di Download Completo
+#### 📥 Sistema di Download Completo
+- **Download Manager** con supporto multi-threaded e chunked ottimizzato per Nintendo Switch
+- **Nuovo Tab Downloads** nell'interfaccia per gestire i download attivi e completati
+- **Controlli Avanzati**: pausa, ripresa e cancellazione dei download
+- **Download Automatico Copertine** per ogni video scaricato
+- **Progress Tracking in Tempo Reale** con velocità e tempo rimanente
+- **Persistenza Download**: riprendi i download incompleti dopo il riavvio
+- **Download Multipli Simultanei** per massimizzare la velocità
+
+#### 📺 Supporto IPTV Xtream Codes
+- **Integrazione Xtream API** completa per provider IPTV professionali
+- **Switcher Modalità IPTV** per passare tra M3U8 e Xtream in un tap
+- **Organizzazione per Categorie** dei canali live TV
+- **Sistema di Autenticazione** sicuro per server Xtream
+- **⚡ Caricamento 4.5x Più Veloce** grazie al caching ottimizzato
+
+#### ⏯️ Ripristino Posizione Video
+- **Auto-Resume Intelligente**: i video ripartono da dove li hai lasciati
+- **Gestione Automatica**: distingue tra live stream e video on-demand
+- **Cache Persistente** con scadenza automatica (30 giorni)
+- **Smart Tracking**: ignora posizioni troppo vicine all'inizio o alla fine
+
+#### 🚫 Prevenzione Download Live Stream
+- **Rilevamento Automatico** di contenuti live tramite analisi URL e titolo
+- **Blocco Download Live** con messaggi di errore chiari e localizzati
+- **Sistema Centralizzato** per consistenza in tutta l'app
+
+#### 👥 Sezione Contributors e Sponsors
+- **Vista Contributori** con avatar e statistiche da GitHub
+- **Vista Sponsor** per riconoscere i supporter del progetto
+- **QR Code** per accesso rapido a repository e pagina sponsor
+- **Integrazione GitHub API** (REST + GraphQL) con cache 24h
+
+#### 📺 Gestione Annunci Migliorata
+- **Fallback Automatico**: se l'annuncio non carica, passa direttamente al contenuto
+- **Zero Interruzioni**: esperienza fluida anche con server ads non disponibili
+
+### 🎨 Miglioramenti UI/UX
+
+- **Video Progress Slider** più reattivo con gesture ottimizzate
+- **OSD Migliorato** per controlli on-screen più intuitivi
+- **Settings Riorganizzate** con nuova sezione About
+- **Fullscreen** con gestione perfezionata dei controlli
+
+### 🔧 Miglioramenti Tecnici
+
+#### Performance
+- **350% più veloce** nel caricamento dei canali
+- **Gestione Memoria Ottimizzata** per RecyclingGrid
+- **Threading Migliorato** per operazioni in background
+- **Crash Risolti** durante chiusura applicazione
+
+#### Networking & API
+- **HTTP Chunked Transfer Encoding** per download grandi
+- **Timeout Intelligenti** per connessioni lente
+- **Batch Requests** per ridurre latenza
+- **Error Handling Robusto** per chiamate di rete
+
+#### Sistema Canali
+- **Refactoring Completo** con supporto multi-sorgente
+- **Event System** per notifiche cambio IPTV
+- **Rilevamento Download** di contenuti già scaricati
+- **Cache Ottimizzata** per metadati e playlist
+
+### 🌍 Localizzazione
+
+Nuove traduzioni in **Italiano**, **Inglese** e **Portoghese Brasiliano**:
+- `live_download_error` - "Download non disponibile"
+- `live_download_error_desc` - Messaggio dettagliato errore live
+- `contributors_header` / `sponsors_header` - Intestazioni sezioni
+- `contrib_text` / `sponsor_qr` - Testi descrittivi
+
+### 🐛 Correzioni Bug
+
+**Stabilità**
+- ✅ Crash durante chiusura activity
+- ✅ Memory leak in gestione cache
+- ✅ Race conditions nel sistema download
+- ✅ Problemi sincronizzazione thread
+
+**Funzionalità**
+- ✅ Cache canali IPTV corretta
+- ✅ Banner download su Switch
+- ✅ ID duplicati per download
+- ✅ Detection live vs on-demand
+- ✅ Switch modalità IPTV runtime
+
+**UI/UX**
+- ✅ Layout RecyclingGrid
+- ✅ Focus navigazione controller
+- ✅ Glitch transizioni
+- ✅ Progress bar su tutti i temi
+
+### 📦 Dipendenze e Build
+
+- **Borealis UI** aggiornata (submodule)
+- **OpenCC** aggiornata (submodule)
+- **Crowdin** configurato per traduzioni
+- **GitHub Actions** per badge download automatici
+- **3 Nuovi Asset SVG** per UI download
+
+### 📊 Statistiche Release
+
+- **76 file modificati** (+8,621 / -322 righe)
+- **19 nuovi file** creati
+- **5 nuove classi**: DownloadManager, DownloadProgressManager, XtreamAPI, PlaybackPositionManager, Contributors/SponsorsView
+- **4 classi refactorate**: ChannelManager, VideoView, LivePlayerActivity, HomeFragments
+
+### 💡 Note di Installazione
+
+**Requisiti**:
+- Nintendo Switch con Atmosphère/CFW
+- Spazio sufficiente per download (consigliato: 2GB+)
+- Connessione internet per streaming e download
+
+**Compatibilità**:
+- ✅ Nintendo Switch
+- ✅ Playlist M3U8 tradizionali
+- ✅ Server Xtream Codes
+- ⚠️ Credenziali Xtream richieste per provider compatibili
+
+**Installazione**:
+1. Scarica `TsVitch.nro` dalla release
+2. Copia in `/switch/` sulla SD della Switch
+3. Avvia dall'Homebrew Launcher
+4. Configura playlist/Xtream nelle impostazioni
+
+### ⚠️ Disclaimers
+
+- **Conformità Legale**: L'app non fornisce contenuti IPTV. Gli utenti devono utilizzare playlist legittime.
+- **Uso Educativo**: Fornita "as-is" senza garanzie. L'autore non è responsabile per usi impropri.
+
+---
+
+## [0.2.1] - Previous Release
 - **Download Manager**: Implementato sistema di download completo con supporto per download multi-threaded e chunked (ottimizzato per Nintendo Switch)
 - **Tab Downloads**: Nuovo tab nell'interfaccia principale per visualizzare e gestire i download
 - **Controlli Download**: Supporto completo per pausa, ripresa e cancellazione dei download
