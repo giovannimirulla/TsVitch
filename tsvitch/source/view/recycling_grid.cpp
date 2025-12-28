@@ -180,7 +180,6 @@ RecyclingGrid::~RecyclingGrid() {
                 // Simply try to delete - if it fails, catch the exception
                 try {
                     // First set it to null to prevent double deletion
-                    auto* ds = this->dataSource;
                     this->dataSource = nullptr;
                     brls::Logger::info("RecyclingGrid: dataSource nullified, proceeding with delete");
                     

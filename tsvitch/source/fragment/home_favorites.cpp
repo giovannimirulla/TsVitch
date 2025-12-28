@@ -128,6 +128,38 @@ void HomeFavorites::downloadVideo() {
     // Ottieni il canale
     tsvitch::LiveM3u8 channel = item->getChannel();
     
+    // Controlla se è una live stream in corso
+    std::string url = channel.url;
+    std::string title = channel.title;
+    
+    // Converte tutto in minuscolo per confronto case-insensitive
+    std::string urlLower = url;
+    std::string titleLower = title;
+    std::transform(urlLower.begin(), urlLower.end(), urlLower.begin(), ::tolower);
+    std::transform(titleLower.begin(), titleLower.end(), titleLower.begin(), ::tolower);
+    
+    // Determina se è una live stream
+    bool isLiveStream = false;
+    
+    // Indicatori di live stream negli URL e titoli
+    if (urlLower.find("live") != std::string::npos || 
+        urlLower.find("stream") != std::string::npos ||
+        urlLower.find(".m3u8") != std::string::npos ||
+        urlLower.find(".ts") != std::string::npos ||
+        titleLower.find("live") != std::string::npos ||
+        titleLower.find("diretta") != std::string::npos) {
+        isLiveStream = true;
+    }
+    
+    // Se è una live stream, mostra errore e blocca il download
+    if (isLiveStream) {
+        brls::Logger::warning("HomeFavorites: Cannot download live streams");
+        brls::Dialog* dialog = new brls::Dialog("Impossibile scaricare una diretta in corso.\nIl download è disponibile solo per i contenuti on-demand.");
+        dialog->addButton("OK", []() {});
+        dialog->open();
+        return;
+    }
+    
     // Avvia il download
     std::string downloadId = DownloadManager::instance().startDownload(
         channel.title, 

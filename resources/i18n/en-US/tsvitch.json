@@ -146,7 +146,12 @@
       "brief": "TV finally on Switch",
       "repo_header": "Repository",
       "author_header": "Author's note",
-      "author": "How nice it is to watch TV in the bathroom"
+      "author": "How nice it is to watch TV in the bathroom",
+      "contrib_header": "Contributing & Sponsorship",
+      "contrib_text": "TsVitch is an open-source project: contributions, bug reports, and suggestions are welcome. If you like the project and want to support it, please consider becoming a sponsor. You can find all details and options in the GitHub repository.",
+      "contributors_header": "Contributors",
+      "sponsors_header": "Sponsors",
+      "sponsor_qr": "Become a Sponsor"
     },
     "opensource": {
       "tab": "Opensource"
@@ -396,7 +401,9 @@
       "cancel": "Cancel video casting",
       "err_connect": "Unable to connect to DLNA renderer",
       "err_url": "Unable to get video link",
-      "countdown": "Search countdown"
+      "countdown": "Search countdown",
+      "live_download_error": "Download unavailable",
+      "live_download_error_desc": "Cannot download a live stream in progress.\nDownload is only available for on-demand content."
     },
     "danmaku": {
       "header": "Danmaku settings",

@@ -62,6 +62,36 @@ std::string formatFileSize(size_t bytes) {
 static std::map<std::string, int> globalRetryCount;
 static std::mutex retryCountMutex;
 
+// Timeout configuration constants
+// These values are optimized for different scenarios and platforms
+static constexpr long DEFAULT_CONNECT_TIMEOUT = 30;      // seconds to connect
+static constexpr long DEFAULT_LOW_SPEED_LIMIT = 512;     // bytes/sec minimum
+static constexpr long DEFAULT_LOW_SPEED_TIME = 120;      // seconds at low speed before timeout
+static constexpr long SWITCH_CONNECT_TIMEOUT = 90;       // Nintendo Switch: more lenient
+static constexpr long SWITCH_LOW_SPEED_LIMIT = 32;       // Nintendo Switch: accept very slow speed
+static constexpr long SWITCH_LOW_SPEED_TIME = 300;       // Nintendo Switch: allow 5 minutes low speed
+
+// Retry configuration
+static constexpr int MAX_RETRIES_LARGE_FILE = 5;         // More retries for large files
+static constexpr int MAX_RETRIES_SMALL_FILE = 3;         // Fewer retries for small files
+static constexpr int EXPONENTIAL_BACKOFF_BASE = 1000;    // milliseconds
+static constexpr int MAX_BACKOFF_DELAY = 30000;          // 30 seconds max backoff
+
+// Helper function to calculate exponential backoff delay
+static long calculateRetryDelay(int retryAttempt) {
+    // Exponential backoff with jitter: delay = base * 2^retry + random(0, base)
+    long delay = EXPONENTIAL_BACKOFF_BASE * (1 << std::min(retryAttempt, 5)); // Cap at 2^5
+    if (delay > static_cast<long>(MAX_BACKOFF_DELAY)) delay = static_cast<long>(MAX_BACKOFF_DELAY);
+    
+    // Add jitter to prevent thundering herd
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, EXPONENTIAL_BACKOFF_BASE);
+    delay += dis(gen);
+    
+    return std::min(delay, static_cast<long>(MAX_BACKOFF_DELAY));
+}
+
 // Struttura semplificata per i dati di progresso (solo per downloadSimplified)
 struct SimpleProgressData {
     DownloadManager* manager;
@@ -79,9 +109,23 @@ struct ProgressData {
 
 // Callback per scrivere i dati scaricati
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::ofstream* stream) {
-    size_t totalSize = size * nmemb;
-    stream->write(static_cast<char*>(contents), totalSize);
-    return totalSize;
+    try {
+        size_t totalSize = size * nmemb;
+        if (totalSize == 0) return 0;
+        
+        stream->write(static_cast<char*>(contents), totalSize);
+        
+        // Verifica che la scrittura sia andata a buon fine
+        if (!stream->good()) {
+            brls::Logger::error("WriteCallback: Stream write failed, disk might be full");
+            return 0; // Return 0 to signal error to CURL
+        }
+        
+        return totalSize;
+    } catch (const std::exception& e) {
+        brls::Logger::error("WriteCallback: Exception during write: {}", e.what());
+        return 0; // Signal write error to CURL
+    }
 }
 
 // Callback normale per il progresso del download (per downloadWorker)
@@ -99,13 +143,20 @@ static int ProgressCallback(void* clientp, curl_off_t dltotal, curl_off_t dlnow,
         curl_off_t totalDownloaded = dlnow + data->existingFileSize;
         curl_off_t totalExpected = dltotal + data->existingFileSize;
         
+        // Throttle progress callbacks - max 2 per second to avoid UI stalls
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - data->lastCallbackTime);
+        if (elapsed.count() < 500) { // Less than 500ms since last callback
+            return 0; // Skip this callback
+        }
+        data->lastCallbackTime = now;
+        
         float progress = static_cast<float>(totalDownloaded) / static_cast<float>(totalExpected) * 100.0f;
         if (progress > 100.0f) progress = 100.0f;
         
         size_t downloaded = static_cast<size_t>(totalDownloaded);
         size_t total = static_cast<size_t>(totalExpected);
 
-        auto now = std::chrono::steady_clock::now();
         auto timeSinceLastCallback = std::chrono::duration_cast<std::chrono::milliseconds>(now - data->lastCallbackTime);
         float progressDiff = std::abs(progress - data->lastProgress);
 
@@ -1046,15 +1097,15 @@ void DownloadManager::downloadWorker(const std::string& id) {
     // Add retry settings for better reliability - be more permissive for Switch
 #ifdef __SWITCH__
     // Nintendo Switch has more aggressive network timeouts, be very lenient
-    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 64L); // 64 bytes/s minimum speed (very conservative for Switch)
-    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 300L); // Allow 5 minutes of low speed (very patient for Switch)
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 90L); // 90 seconds to connect (very patient for Switch)
+    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, SWITCH_LOW_SPEED_LIMIT);
+    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, SWITCH_LOW_SPEED_TIME);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, SWITCH_CONNECT_TIMEOUT);
 #else
-    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 512L); // 512 bytes/s minimum speed (reduced)
-    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 120L); // Allow 2 minutes of low speed before timeout (increased)
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L); // 30 seconds to connect
+    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, DEFAULT_LOW_SPEED_LIMIT);
+    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, DEFAULT_LOW_SPEED_TIME);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, DEFAULT_CONNECT_TIMEOUT);
 #endif
-    // Note: Total timeout will be set later, don't set it here
+    // Note: Total timeout will be set later based on file size estimates
     
     // Simplified socket options without lambda that might cause issues
     curl_easy_setopt(curl, CURLOPT_SOCKOPTFUNCTION, nullptr);
@@ -2167,6 +2218,41 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
     brls::Logger::info("DownloadManager: Step 1 - Got parameters: URL={}, Path={}, Size={}", 
                       url.substr(0, 50) + "...", localPath, downloadedSize);
     
+    // Crea la directory di download se non esiste
+    try {
+        std::string dirPath = getDownloadDirectory();
+        brls::Logger::debug("DownloadManager: Checking download directory: {}", dirPath);
+        
+        struct stat statInfo;
+        if (stat(dirPath.c_str(), &statInfo) != 0) {
+            brls::Logger::info("DownloadManager: Creating download directory: {}", dirPath);
+            if (mkdir(dirPath.c_str(), 0755) != 0 && errno != EEXIST) {
+                std::string error = "Failed to create directory: " + std::string(strerror(errno));
+                brls::Logger::error("DownloadManager: {}", error);
+                
+                // Notifica errore
+                std::lock_guard<std::mutex> lock(downloadsMutex);
+                auto it = findDownload(id);
+                if (it != downloads.end()) {
+                    it->status = DownloadStatus::FAILED;
+                    it->error = error;
+                }
+                return;
+            }
+            brls::Logger::info("DownloadManager: Download directory created successfully");
+        }
+    } catch (const std::exception& e) {
+        brls::Logger::error("DownloadManager: Exception creating directory: {}", e.what());
+        
+        std::lock_guard<std::mutex> lock(downloadsMutex);
+        auto it = findDownload(id);
+        if (it != downloads.end()) {
+            it->status = DownloadStatus::FAILED;
+            it->error = "Failed to create directory: " + std::string(e.what());
+        }
+        return;
+    }
+    
     // Disabilita lo screen dimming durante il download
     brls::Application::getPlatform()->disableScreenDimming(true, "Download in corso", "TsVitch");
     brls::Logger::info("DownloadManager: Screen dimming disabled for download");
@@ -2459,6 +2545,7 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
                 }
             } else if (res == CURLE_WRITE_ERROR && httpCode == 200) {
                 // CURLE_WRITE_ERROR può indicare che abbiamo fermato intenzionalmente il download al completamento
+                // oppure un errore reale (disco pieno, permessi insufficienti, etc.)
                 struct stat st;
                 if (stat(localPath.c_str(), &st) == 0) {
                     size_t currentSize = st.st_size;
@@ -2480,20 +2567,52 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
                         it->totalSize = expectedFileSize;
                         it->progress = 100.0f;
                         it->status = DownloadStatus::COMPLETED;
-                        brls::Logger::info("DownloadManager: Step 8 - CURLE_WRITE_ERROR with complete download ({}/{} bytes) - marking as successful", 
+                        brls::Logger::info("DownloadManager: CURLE_WRITE_ERROR with complete download ({}/{} bytes) - success", 
                                          currentSize, expectedFileSize);
                     } else {
                         // Download incompleto - CURLE_WRITE_ERROR indica un errore reale
-                        it->status = DownloadStatus::FAILED;
-                        it->error = "Download failed: Write error with incomplete transfer";
-                        brls::Logger::error("DownloadManager: Step 8 - CURLE_WRITE_ERROR with incomplete download ({} bytes, expected {})", 
-                                          currentSize, expectedFileSize);
+                        // Possibili cause: disco pieno, permessi insufficienti, file system error
+                        int currentRetries = 0;
+                        {
+                            std::lock_guard<std::mutex> retryLock(retryCountMutex);
+                            currentRetries = ++globalRetryCount[id];
+                        }
+                        
+                        int maxRetries = (currentSize > 10 * 1024 * 1024) ? MAX_RETRIES_LARGE_FILE : MAX_RETRIES_SMALL_FILE;
+                        
+                        if (currentRetries <= maxRetries) {
+                            long backoffMs = calculateRetryDelay(currentRetries - 1);
+                            brls::Logger::warning("DownloadManager: CURLE_WRITE_ERROR with incomplete download ({}/{} bytes)", 
+                                                currentSize, expectedFileSize);
+                            brls::Logger::info("DownloadManager: Retrying after {} ms (attempt {}/{})", backoffMs, currentRetries, maxRetries);
+                            
+                            it->status = DownloadStatus::DOWNLOADING;
+                            
+                            // Aspetta con exponential backoff prima di riprovare
+                            std::this_thread::sleep_for(std::chrono::milliseconds(backoffMs));
+                            
+                            // Recursive retry con lo stesso handler
+                            brls::Threading::async([this, id]() {
+                                downloadWorker(id);
+                            });
+                            return;
+                        } else {
+                            // Max retries reached - mark as failed
+                            it->status = DownloadStatus::FAILED;
+                            it->error = "Download failed: Write error (possibly disk full or permission denied)";
+                            brls::Logger::error("DownloadManager: CURLE_WRITE_ERROR after {} retries - download failed", maxRetries);
+                            
+                            // Clean up corrupted file
+                            if (std::remove(localPath.c_str()) != 0) {
+                                brls::Logger::warning("DownloadManager: Could not remove corrupted file {}", localPath);
+                            }
+                        }
                     }
                 } else {
                     // Non riesco a leggere il file - errore
                     it->status = DownloadStatus::FAILED;
                     it->error = "Download failed: Cannot access downloaded file";
-                    brls::Logger::error("DownloadManager: Step 8 - CURLE_WRITE_ERROR and cannot stat file");
+                    brls::Logger::error("DownloadManager: CURLE_WRITE_ERROR and cannot stat file");
                 }
             } else {
                 it->status = DownloadStatus::FAILED;
