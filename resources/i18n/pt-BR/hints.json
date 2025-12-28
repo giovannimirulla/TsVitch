@@ -19,5 +19,6 @@
   "exit_hint": "Deseja sair do aplicativo ?",
   "loading": "Carregando",
   "live_error": "Erro: A transmissão ao vivo não está disponível",
+  "video_error": "Erro: O vídeo não está disponível",
   "network_error": "Erro de rede"
 }

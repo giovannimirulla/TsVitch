@@ -383,6 +383,12 @@ void TsVitchClient::get_xtream_channels(const std::function<void(LiveM3u8ListRes
     get_xtream_channels_with_retry(callback, error, 3); // Max 3 retry attempts
 }
 
+/**
+ * Fetches live streams from Xtream Codes API with automatic retry logic.
+ * Timeout: 45+ seconds (Xtream servers typically slower than M3U8 sources)
+ * Retries: 3 attempts with exponential backoff (1s network, 3s server errors)
+ * Error Handling: Network errors retry, server errors 502/503 retry, 4xx no retry
+ */
 void TsVitchClient::get_xtream_channels_with_retry(const std::function<void(LiveM3u8ListResult)>& callback,
                                                   const ErrorCallback& error, int maxRetries) {
     auto serverUrl = ProgramConfig::instance().getXtreamServerUrl();
@@ -406,8 +412,8 @@ void TsVitchClient::get_xtream_channels_with_retry(const std::function<void(Live
     brls::Logger::debug("Fetching Xtream channels from: {} (retries left: {})", xtreamUrl, maxRetries);
     
     auto timeoutMs = ProgramConfig::instance().getIntOption(SettingItem::M3U8_TIMEOUT);
-    // Timeout più generoso per Xtream API che spesso è più lento
-    if (timeoutMs < 45000) timeoutMs = 45000; // Minimum 45 secondi per Xtream
+    // Use longer timeout for Xtream API (typically slower than M3U8 sources)
+    if (timeoutMs < 45000) timeoutMs = 45000; // Minimum 45 seconds for Xtream
     
     // Use cpr::GetCallback per migliori prestazioni asincrono
     cpr::GetCallback(

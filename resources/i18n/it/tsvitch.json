@@ -146,7 +146,12 @@
       "brief": "La TV finalmente sulla Switch",
       "repo_header": "Repository",
       "author_header": "Intervento dell'autore",
-      "author": "Quanto è bello guardare la TV in bagno"
+      "author": "Quanto è bello guardare la TV in bagno",
+      "contrib_header": "Contribuzione e Sponsor",
+      "contrib_text": "TsVitch è un progetto open-source: contributi, segnalazioni di bug e suggerimenti sono benvenuti. Se ti piace il progetto e vuoi sostenerlo, valuta di diventare sponsor. Trovi tutte le informazioni e le modalità nel repository GitHub.",
+      "contributors_header": "Contributori",
+      "sponsors_header": "Sponsor",
+      "sponsor_qr": "Diventa Sponsor"
     },
     "opensource": {
       "tab": "Opensource"
@@ -408,7 +413,9 @@
       "cancel": "Annulla casting video",
       "err_connect": "Impossibile connettersi al renderer DLNA",
       "err_url": "Impossibile ottenere il link del video",
-      "countdown": "Conto alla rovescia ricerca"
+      "countdown": "Conto alla rovescia ricerca",
+      "live_download_error": "Download non disponibile",
+      "live_download_error_desc": "Impossibile scaricare una diretta in corso.\nIl download è disponibile solo per i contenuti on-demand."
     },
     "danmaku": {
       "header": "Impostazioni Danmaku",

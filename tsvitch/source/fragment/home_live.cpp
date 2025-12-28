@@ -18,6 +18,7 @@
 #include "core/FavoriteManager.hpp"
 #include "core/ChannelManager.hpp"
 #include "core/DownloadManager.hpp"
+#include "utils/stream_helper.hpp"
 #include "core/DownloadProgressManager.hpp"
 
 #include "utils/config_helper.hpp"
@@ -420,7 +421,11 @@ void HomeLive::onLiveList(tsvitch::LiveM3u8ListResult result, bool firstLoad) {
         groupIndices.reserve(100);
         
         for (size_t i = 0; i < this->channelsList.size(); ++i) {
-            const std::string& groupTitle = this->channelsList[i].groupTitle;
+            std::string groupTitle = this->channelsList[i].groupTitle;
+            // Assegna un nome di default ai canali senza gruppo
+            if (groupTitle.empty()) {
+                groupTitle = "Uncategorized";
+            }
             groupIndices[groupTitle].push_back(i);
         }
         
@@ -780,6 +785,13 @@ void HomeLive::downloadVideo() {
 
     // Ottieni il canale
     tsvitch::LiveM3u8 channel = item->getChannel();
+    
+    // Controlla se è una live stream in corso
+    if (tsvitch::isLiveStream(channel.url, channel.title)) {
+        brls::Logger::warning("HomeLive: Cannot download live streams");
+        tsvitch::showLiveStreamDownloadError();
+        return;
+    }
     
     // Avvia il download
     std::string downloadId = DownloadManager::instance().startDownload(

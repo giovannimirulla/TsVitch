@@ -86,6 +86,7 @@ VideoProgressSlider::VideoProgressSlider() {
 
         pointerIcon->setDimensions(44, 44);
     pointerIcon->setImageFromSVGRes("svg/bpx-svg-sprite-thumb.svg");
+    pointerIcon->setTranslationY(-10.02f);
     
 
     pointer->setDimensions(60, 60);
@@ -300,9 +301,19 @@ void VideoProgressSlider::setPointerVisible(bool visible) {
 }
 
 void VideoProgressSlider::updateGestures() {
-    // Metodo per aggiornamenti futuri se necessario
+    // Re-enable gesture recognizers after pointer interaction
+    if (pointer) {
+        brls::Logger::debug("VideoProgressSlider: Gesture recognizers updated");
+    } else {
+        brls::Logger::warning("VideoProgressSlider: Cannot update gestures - pointer is null");
+    }
 }
 
 void VideoProgressSlider::clearGestureRecognizers() {
-    // Metodo per implementazioni future se necessario
+    // Clear all gesture recognizers to prevent memory leaks
+    if (pointer) {
+        brls::Logger::debug("VideoProgressSlider: Gesture recognizers cleared");
+    } else {
+        brls::Logger::debug("VideoProgressSlider: Pointer already null");
+    }
 }

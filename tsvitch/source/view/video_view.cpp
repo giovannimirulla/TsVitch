@@ -989,7 +989,9 @@ void VideoView::registerMpvEvent() {
             case MpvEventEnum::MPV_FILE_ERROR: {
                 this->hideLoading();
                 this->showOSD(false);
-                auto dialog = new brls::Dialog("hints/live_error"_i18n);
+                // Mostra messaggio di errore diverso per live e video
+                std::string errorKey = this->isLiveMode ? "hints/live_error"_i18n : "hints/video_error"_i18n;
+                auto dialog = new brls::Dialog(errorKey);
                 dialog->addButton("hints/back"_i18n,
                                   []() { brls::Application::popActivity(brls::TransitionAnimation::NONE); });
                 dialog->open();

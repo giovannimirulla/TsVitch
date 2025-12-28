@@ -28,6 +28,8 @@
 #include "view/selector_cell.hpp"
 #include "view/hint_label.hpp"
 #include "view/mpv_core.hpp"
+#include "view/contributors_view.hpp"
+#include "view/sponsors_view.hpp"
 
 void Register::initCustomView() {
     brls::Application::registerXMLView("AutoTabFrame", AutoTabFrame::create);
@@ -41,6 +43,8 @@ void Register::initCustomView() {
     brls::Application::registerXMLView("GalleryView", GalleryView::create);
     brls::Application::registerXMLView("CustomButton", CustomButton::create);
     brls::Application::registerXMLView("HintLabel", HintLabel::create);
+    brls::Application::registerXMLView("ContributorsView", ContributorsView::create);
+    brls::Application::registerXMLView("SponsorsView", SponsorsView::create);
 
     brls::Application::registerXMLView("UserInfoView", UserInfoView::create);
 

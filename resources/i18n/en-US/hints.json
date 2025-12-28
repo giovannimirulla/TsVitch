@@ -19,5 +19,6 @@
   "exit_hint": "Are you going to exit the application?",
   "loading": "Loading",
   "live_error": "Error: Live is not available",
+  "video_error": "Error: Video is not available",
   "network_error": "Network Error"
 }

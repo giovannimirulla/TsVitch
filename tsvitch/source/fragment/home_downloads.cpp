@@ -333,42 +333,56 @@ HomeDownloads::HomeDownloads() {
     startAutoRefresh();
     brls::Logger::debug("HomeDownloads: Auto-refresh started");
     
-    // Forza un refresh ritardato per assicurarsi che la UI sia pronta - DISABILITATO PER TESTING
-    // Ma SOLO se non ci stiamo spegnendo
-    // if (!isShuttingDown.load()) {
-    //     std::thread([this]() {
-    //         std::this_thread::sleep_for(std::chrono::milliseconds(500)); // Aspetta mezzo secondo
-    //         
-    //         // Controlla se l'app si sta spegnendo prima di fare sync
-    //         if (!isShuttingDown.load() && this->shouldAutoRefresh.load()) {
-    brls::Logger::warning("HomeDownloads: Delayed refresh thread DISABLED for testing");
-    //             try {
-    //                 brls::sync([this]() {
-    //                     if (!isShuttingDown.load() && this->shouldAutoRefresh.load()) {
-    //                         brls::Logger::info("HomeDownloads: Executing delayed refresh to show loaded downloads");
-    //                         if (dataSource && recyclingGrid) {
-    //                             auto downloads = DownloadManager::instance().getAllDownloads();
-    //                             brls::Logger::info("HomeDownloads: Delayed refresh found {} downloads", downloads.size());
-    //                             
-    //                             if (!downloads.empty()) {
-    //                                 dataSource->updateDownloads(downloads);
-    //                                 dataSource->forceRefresh(); // Forza il refresh indipendentemente dai cambiamenti
-    //                                 recyclingGrid->reloadData();
-    //                                 brls::Logger::info("HomeDownloads: Delayed refresh completed with {} downloads", downloads.size());
-    //                             } else {
-    //                                 brls::Logger::info("HomeDownloads: No downloads to show in delayed refresh");
-    //                             }
-    //                         } else {
-    //                             brls::Logger::error("HomeDownloads: dataSource or recyclingGrid is null in delayed refresh!");
-    //                         }
-    //                     }
-    //                 });
-    //             } catch (const std::exception& e) {
-    //                 brls::Logger::error("HomeDownloads: Error in delayed refresh: {}", e.what());
-    //             }
-    //         }
-    //     }).detach(); // Detach il thread per non dover gestirlo
-    // }
+    // Schedule delayed refresh to ensure UI is ready after loading downloads
+    if (this->shouldAutoRefresh.load()) {
+        brls::Threading::async([this]() {
+            // Wait a brief moment for UI initialization
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            
+            // Check if auto-refresh is still enabled
+            if (this->shouldAutoRefresh.load()) {
+                try {
+                    brls::sync([this]() {
+                        try {
+                            if (this->shouldAutoRefresh.load()) {
+                                brls::Logger::info("HomeDownloads: Executing delayed refresh to show loaded downloads");
+                                
+                                // Validate UI components before access
+                                if (!this->dataSource) {
+                                    brls::Logger::error("HomeDownloads: dataSource is null in delayed refresh!");
+                                    return;
+                                }
+                                if (!this->recyclingGrid) {
+                                    brls::Logger::error("HomeDownloads: recyclingGrid is null in delayed refresh!");
+                                    return;
+                                }
+                                
+                                auto downloads = DownloadManager::instance().getAllDownloads();
+                                brls::Logger::info("HomeDownloads: Delayed refresh found {} downloads", downloads.size());
+                                
+                                if (!downloads.empty()) {
+                                    this->dataSource->updateDownloads(downloads);
+                                    this->dataSource->forceRefresh();
+                                    this->recyclingGrid->reloadData();
+                                    brls::Logger::info("HomeDownloads: Delayed refresh completed with {} downloads", downloads.size());
+                                } else {
+                                    brls::Logger::info("HomeDownloads: No downloads to show in delayed refresh");
+                                }
+                            }
+                        } catch (const std::exception& e) {
+                            brls::Logger::error("HomeDownloads: Exception in delayed refresh sync block: {}", e.what());
+                        } catch (...) {
+                            brls::Logger::error("HomeDownloads: Unknown exception in delayed refresh sync block");
+                        }
+                    });
+                } catch (const std::exception& e) {
+                    brls::Logger::error("HomeDownloads: Error executing delayed refresh: {}", e.what());
+                } catch (...) {
+                    brls::Logger::error("HomeDownloads: Unknown exception in delayed refresh");
+                }
+            }
+        });
+    }
     
     brls::Logger::info("HomeDownloads: Constructor completed successfully");
 }

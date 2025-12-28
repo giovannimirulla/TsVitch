@@ -50,26 +50,6 @@
                                                 <brls:Header
                                                         width="auto"
                                                         height="auto"
-                                                        title="@i18n/tsvitch/setting/tools/m3u8/header"
-                                                        marginBottom="0px" />
-                                                <brls:Box
-                                                        width="100%"
-                                                        height="auto"
-                                                        axis="column"
-                                                        marginBottom="30px">
-
-                                                        <brls:InputCell
-                                                                id="setting/tools/m3u8/input"
-                                                        />
-
-                                                        <SelectorCell
-                                                                id="setting/tools/m3u8/timeout" />
-
-
-                                                </brls:Box>
-                                                <brls:Header
-                                                        width="auto"
-                                                        height="auto"
                                                         title="@i18n/tsvitch/setting/tools/proxy/header"
                                                         marginBottom="0px" />
                                                 <brls:Box

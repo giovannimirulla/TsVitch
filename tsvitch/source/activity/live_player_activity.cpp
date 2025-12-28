@@ -15,6 +15,8 @@
 
 #include "utils/shader_helper.hpp"
 #include "utils/config_helper.hpp"
+#include "utils/stream_helper.hpp"
+#include "utils/playback_position_manager.hpp"
 
 #include "view/video_view.hpp"
 
@@ -172,6 +174,10 @@ void LiveActivity::startAd(std::string adUrl) {
 void LiveActivity::startLive() {
     this->isAd = false;
     
+    // Rileva il tipo di contenuto PRIMA di caricare l'URL
+    // Questo imposta correttamente isLiveMode per eventuali errori di caricamento
+    this->detectContentType();
+    
     // Riabilita il seek quando non è più un annuncio
     this->video->disableProgressSliderSeek(false);
     
@@ -196,32 +202,28 @@ void LiveActivity::startLive() {
     
     this->video->setUrl(liveData.url);
     
-    // Registra un listener per l'evento MPV_LOADED per determinare il tipo di contenuto
+    // Registra un listener per l'evento MPV_LOADED per ri-verificare il tipo con la durata effettiva
+    // e per ripristinare la posizione salvata
     this->tl_event_id = MPVCore::instance().getEvent()->subscribe([this](MpvEventEnum event) {
         if (event == MPV_LOADED) {
+            // Ri-verifica il tipo di contenuto con la durata effettiva da MPV
             this->detectContentType();
+            
+            // Ripristina la posizione salvata solo per video on-demand (non per live stream)
+            if (!tsvitch::isLiveStream(liveData.url, liveData.title)) {
+                int64_t savedPosition = tsvitch::PlaybackPositionManager::getPosition(liveData.url);
+                if (savedPosition > 0) {
+                    MPVCore::instance().seek(savedPosition);
+                    brls::Logger::info("LiveActivity: Restored playback position to {} seconds", savedPosition);
+                }
+            }
         }
     });
     mpvEventRegistered = true;
 }
 
 void LiveActivity::detectContentType() {
-    // Controlla se il contenuto ha una durata definita
-    double duration = MPVCore::instance().duration;
-    
-    brls::Logger::debug("LiveActivity: detectContentType - duration: {}", duration);
-    
-    // Determina se è un live stream o un video con durata
-    bool isLiveStream = false;
-    
-    // Criteri per identificare un live stream:
-    // 1. Durata è 0 o negativa (sconosciuta)
-    // 2. Il contenuto è in playing ma la durata è ancora 0 dopo un po' di tempo
-    if (duration <= 0) {
-        isLiveStream = true;
-    }
-    
-    // Controllo aggiuntivo basato sull'URL o sul titolo
+    // Prima fase: analisi basata su URL e titolo (disponibile sempre)
     std::string url = liveData.url;
     std::string title = liveData.title;
     
@@ -229,22 +231,41 @@ void LiveActivity::detectContentType() {
     std::transform(url.begin(), url.end(), url.begin(), ::tolower);
     std::transform(title.begin(), title.end(), title.begin(), ::tolower);
     
-    // Indicatori tipici di live stream negli URL
-    if (url.find("live") != std::string::npos || 
-        url.find("stream") != std::string::npos ||
-        url.find(".m3u8") != std::string::npos ||
-        title.find("live") != std::string::npos ||
-        title.find("diretta") != std::string::npos) {
-        isLiveStream = true;
-    }
+    // Determina il tipo basandosi su URL e titolo
+    bool isLiveStream = true; // Default: assume live stream
     
-    // Indicatori tipici di video con durata negli URL
+    // Indicatori di video on-demand negli URL
     if (url.find(".mp4") != std::string::npos ||
         url.find(".mkv") != std::string::npos ||
         url.find(".avi") != std::string::npos ||
         url.find("video") != std::string::npos) {
         isLiveStream = false;
     }
+    // Indicatori di live stream negli URL e titoli
+    else if (url.find("live") != std::string::npos || 
+             url.find("stream") != std::string::npos ||
+             url.find(".m3u8") != std::string::npos ||
+             url.find(".ts") != std::string::npos ||
+             title.find("live") != std::string::npos ||
+             title.find("diretta") != std::string::npos) {
+        isLiveStream = true;
+    }
+    
+    // Seconda fase: verifica con durata MPV (se disponibile)
+    double duration = MPVCore::instance().duration;
+    brls::Logger::debug("LiveActivity: detectContentType - duration: {}", duration);
+    
+    // Se MPV è già caricato, usa la durata per verificare/correggere la detection
+    if (duration > 0) {
+        // Se ha durata definita, è sicuramente un video
+        isLiveStream = false;
+        brls::Logger::debug("LiveActivity: MPV duration {} confirms VIDEO mode", duration);
+    } else if (duration == 0 && MPVCore::instance().isPlaying()) {
+        // Se sta riproducendo ma durata è 0, conferma che è live
+        isLiveStream = true;
+        brls::Logger::debug("LiveActivity: MPV duration 0 confirms LIVE mode");
+    }
+    // Altrimenti mantiene la detection basata su URL/titolo fatta prima
     
     brls::Logger::debug("LiveActivity: Content detected as: {}", isLiveStream ? "LIVE STREAM" : "VIDEO WITH DURATION");
     
@@ -268,6 +289,13 @@ void LiveActivity::startDownload() {
     
     if (hasActiveDownload) {
         brls::Logger::debug("LiveActivity: Download already in progress");
+        return;
+    }
+    
+    // Controlla se è una live stream in corso
+    if (tsvitch::isLiveStream(this->liveData.url, this->liveData.title)) {
+        brls::Logger::warning("LiveActivity: Cannot download live streams");
+        tsvitch::showLiveStreamDownloadError();
         return;
     }
     
@@ -463,6 +491,17 @@ std::string LiveActivity::formatFileSize(size_t bytes) {
 
 LiveActivity::~LiveActivity() {
     brls::Logger::debug("LiveActivity: delete");
+    
+    // Salva la posizione di riproduzione prima di uscire (solo per video on-demand)
+    if (!tsvitch::isLiveStream(liveData.url, liveData.title)) {
+        int64_t currentPosition = MPVCore::instance().playback_time;
+        int64_t totalDuration = MPVCore::instance().duration;
+        
+        if (currentPosition > 0 && totalDuration > 0) {
+            tsvitch::PlaybackPositionManager::savePosition(liveData.url, currentPosition, totalDuration);
+            brls::Logger::info("LiveActivity: Saved playback position {} / {}", currentPosition, totalDuration);
+        }
+    }
     
     // Cancella download attivo se presente
     if (hasActiveDownload && !currentDownloadId.empty()) {
