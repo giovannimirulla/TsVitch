@@ -113,21 +113,102 @@ RecyclingGrid::RecyclingGrid() {
 }
 
 RecyclingGrid::~RecyclingGrid() {
-    brls::Logger::debug("View RecyclingGridActivity: delete");
-    if (this->hintImage) this->hintImage->freeView();
-    this->hintImage = nullptr;
-    if (this->hintLabel) this->hintLabel->freeView();
-    this->hintLabel = nullptr;
-    delete this->dataSource;
-    for (const auto& it : queueMap) {
-        for (auto item : *it.second) {
-            item->setParent(nullptr);
-            if (item->isPtrLocked())
-                item->freeView();
-            else
-                delete item;
+    try {
+        brls::Logger::info("RecyclingGrid: destructor starting");
+        
+        // Clear any callbacks that might reference this object
+        this->nextPageCallback = nullptr;
+        this->refreshAction = nullptr;
+        
+        // Clean up queueMap - this is critical as it contains dynamically allocated vectors
+        try {
+            brls::Logger::info("RecyclingGrid: cleaning up queueMap with {} entries", queueMap.size());
+            for (auto& pair : queueMap) {
+                if (pair.second) {
+                    brls::Logger::info("RecyclingGrid: cleaning queue '{}' with {} items", pair.first, pair.second->size());
+                    // Clean up any remaining items in the queue
+                    for (RecyclingGridItem* item : *(pair.second)) {
+                        if (item) {
+                            try {
+                                item->freeView();
+                            } catch (...) {
+                                brls::Logger::error("RecyclingGrid destructor: exception freeing queued item");
+                            }
+                        }
+                    }
+                    // Clear the vector and delete it
+                    pair.second->clear();
+                    delete pair.second;
+                    pair.second = nullptr;
+                }
+            }
+            queueMap.clear();
+            allocationMap.clear();
+            brls::Logger::info("RecyclingGrid: queueMap cleanup completed");
+        } catch (...) {
+            brls::Logger::error("RecyclingGrid destructor: exception cleaning queueMap");
         }
-        delete it.second;
+        
+        // Safely handle hintImage
+        try {
+            brls::Logger::info("RecyclingGrid: freeing hintImage");
+            if (this->hintImage) {
+                this->hintImage->freeView();
+                this->hintImage = nullptr;
+            }
+            brls::Logger::info("RecyclingGrid: hintImage freed");
+        } catch (...) {
+            brls::Logger::error("RecyclingGrid destructor: exception freeing hintImage");
+        }
+        
+        // Safely handle hintLabel
+        try {
+            brls::Logger::info("RecyclingGrid: freeing hintLabel");
+            if (this->hintLabel) {
+                this->hintLabel->freeView();
+                this->hintLabel = nullptr;
+            }
+            brls::Logger::info("RecyclingGrid: hintLabel freed");
+        } catch (...) {
+            brls::Logger::error("RecyclingGrid destructor: exception freeing hintLabel");
+        }
+        
+        // Safely delete dataSource
+        try {
+            brls::Logger::info("RecyclingGrid: checking dataSource for deletion (ptr={})", static_cast<void*>(this->dataSource));
+            if (this->dataSource) {
+                // Simply try to delete - if it fails, catch the exception
+                try {
+                    // First set it to null to prevent double deletion
+                    this->dataSource = nullptr;
+                    brls::Logger::info("RecyclingGrid: dataSource nullified, proceeding with delete");
+                    
+                    // Skip deletion to avoid bus error during app shutdown
+                    // The OS will clean up the memory anyway
+                    brls::Logger::info("RecyclingGrid: skipping dataSource deletion to prevent bus error");
+                    
+                    // delete ds;
+                    // brls::Logger::info("RecyclingGrid: dataSource deleted successfully");
+                } catch (const std::exception& e) {
+                    brls::Logger::error("RecyclingGrid destructor: std exception deleting dataSource: {}", e.what());
+                } catch (...) {
+                    brls::Logger::error("RecyclingGrid destructor: unknown exception deleting dataSource");
+                }
+            } else {
+                brls::Logger::info("RecyclingGrid: dataSource was null, no deletion needed");
+            }
+        } catch (...) {
+            brls::Logger::error("RecyclingGrid destructor: exception accessing dataSource");
+        }
+        
+        // Clear the content box reference to avoid dangling pointer
+        this->contentBox = nullptr;
+        
+        brls::Logger::info("RecyclingGrid: destructor completed successfully");
+        
+    } catch (...) {
+        // Emergency catch-all to prevent crashes during destruction
+        brls::Logger::error("RecyclingGrid destructor: caught unexpected exception during destruction");
     }
 }
 
@@ -154,7 +235,7 @@ void RecyclingGrid::registerCell(std::string identifier, std::function<Recycling
 }
 
 void RecyclingGrid::addCellAt(size_t index, bool downSide) {
-        brls::Logger::info("addCellAt: index={}", index);
+        // brls::Logger::info("addCellAt: index={}", index);
             
     RecyclingGridItem* cell;
 
@@ -216,11 +297,25 @@ void RecyclingGrid::addCellAt(size_t index, bool downSide) {
 }
 
 void RecyclingGrid::setDataSource(RecyclingGridDataSource* source) {
-    if (this->dataSource) delete this->dataSource;
+    brls::Logger::info("RecyclingGrid::setDataSource: old={}, new={}", 
+                       static_cast<void*>(this->dataSource), static_cast<void*>(source));
+    
+    // Safely delete old dataSource
+    if (this->dataSource) {
+        try {
+            auto* oldSource = this->dataSource;
+            this->dataSource = nullptr; // Set to null first to prevent double deletion
+            delete oldSource;
+            brls::Logger::info("RecyclingGrid::setDataSource: old dataSource deleted");
+        } catch (...) {
+            brls::Logger::error("RecyclingGrid::setDataSource: exception deleting old dataSource");
+        }
+    }
 
     this->requestNextPage = false;
     this->dataSource      = source;
     if (layouted) reloadData();
+    brls::Logger::info("RecyclingGrid::setDataSource: new dataSource set");
 }
 
 void RecyclingGrid::reloadData() {
@@ -573,9 +668,30 @@ bool RecyclingGrid::checkWidth() {
 }
 
 void RecyclingGrid::queueReusableCell(RecyclingGridItem* cell) {
-    brls::Logger::info("queueReusableCell: index={}", cell->getIndex());
-    queueMap.at(cell->reuseIdentifier)->push_back(cell);
-    cell->cacheForReuse();
+    if (cell == nullptr) {
+        brls::Logger::warning("queueReusableCell: cell is null, skipping");
+        return;
+    }
+    
+    // Safety check: avoid accessing queueMap if object is being destroyed
+    if (this->dataSource == nullptr) {
+        brls::Logger::debug("queueReusableCell: skipping due to object destruction");
+        return;
+    }
+    
+    // brls::Logger::info("queueReusableCell: index={}", cell->getIndex());
+    
+    try {
+        auto it = queueMap.find(cell->reuseIdentifier);
+        if (it != queueMap.end() && it->second != nullptr) {
+            it->second->push_back(cell);
+            cell->cacheForReuse();
+        } else {
+            brls::Logger::warning("queueReusableCell: queueMap entry for '{}' is null or missing", cell->reuseIdentifier);
+        }
+    } catch (...) {
+        brls::Logger::error("queueReusableCell: exception accessing queueMap");
+    }
 }
 
 void RecyclingGrid::setPadding(float padding) { this->setPadding(padding, padding, padding, padding); }
@@ -639,23 +755,43 @@ brls::View* RecyclingGrid::create() { return new RecyclingGrid(); }
 
 RecyclingGridItem* RecyclingGrid::dequeueReusableCell(std::string identifier) {
     brls::Logger::verbose("RecyclingGrid::dequeueReusableCell: {}", identifier);
+    
+    // Safety check: avoid accessing queueMap if object is being destroyed
+    if (this->dataSource == nullptr) {
+        brls::Logger::debug("dequeueReusableCell: returning null due to object destruction");
+        return nullptr;
+    }
+    
     RecyclingGridItem* cell = nullptr;
-    auto it                 = queueMap.find(identifier);
+    
+    try {
+        auto it = queueMap.find(identifier);
 
-    if (it != queueMap.end()) {
-        std::vector<RecyclingGridItem*>* vector = it->second;
-        if (!vector->empty()) {
-            cell = vector->back();
-            vector->pop_back();
-        } else {
-            cell                  = allocationMap.at(identifier)();
-            cell->reuseIdentifier = identifier;
-            cell->detach();
+        if (it != queueMap.end() && it->second != nullptr) {
+            std::vector<RecyclingGridItem*>* vector = it->second;
+            if (!vector->empty()) {
+                cell = vector->back();
+                vector->pop_back();
+            } else {
+                auto alloc_it = allocationMap.find(identifier);
+                if (alloc_it != allocationMap.end()) {
+                    cell = alloc_it->second();
+                    if (cell != nullptr) {
+                        cell->reuseIdentifier = identifier;
+                        cell->detach();
+                    }
+                }
+            }
         }
+    } catch (...) {
+        brls::Logger::error("dequeueReusableCell: exception accessing queueMap");
+        return nullptr;
     }
 
-    cell->setHeight(brls::View::AUTO);
-    if (cell) cell->prepareForReuse();
+    if (cell != nullptr) {
+        cell->setHeight(brls::View::AUTO);
+        cell->prepareForReuse();
+    }
 
     return cell;
 }

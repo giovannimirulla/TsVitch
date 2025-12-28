@@ -31,6 +31,13 @@
 
             <Tab label=""
                  fontSize="18"
+                 icon="@res/svg/ico-downloads.svg"
+                 iconActivate="@res/svg/ico-downloads-activate.svg">
+                <HomeDownloads/>
+            </Tab>
+
+            <Tab label=""
+                 fontSize="18"
                  focusDown="main/setting"
                  icon="@res/svg/ico-history.svg"
                  iconActivate="@res/svg/ico-history-activate.svg">

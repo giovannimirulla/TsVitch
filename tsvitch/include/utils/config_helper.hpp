@@ -1,5 +1,3 @@
-
-
 #pragma once
 
 #include <fstream>
@@ -74,9 +72,20 @@ enum class SettingItem {
     DLNA_NAME,
 
     M3U8_URL_ITEM,
+    PROXY_URL_ITEM,
+    M3U8_TIMEOUT,
 
     TLS_VERIFY,
     UP_FILTER,
+
+    // IPTV Mode Selection
+    IPTV_MODE,  // 0 = M3U8, 1 = Xtream
+
+    // Xtream Codes IPTV Settings
+    XTREAM_SERVER_URL,
+    XTREAM_USERNAME,
+    XTREAM_PASSWORD,
+    XTREAM_ENABLED,
 
     GROUP_SELECTED_INDEX,
 };
@@ -205,11 +214,26 @@ public:
 
     void setM3U8Url(const std::string& url);
 
+    // Xtream Codes IPTV methods
+    std::string getXtreamServerUrl();
+    void setXtreamServerUrl(const std::string& url);
+    std::string getXtreamUsername();
+    void setXtreamUsername(const std::string& username);
+    std::string getXtreamPassword();
+    void setXtreamPassword(const std::string& password);
+    bool getXtreamEnabled();
+    void setXtreamEnabled(bool enabled);
+
+    std::string getProxyUrl();
+
+    void setProxyUrl(const std::string& url);
+
     std::vector<CustomTheme> customThemes;
     nlohmann::json setting;
     std::string client;
     std::string device;
     std::string m3u8Url;
+    std::string proxyUrl;
     static std::unordered_map<SettingItem, ProgramOption> SETTING_MAP;
 };
 

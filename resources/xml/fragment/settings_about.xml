@@ -44,11 +44,21 @@
         <brls:Header
                 title="@i18n/tsvitch/setting/about/repo_header"
                 marginBottom="@style/tsvitch/margin/20"/>
-        <brls:Label
-                textColor="#6693B6"
+        <brls:Box
+                axis="row"
+                alignItems="center"
                 marginLeft="20"
-                marginBottom="@style/tsvitch/margin/20"
-                text="@i18n/tsvitch/github"/>
+                marginBottom="@style/tsvitch/margin/20">
+            <brls:Label
+                    textColor="#6693B6"
+                    text="@i18n/tsvitch/github"/>
+            <QRImage
+                    width="60"
+                    height="60"
+                    marginLeft="20"
+                    cornerRadius="6"
+                    QRContent="https://github.com/giovannimirulla/TsVitch"/>
+        </brls:Box>
 
         <brls:Header
                 width="@style/tsvitch/about/speech/header"
@@ -77,25 +87,49 @@
                     text="@i18n/tsvitch/setting/about/author"/>
         </brls:Box>
 
+        <brls:Header
+                title="@i18n/tsvitch/setting/about/contrib_header"
+                marginTop="@style/tsvitch/margin/20"
+                marginBottom="@style/tsvitch/margin/20"/>
 
-    </brls:Box>
-
-    <brls:Box
-            positionType="absolute"
-            positionBottom="20"
-            axis="column"
-            alignItems="center"
-            positionRight="30">
-        <QRImage
-                width="@style/tsvitch/about/qr"
-                height="@style/tsvitch/about/qr"
-                cornerRadius="6"
-                QRContent="https://github.com/giovannimirulla/TsVitch"/>
         <brls:Label
-                marginTop="10"
-                textColor="@theme/font/grey"
-                fontSize="18"
-                text="@i18n/tsvitch/setting/about/repository"/>
+                marginLeft="20"
+                marginBottom="@style/tsvitch/margin/20"
+                text="@i18n/tsvitch/setting/about/contrib_text"/>
+
+        <brls:Header
+                title="@i18n/tsvitch/setting/about/contributors_header"
+                marginTop="@style/tsvitch/margin/20"
+                marginBottom="@style/tsvitch/margin/20"/>
+
+        <ContributorsView
+                repo="giovannimirulla/TsVitch"
+                limit="30"/>
+
+        <brls:Header
+                title="@i18n/tsvitch/setting/about/sponsors_header"
+                marginTop="@style/tsvitch/margin/20"
+                marginBottom="@style/tsvitch/margin/20"/>
+
+        <SponsorsView owner="giovannimirulla"/>
+
+        <brls:Box
+                axis="column"
+                alignItems="center"
+                marginTop="@style/tsvitch/margin/20">
+            <QRImage
+                    width="@style/tsvitch/about/qr"
+                    height="@style/tsvitch/about/qr"
+                    cornerRadius="6"
+                    QRContent="https://github.com/sponsors/giovannimirulla"/>
+            <brls:Label
+                    marginTop="10"
+                    textColor="@theme/font/grey"
+                    fontSize="18"
+                    text="@i18n/tsvitch/setting/about/sponsor_qr"/>
+        </brls:Box>
+
+
     </brls:Box>
 
 </brls:Box>

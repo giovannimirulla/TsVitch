@@ -42,6 +42,7 @@ public:
 
     void setDisabledPointerGesture(bool disabled);
 
+    void setPointerVisible(bool visible);
 
     const std::vector<float>& getClipPoint();
 

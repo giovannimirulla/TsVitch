@@ -112,11 +112,15 @@ public:
 
     void showVideoProgressSlider();
 
+    void disableProgressSliderSeek(bool disabled);
+
     void hideStatusLabel();
 
     void setLiveMode();
 
     void setVideoMode();
+
+    void setAdMode();
 
     void setTvControlMode(bool state);
 

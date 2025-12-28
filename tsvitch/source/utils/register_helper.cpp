@@ -3,6 +3,7 @@
 #include "fragment/home_live.hpp"
 #include "fragment/home_history.hpp"
 #include "fragment/home_favorites.hpp"
+#include "fragment/home_downloads.hpp"
 
 #include "utils/config_helper.hpp"
 
@@ -12,6 +13,7 @@
 #include "view/text_box.hpp"
 #include "view/qr_image.hpp"
 #include "view/svg_image.hpp"
+#include "view/download_item_cell.hpp"
 
 #include "view/recycling_grid.hpp"
 #include "view/grid_dropdown.hpp"
@@ -26,6 +28,8 @@
 #include "view/selector_cell.hpp"
 #include "view/hint_label.hpp"
 #include "view/mpv_core.hpp"
+#include "view/contributors_view.hpp"
+#include "view/sponsors_view.hpp"
 
 void Register::initCustomView() {
     brls::Application::registerXMLView("AutoTabFrame", AutoTabFrame::create);
@@ -39,6 +43,8 @@ void Register::initCustomView() {
     brls::Application::registerXMLView("GalleryView", GalleryView::create);
     brls::Application::registerXMLView("CustomButton", CustomButton::create);
     brls::Application::registerXMLView("HintLabel", HintLabel::create);
+    brls::Application::registerXMLView("ContributorsView", ContributorsView::create);
+    brls::Application::registerXMLView("SponsorsView", SponsorsView::create);
 
     brls::Application::registerXMLView("UserInfoView", UserInfoView::create);
 
@@ -46,10 +52,12 @@ void Register::initCustomView() {
     brls::Application::registerXMLView("CheckBox", BiliCheckBox::create);
     brls::Application::registerXMLView("SelectorCell", TsVitchSelectorCell::create);
     brls::Application::registerXMLView("AnimationImage", AnimationImage::create);
+    brls::Application::registerXMLView("DownloadItemCell", DownloadItemCell::create);
 
     brls::Application::registerXMLView("HomeLive", HomeLive::create);
     brls::Application::registerXMLView("HomeHistory", HomeHistory::create);
     brls::Application::registerXMLView("HomeFavorites", HomeFavorites::create);
+    brls::Application::registerXMLView("HomeDownloads", HomeDownloads::create);
 }
 
 void Register::initCustomTheme() {

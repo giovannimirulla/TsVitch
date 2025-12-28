@@ -21,8 +21,10 @@ void FavoriteManager::toggle(const tsvitch::LiveM3u8& channel) {
         [&](const tsvitch::LiveM3u8& c){ return c.url == channel.url; });
     if (it != set_.end()) {
         set_.erase(it);
+        urlCache_.erase(channel.url);
     } else {
         set_.push_back(channel);
+        urlCache_.insert(channel.url);
     }
     save();
     GA("toggle_favorite", {
@@ -35,9 +37,7 @@ void FavoriteManager::toggle(const tsvitch::LiveM3u8& channel) {
 
 
 bool FavoriteManager::isFavorite(const std::string& url ) const {
-    auto it = std::find_if(set_.begin(), set_.end(),
-        [&](const tsvitch::LiveM3u8& c){ return  c.url == url; });
-    return it != set_.end();
+    return urlCache_.count(url) > 0;
 }
 
 void FavoriteManager::save() const {
@@ -49,6 +49,12 @@ void FavoriteManager::load() {
     if (std::ifstream in{file_}; in) {
         json j; in >> j;
         set_ = j.get<decltype(set_)>();
+        
+        // Popola la cache urlCache_ per O(1) lookups
+        urlCache_.clear();
+        for (const auto& channel : set_) {
+            urlCache_.insert(channel.url);
+        }
     }
 }
 std::vector<tsvitch::LiveM3u8> FavoriteManager::getFavorites() const {

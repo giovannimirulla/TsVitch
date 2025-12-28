@@ -11,6 +11,8 @@
 #include "fragment/home_history.hpp"
 #include "core/HistoryManager.hpp"
 #include "core/FavoriteManager.hpp"
+#include "core/DownloadManager.hpp"
+#include "utils/stream_helper.hpp"
 
 using namespace brls::literals;
 
@@ -51,10 +53,13 @@ HomeHistory::HomeHistory() {
 
     // Carica i canali recenti dalla cronologia
     auto recent = HistoryManager::get()->recent(8);
-    recyclingGrid->setDataSource(new DataSourceRecentChannels(recent));
-
-        this->registerAction("hints/toggle_favorite"_i18n, brls::BUTTON_X, [this](...) {
+    recyclingGrid->setDataSource(new DataSourceRecentChannels(recent));        this->registerAction("hints/toggle_favorite"_i18n, brls::BUTTON_X, [this](...) {
         this->toggleFavorite();
+        return true;
+    });
+    
+    this->registerAction("Scarica video", brls::BUTTON_RT, [this](...) {
+        this->downloadVideo();
         return true;
     });
     
@@ -92,4 +97,56 @@ HomeHistory::~HomeHistory() = default;
 
 void HomeHistory::onError(const std::string& error) {
     brls::sync([this, error]() { this->recyclingGrid->setError(error); });
+}
+
+void HomeHistory::downloadVideo() {
+    // Ottieni l'item attualmente focalizzato
+    auto* item = dynamic_cast<RecyclingGridItemLiveVideoCard*>(this->recyclingGrid->getFocusedItem());
+    if (!item) {
+        brls::Logger::warning("HomeHistory::downloadVideo: No focused item");
+        return;
+    }
+
+    // Ottieni il canale
+    tsvitch::LiveM3u8 channel = item->getChannel();
+    
+    // Controlla se è una live stream in corso
+    if (tsvitch::isLiveStream(channel.url, channel.title)) {
+        brls::Logger::warning("HomeHistory: Cannot download live streams");
+        tsvitch::showLiveStreamDownloadError();
+        return;
+    }
+    
+    // Avvia il download
+    std::string downloadId = DownloadManager::instance().startDownload(
+        channel.title, 
+        channel.url, 
+        channel.logo,  // URL dell'immagine
+        [](const std::string& id, float progress, size_t downloaded, size_t total) {
+            // Callback di progresso
+            brls::Logger::debug("Download {}: {:.1f}% ({}/{} bytes)", id, progress, downloaded, total);
+        },
+        [](const std::string& id, const std::string& filePath) {
+            // Callback di completamento
+            brls::Logger::info("Download {} completed: {}", id, filePath);
+            brls::sync([]() {
+                brls::Application::notify("Download completato!");
+            });
+        },
+        [](const std::string& id, const std::string& error) {
+            // Callback di errore
+            brls::Logger::error("Download {} failed: {}", id, error);
+            brls::sync([error]() {
+                brls::Application::notify("Errore download: " + error);
+            });
+        }
+    );
+    
+    if (!downloadId.empty()) {
+        brls::Application::notify("Download avviato: " + channel.title);
+        brls::Logger::info("HomeHistory: Started download {} for {}", downloadId, channel.title);
+    } else {
+        brls::Application::notify("Errore nell'avvio del download");
+        brls::Logger::error("HomeHistory: Failed to start download for {}", channel.title);
+    }
 }

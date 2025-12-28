@@ -20,6 +20,16 @@ public:
     static void get_file_m3u8(const std::function<void(LiveM3u8ListResult)>& callback = nullptr,
                               const ErrorCallback& error                              = nullptr);
 
+    static void get_xtream_channels(const std::function<void(LiveM3u8ListResult)>& callback = nullptr,
+                                   const ErrorCallback& error                               = nullptr);
+
+    static void get_xtream_channels_with_retry(const std::function<void(LiveM3u8ListResult)>& callback = nullptr,
+                                              const ErrorCallback& error                               = nullptr,
+                                              int maxRetries                                           = 3);
+
+    static void get_live_channels(const std::function<void(LiveM3u8ListResult)>& callback = nullptr,
+                                 const ErrorCallback& error                               = nullptr);
+
     static void register_user(
                               const std::function<void(const std::string&, int)>& callback = nullptr,
                               const ErrorCallback& error                                   = nullptr);

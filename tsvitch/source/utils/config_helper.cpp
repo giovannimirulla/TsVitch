@@ -1,5 +1,3 @@
-
-
 #ifdef IOS
 #include <CoreFoundation/CoreFoundation.h>
 #elif defined(__APPLE__) || defined(__linux__) || defined(_WIN32)
@@ -23,11 +21,13 @@
 #include "utils/config_helper.hpp"
 #include "utils/crash_helper.hpp"
 #include "utils/vibration_helper.hpp"
+#include "utils/activity_helper.hpp"
 #include "activity/live_player_activity.hpp"
 #include "view/video_view.hpp"
 #include "view/mpv_core.hpp"
 
 #include "config/m3u8_config.h"
+#include "api/tsvitch/util/http.hpp"
 
 #ifdef PS4
 #include <orbis/SystemService.h>
@@ -178,6 +178,17 @@ std::unordered_map<SettingItem, ProgramOption> ProgramConfig::SETTING_MAP = {
     {SettingItem::GROUP_SELECTED_INDEX, {"group_selected_index", {}, {}, 0}},
     {SettingItem::UP_FILTER, {"up_filter", {}, {}, 0}},
     {SettingItem::M3U8_URL_ITEM, {"m3u8_url", {}, {}, 0}},
+    {SettingItem::PROXY_URL_ITEM, {"proxy_url", {}, {}, 0}},
+    {SettingItem::M3U8_TIMEOUT, {"m3u8_timeout", {"60", "120", "300", "600"}, {60000, 120000, 300000, 600000}, 2}}, // Default: 5 minuti
+    
+    // IPTV Mode Selection
+    {SettingItem::IPTV_MODE, {"iptv_mode", {"M3U8 Playlist", "Xtream Codes"}, {0, 1}, 0}}, // Default: M3U8
+    
+    // Xtream Codes IPTV Settings
+    {SettingItem::XTREAM_SERVER_URL, {"xtream_server_url", {}, {}, 0}},
+    {SettingItem::XTREAM_USERNAME, {"xtream_username", {}, {}, 0}},
+    {SettingItem::XTREAM_PASSWORD, {"xtream_password", {}, {}, 0}},
+    {SettingItem::XTREAM_ENABLED, {"xtream_enabled", {}, {}, 0}}, // 0 = disabled, 1 = enabled
 };
 
 ProgramConfig::ProgramConfig() = default;
@@ -272,6 +283,12 @@ void ProgramConfig::load() {
     }
 
     this->m3u8Url = getSettingItem(SettingItem::M3U8_URL_ITEM, this->getM3U8Url());
+    this->proxyUrl = getSettingItem(SettingItem::PROXY_URL_ITEM, this->getProxyUrl());
+    
+    // Configura o proxy se estiver definido
+    if (!this->proxyUrl.empty()) {
+        tsvitch::HTTP::setProxy(this->proxyUrl);
+    }
 
 #ifdef IOS
 #elif defined(__APPLE__) || defined(__linux__) || defined(_WIN32)
@@ -759,6 +776,60 @@ void ProgramConfig::setM3U8Url(const std::string& url) {
         m3u8Url = M3U8_URL_VALUE;
     }
     GA("m3u8_url", {{"url", m3u8Url}});
+}
+
+std::string ProgramConfig::getProxyUrl() {
+    return this->proxyUrl;
+}
+
+void ProgramConfig::setProxyUrl(const std::string& url) {
+    this->proxyUrl = url;
+    brls::Logger::info("setProxyUrl: {}", proxyUrl);
+    setSettingItem(SettingItem::PROXY_URL_ITEM, proxyUrl);
+    
+    // Configura o proxy para todas as requisições HTTP
+    tsvitch::HTTP::setProxy(proxyUrl);
+    
+    // Dispara evento para notificar mudança no proxy
+    OnProxyUrlChanged.fire();
+    
+    GA("proxy_url", {{"url", proxyUrl}});
+}
+// Xtream Codes IPTV getters and setters
+std::string ProgramConfig::getXtreamServerUrl() {
+    return getSettingItem(SettingItem::XTREAM_SERVER_URL, std::string(""));
+}
+
+void ProgramConfig::setXtreamServerUrl(const std::string& url) {
+    setSettingItem(SettingItem::XTREAM_SERVER_URL, url);
+    brls::Logger::info("setXtreamServerUrl: {}", url);
+}
+
+std::string ProgramConfig::getXtreamUsername() {
+    return getSettingItem(SettingItem::XTREAM_USERNAME, std::string(""));
+}
+
+void ProgramConfig::setXtreamUsername(const std::string& username) {
+    setSettingItem(SettingItem::XTREAM_USERNAME, username);
+    brls::Logger::info("setXtreamUsername: {}", username);
+}
+
+std::string ProgramConfig::getXtreamPassword() {
+    return getSettingItem(SettingItem::XTREAM_PASSWORD, std::string(""));
+}
+
+void ProgramConfig::setXtreamPassword(const std::string& password) {
+    setSettingItem(SettingItem::XTREAM_PASSWORD, password);
+    brls::Logger::info("setXtreamPassword: [hidden]");
+}
+
+bool ProgramConfig::getXtreamEnabled() {
+    return getSettingItem(SettingItem::XTREAM_ENABLED, 0) == 1;
+}
+
+void ProgramConfig::setXtreamEnabled(bool enabled) {
+    setSettingItem(SettingItem::XTREAM_ENABLED, enabled ? 1 : 0);
+    brls::Logger::info("setXtreamEnabled: {}", enabled);
 }
 
 void ProgramConfig::toggleFullscreen() {
