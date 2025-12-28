@@ -168,7 +168,20 @@ void LiveActivity::startAd(std::string adUrl) {
     this->video->disableProgressSliderSeek(true); // Disabilita il seek durante gli annunci
     this->video->setUrl(adUrl);
 
+    // Quando l'annuncio finisce normalmente, passa alla live
     this->video->setOnEndCallback([this]() { this->startLive(); });
+    
+    // Se l'annuncio fallisce nel caricamento, passa comunque alla live
+    // (Rimuoviamo il comportamento di chiusura dell'app per gli errori durante gli annunci)
+    if (!mpvEventRegistered) {
+        this->tl_event_id = MPVCore::instance().getEvent()->subscribe([this](MpvEventEnum event) {
+            if (event == MpvEventEnum::MPV_FILE_ERROR && this->isAd) {
+                brls::Logger::warning("LiveActivity: Ad failed to load, skipping to live content");
+                this->startLive();
+            }
+        });
+        mpvEventRegistered = true;
+    }
 }
 
 void LiveActivity::startLive() {
