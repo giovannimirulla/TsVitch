@@ -1,337 +1,336 @@
 # Changelog
 
-Tutte le modifiche significative a questo progetto saranno documentate in questo file.
+All notable changes to this project will be documented in this file.
 
 ---
 
-## [0.3.0] - 2025-01-XX
+## [0.3.0] - Happy Holidays
 
-### 🎉 Nuove Funzionalità Principali
+### 🎉 Major Features
 
-#### 📥 Sistema di Download Completo
-- **Download Manager** con supporto multi-threaded e chunked ottimizzato per Nintendo Switch
-- **Nuovo Tab Downloads** nell'interfaccia per gestire i download attivi e completati
-- **Controlli Avanzati**: pausa, ripresa e cancellazione dei download
-- **Download Automatico Copertine** per ogni video scaricato
-- **Progress Tracking in Tempo Reale** con velocità e tempo rimanente
-- **Persistenza Download**: riprendi i download incompleti dopo il riavvio
-- **Download Multipli Simultanei** per massimizzare la velocità
+#### 📥 Full Download System
+- **Download Manager** with multi-threaded + chunked downloads (optimized for Nintendo Switch)
+- **Downloads Tab** to monitor active and completed downloads
+- **Advanced Controls**: pause, resume, cancel
+- **Auto Cover Fetch** for each downloaded video
+- **Live Progress** with speed and ETA
+- **Persistent State**: resume incomplete downloads after restart
+- **Parallel Downloads** to maximize throughput
 
-#### 📺 Supporto IPTV Xtream Codes
-- **Integrazione Xtream API** completa per provider IPTV professionali
-- **Switcher Modalità IPTV** per passare tra M3U8 e Xtream in un tap
-- **Organizzazione per Categorie** dei canali live TV
-- **Sistema di Autenticazione** sicuro per server Xtream
-- **⚡ Caricamento 4.5x Più Veloce** grazie al caching ottimizzato
+#### 📺 Xtream Codes IPTV
+- **Full Xtream API** integration for IPTV providers
+- **IPTV Mode Switcher** between M3U8 and Xtream
+- **Category-Based** channel organization
+- **Secure Auth** for Xtream servers
+- **⚡ 4.5x Faster Loading** via optimized caching
 
-#### ⏯️ Ripristino Posizione Video
-- **Auto-Resume Intelligente**: i video ripartono da dove li hai lasciati
-- **Gestione Automatica**: distingue tra live stream e video on-demand
-- **Cache Persistente** con scadenza automatica (30 giorni)
-- **Smart Tracking**: ignora posizioni troppo vicine all'inizio o alla fine
+#### ⏯️ Playback Position Restore
+- **Smart Auto-Resume**: videos continue where you left off
+- **Mode-Aware**: differentiates live streams vs VOD
+- **Persistent Cache** with 30-day expiry
+- **Smart Tracking**: ignores positions too close to start or end
 
-#### 🚫 Prevenzione Download Live Stream
-- **Rilevamento Automatico** di contenuti live tramite analisi URL e titolo
-- **Blocco Download Live** con messaggi di errore chiari e localizzati
-- **Sistema Centralizzato** per consistenza in tutta l'app
+#### 🚫 Live Download Prevention
+- **Auto Detection** of live content by URL/title heuristics
+- **Live Download Block** with clear, localized errors
+- **Centralized Helper** for consistent behavior app-wide
 
-#### 👥 Sezione Contributors e Sponsors
-- **Vista Contributori** con avatar e statistiche da GitHub
-- **Vista Sponsor** per riconoscere i supporter del progetto
-- **QR Code** per accesso rapido a repository e pagina sponsor
-- **Integrazione GitHub API** (REST + GraphQL) con cache 24h
+#### 👥 Contributors & Sponsors
+- **Contributors View** with avatars and stats from GitHub
+- **Sponsors View** to highlight supporters
+- **QR Codes** for quick access to repo and sponsor page
+- **GitHub API** (REST + GraphQL) with 24h cache
 
-#### 📺 Gestione Annunci Migliorata
-- **Fallback Automatico**: se l'annuncio non carica, passa direttamente al contenuto
-- **Zero Interruzioni**: esperienza fluida anche con server ads non disponibili
+#### 📺 Ad Handling Improvements
+- **Automatic Fallback**: if an ad fails, skip to content
+- **No Interruptions** even when ad servers are down
 
-### 🎨 Miglioramenti UI/UX
+### 🎨 UI/UX Improvements
 
-- **Video Progress Slider** più reattivo con gesture ottimizzate
-- **OSD Migliorato** per controlli on-screen più intuitivi
-- **Settings Riorganizzate** con nuova sezione About
-- **Fullscreen** con gestione perfezionata dei controlli
+- **Video Progress Slider** more responsive with better gestures
+- **Improved OSD** for clearer on-screen controls
+- **Settings Reorg** with a refreshed About section
+- **Fullscreen** control handling polished
 
-### 🔧 Miglioramenti Tecnici
+### 🔧 Technical Improvements
 
 #### Performance
-- **350% più veloce** nel caricamento dei canali
-- **Gestione Memoria Ottimizzata** per RecyclingGrid
-- **Threading Migliorato** per operazioni in background
-- **Crash Risolti** durante chiusura applicazione
+- **350% faster** channel loading
+- **Memory Optimized** RecyclingGrid
+- **Better Threading** for background tasks
+- **Crash Fixes** on app shutdown
 
 #### Networking & API
-- **HTTP Chunked Transfer Encoding** per download grandi
-- **Timeout Intelligenti** per connessioni lente
-- **Batch Requests** per ridurre latenza
-- **Error Handling Robusto** per chiamate di rete
+- **HTTP Chunked Transfer** for large downloads
+- **Smarter Timeouts** for slow networks
+- **Batch Requests** to cut latency
+- **Robust Error Handling** on network calls
 
-#### Sistema Canali
-- **Refactoring Completo** con supporto multi-sorgente
-- **Event System** per notifiche cambio IPTV
-- **Rilevamento Download** di contenuti già scaricati
-- **Cache Ottimizzata** per metadati e playlist
+#### Channel System
+- **Full Refactor** with multi-source support
+- **Event System** for IPTV change notifications
+- **Download Detection** of already-downloaded items
+- **Optimized Cache** for metadata and playlists
 
-### 🌍 Localizzazione
+### 🌍 Localization
 
-Nuove traduzioni in **Italiano**, **Inglese** e **Portoghese Brasiliano**:
-- `live_download_error` - "Download non disponibile"
-- `live_download_error_desc` - Messaggio dettagliato errore live
-- `contributors_header` / `sponsors_header` - Intestazioni sezioni
-- `contrib_text` / `sponsor_qr` - Testi descrittivi
+New strings in **Italian**, **English**, and **Brazilian Portuguese**:
+- `live_download_error` / `live_download_error_desc`
+- `contributors_header` / `sponsors_header`
+- `contrib_text` / `sponsor_qr`
 
-### 🐛 Correzioni Bug
+### 🐛 Bug Fixes
 
-**Stabilità**
-- ✅ Crash durante chiusura activity
-- ✅ Memory leak in gestione cache
-- ✅ Race conditions nel sistema download
-- ✅ Problemi sincronizzazione thread
+**Stability**
+- Fixed crashes on activity shutdown
+- Fixed cache memory leak
+- Fixed download race conditions
+- Fixed thread sync issues
 
-**Funzionalità**
-- ✅ Cache canali IPTV corretta
-- ✅ Banner download su Switch
-- ✅ ID duplicati per download
-- ✅ Detection live vs on-demand
-- ✅ Switch modalità IPTV runtime
+**Functionality**
+- Fixed IPTV channel cache
+- Fixed Switch download banner
+- Fixed duplicate download IDs
+- Fixed live vs on-demand detection
+- Fixed runtime IPTV mode switching
 
 **UI/UX**
-- ✅ Layout RecyclingGrid
-- ✅ Focus navigazione controller
-- ✅ Glitch transizioni
-- ✅ Progress bar su tutti i temi
+- Fixed RecyclingGrid layout
+- Fixed controller focus navigation
+- Fixed transition glitches
+- Fixed progress bars across themes
 
-### 📦 Dipendenze e Build
+### 📦 Dependencies & Build
 
-- **Borealis UI** aggiornata (submodule)
-- **OpenCC** aggiornata (submodule)
-- **Crowdin** configurato per traduzioni
-- **GitHub Actions** per badge download automatici
-- **3 Nuovi Asset SVG** per UI download
+- **Borealis UI** updated (submodule)
+- **OpenCC** updated (submodule)
+- **Crowdin** configured for translations
+- **GitHub Actions** for automatic download badges
+- **3 New SVG Assets** for download UI
 
-### 📊 Statistiche Release
+### 📊 Release Stats
 
-- **76 file modificati** (+8,621 / -322 righe)
-- **19 nuovi file** creati
-- **5 nuove classi**: DownloadManager, DownloadProgressManager, XtreamAPI, PlaybackPositionManager, Contributors/SponsorsView
-- **4 classi refactorate**: ChannelManager, VideoView, LivePlayerActivity, HomeFragments
+- **76 files changed** (+8,621 / -322 lines)
+- **19 new files** added
+- **5 new classes**: DownloadManager, DownloadProgressManager, XtreamAPI, PlaybackPositionManager, Contributors/SponsorsView
+- **4 refactored classes**: ChannelManager, VideoView, LivePlayerActivity, HomeFragments
 
-### 💡 Note di Installazione
+### 💡 Installation Notes
 
-**Requisiti**:
-- Nintendo Switch con Atmosphère/CFW
-- Spazio sufficiente per download (consigliato: 2GB+)
-- Connessione internet per streaming e download
+**Requirements**:
+- Nintendo Switch with Atmosphère/CFW
+- Enough storage for downloads (2GB+ recommended)
+- Internet connection for streaming and downloads
 
-**Compatibilità**:
+**Compatibility**:
 - ✅ Nintendo Switch
-- ✅ Playlist M3U8 tradizionali
-- ✅ Server Xtream Codes
-- ⚠️ Credenziali Xtream richieste per provider compatibili
+- ✅ M3U8 playlists
+- ✅ Xtream Codes servers
+- ⚠️ Xtream credentials required for compatible providers
 
-**Installazione**:
-1. Scarica `TsVitch.nro` dalla release
-2. Copia in `/switch/` sulla SD della Switch
-3. Avvia dall'Homebrew Launcher
-4. Configura playlist/Xtream nelle impostazioni
+**Install**:
+1. Download `TsVitch.nro` from the release
+2. Copy to `/switch/` on the SD card
+3. Launch from Homebrew Launcher
+4. Configure playlist/Xtream in settings
 
 ### ⚠️ Disclaimers
 
-- **Conformità Legale**: L'app non fornisce contenuti IPTV. Gli utenti devono utilizzare playlist legittime.
-- **Uso Educativo**: Fornita "as-is" senza garanzie. L'autore non è responsabile per usi impropri.
+- **Legal**: The app does not provide IPTV content. Use only legitimate playlists.
+- **As-Is**: Provided without warranty. The author is not responsible for misuse.
 
 ---
 
 ## [0.2.1] - Previous Release
-- **Download Manager**: Implementato sistema di download completo con supporto per download multi-threaded e chunked (ottimizzato per Nintendo Switch)
-- **Tab Downloads**: Nuovo tab nell'interfaccia principale per visualizzare e gestire i download
-- **Controlli Download**: Supporto completo per pausa, ripresa e cancellazione dei download
-- **Download Copertine**: Download automatico delle thumbnail e copertine dei video
-- **Progress Tracking**: Progress bar in tempo reale con velocità di download e tempo rimanente stimato
-- **Persistenza**: I download incompleti vengono salvati e possono essere ripresi dopo il riavvio
-- **Download Concorrenti**: Supporto per download multipli simultanei
+- **Download Manager**: Complete download system with multi-threaded and chunked downloads (optimized for Nintendo Switch)
+- **Downloads Tab**: New tab in main interface to view and manage downloads
+- **Download Controls**: Full support for pause, resume, and cancel
+- **Cover Downloads**: Automatic download of thumbnails and video covers
+- **Progress Tracking**: Real-time progress bar with download speed and estimated time
+- **Persistence**: Incomplete downloads are saved and can be resumed after restart
+- **Concurrent Downloads**: Support for multiple simultaneous downloads
 
-#### Supporto IPTV Xtream Codes
-- **Xtream API**: Integrazione completa con provider IPTV che utilizzano Xtream Codes
-- **Modalità IPTV**: Switcher per passare tra playlist M3U8 tradizionali e server Xtream
-- **Categorie Live TV**: Supporto per categorie e organizzazione canali da server Xtream
-- **Autenticazione**: Sistema di autenticazione e gestione credenziali per server Xtream
-- **Performance**: Caricamento canali 4.5x più veloce grazie al sistema di cache ottimizzato
+#### Xtream Codes IPTV Support
+- **Xtream API**: Full integration with IPTV providers using Xtream Codes
+- **IPTV Mode**: Switcher between traditional M3U8 playlists and Xtream servers
+- **Live TV Categories**: Support for categories and channel organization from Xtream servers
+- **Authentication**: Authentication system and credential management for Xtream servers
+- **Performance**: 4.5x faster channel loading thanks to optimized cache system
 
-#### Ripristino Posizione di Riproduzione
-- **Playback Position Manager**: Sistema automatico di salvataggio posizione video
-- **Ripresa Automatica**: I video riprendono automaticamente dal punto di interruzione
-- **Cache Persistente**: Posizioni salvate con scadenza automatica dopo 30 giorni
-- **Gestione Intelligente**: Distingue automaticamente tra video on-demand e live stream
-- **Ottimizzazione**: Non salva posizioni troppo vicine all'inizio (<5s) o alla fine (<30s)
+#### Playback Position Restore
+- **Playback Position Manager**: Automatic video position saving system
+- **Auto Resume**: Videos automatically resume from interruption point
+- **Persistent Cache**: Positions saved with automatic 30-day expiry
+- **Smart Management**: Automatically distinguishes between on-demand videos and live streams
+- **Optimization**: Doesn't save positions too close to start (<5s) or end (<30s)
 
-#### Prevenzione Download Live Stream
-- **Rilevamento Automatico**: Rilevamento intelligente di live stream tramite analisi URL e titolo
-- **Blocco Download**: Impedisce il download di contenuti live con messaggio di errore appropriato
-- **Utility Centralizzata**: Sistema centralizzato per rilevamento consistente in tutta l'applicazione
-- **Messaggi Localizzati**: Errori completamente tradotti in italiano, inglese e portoghese brasiliano
+#### Live Stream Download Prevention
+- **Auto Detection**: Smart live stream detection via URL and title analysis
+- **Download Block**: Prevents download of live content with appropriate error message
+- **Centralized Utility**: Centralized system for consistent detection throughout the app
+- **Localized Messages**: Errors fully translated in Italian, English, and Brazilian Portuguese
 
-#### Sezione Contributors e Sponsors
-- **Vista Contributors**: Griglia con avatar e nomi dei contributori dal repository GitHub
-- **Vista Sponsors**: Griglia per visualizzare gli sponsor del progetto
-- **QR Codes**: QR code per accesso rapido al repository e alla pagina sponsor
-- **GitHub API**: Integrazione con GitHub REST API e GraphQL per recuperare dati aggiornati
-- **Cache 24h**: Sistema di cache per ridurre le chiamate API e migliorare le performance
-- **Localizzazione Completa**: Tutte le stringhe tradotte in IT/EN/PT-BR
+#### Contributors and Sponsors Section
+- **Contributors View**: Grid with avatars and names of contributors from GitHub repository
+- **Sponsors View**: Grid to display project sponsors
+- **QR Codes**: QR code for quick access to repository and sponsor page
+- **GitHub API**: Integration with GitHub REST API and GraphQL to fetch updated data
+- **24h Cache**: Cache system to reduce API calls and improve performance
+- **Full Localization**: All strings translated in IT/EN/PT-BR
 
-### 🎨 Miglioramenti UI/UX
+### 🎨 UI/UX Improvements
 
-#### Interfacce Video
-- **Video Progress Slider**: Migliorato il controllo della timeline con gesture più fluide
-- **OSD Ottimizzato**: Visualizzazione ottimizzata dei controlli on-screen durante la riproduzione
-- **Fullscreen**: Miglior gestione della modalità fullscreen e dei controlli touch
+#### Video Interfaces
+- **Video Progress Slider**: Improved timeline control with smoother gestures
+- **Optimized OSD**: Optimized display of on-screen controls during playback
+- **Fullscreen**: Better fullscreen mode and touch control management
 
-#### Pagina Impostazioni
-- **Riorganizzazione**: Rinominata e riorganizzata "Settings Activity" per maggiore coerenza
-- **Sezione About**: Riprogettata con nuove viste Contributors e Sponsors
-- **Navigazione**: Migliorata la navigazione tra le diverse sezioni delle impostazioni
+#### Settings Page
+- **Reorganization**: Renamed and reorganized "Settings Activity" for better consistency
+- **About Section**: Redesigned with new Contributors and Sponsors views
+- **Navigation**: Improved navigation between different settings sections
 
-### 🔧 Miglioramenti Tecnici
+### 🔧 Technical Improvements
 
 #### Performance
-- **Caricamento Canali**: Velocità di caricamento aumentata del 350% (4.5x più veloce)
-- **Gestione Crash**: Risolti crash durante la chiusura dell'applicazione
-- **Memoria**: Ottimizzata la gestione della memoria per RecyclingGrid
-- **Threading**: Miglior gestione dei thread per operazioni in background
+- **Channel Loading**: Loading speed increased by 350% (4.5x faster)
+- **Crash Management**: Fixed crashes during app shutdown
+- **Memory**: Optimized memory management for RecyclingGrid
+- **Threading**: Better thread management for background operations
 
-#### API e Networking
-- **Chunked Transfer**: Supporto per HTTP chunked transfer encoding
-- **Timeout**: Gestione migliorata dei timeout per download lunghi
-- **Batch Requests**: Ottimizzate le chiamate API con richieste batch
-- **Error Handling**: Gestione errori più robusta per chiamate di rete
+#### API and Networking
+- **Chunked Transfer**: Support for HTTP chunked transfer encoding
+- **Timeout**: Improved timeout handling for long downloads
+- **Batch Requests**: Optimized API calls with batch requests
+- **Error Handling**: More robust error handling for network calls
 
-#### Gestione Canali
-- **Channel Manager**: Refactoring completo con supporto multi-sorgente (M3U8 + Xtream)
-- **Event System**: Sistema di eventi per notificare i cambiamenti di sorgente IPTV
-- **Rilevamento Download**: Rilevamento automatico di canali già scaricati
-- **Cache Ottimizzata**: Sistema di cache migliorato per playlist e metadati
+#### Channel Management
+- **Channel Manager**: Complete refactor with multi-source support (M3U8 + Xtream)
+- **Event System**: Event system to notify IPTV source changes
+- **Download Detection**: Automatic detection of already downloaded channels
+- **Optimized Cache**: Improved cache system for playlists and metadata
 
-### 🌍 Localizzazione
+### 🌍 Localization
 
-#### Nuove Stringhe i18n
-- `live_download_error`: "Download non disponibile" / "Download unavailable" / "Download indisponível"
-- `live_download_error_desc`: Descrizione errore per tentativi di download live stream
-- `contributors_header`: Intestazione sezione contributori
-- `sponsors_header`: Intestazione sezione sponsor
-- `contrib_header` / `contrib_text`: Testi introduttivi per contributori
-- `sponsor_qr`: Label per QR code sponsor
+#### New i18n Strings
+- `live_download_error`: "Download unavailable" error title
+- `live_download_error_desc`: Error description for live stream download attempts
+- `contributors_header`: Contributors section header
+- `sponsors_header`: Sponsors section header
+- `contrib_header` / `contrib_text`: Introductory texts for contributors
+- `sponsor_qr`: Label for sponsor QR code
 
-#### Lingue Supportate
-- 🇮🇹 Italiano (completo)
-- 🇬🇧 Inglese (completo)
-- 🇧🇷 Portoghese Brasiliano (completo)
+#### Supported Languages
+- 🇮🇹 Italian (complete)
+- 🇬🇧 English (complete)
+- 🇧🇷 Brazilian Portuguese (complete)
 
-### 🐛 Correzioni Bug
+### 🐛 Bug Fixes
 
-#### Stabilità
-- Risolti crash durante la chiusura di Activity
-- Corretta gestione della memoria per evitare memory leak
-- Fixati race condition nel sistema di download
-- Risolti problemi di sincronizzazione thread
+#### Stability
+- Fixed crashes during Activity shutdown
+- Fixed memory management to avoid memory leaks
+- Fixed race conditions in download system
+- Fixed thread synchronization issues
 
-#### Funzionalità
-- Corretta gestione cache per canali IPTV
-- Fixato banner download su Nintendo Switch
-- Risolti problemi con ID duplicati per elementi scaricati
-- Corretta detection automatica tipo contenuto (live vs on-demand)
-- Fixato switch modalità IPTV durante runtime
+#### Functionality
+- Fixed cache management for IPTV channels
+- Fixed download banner on Nintendo Switch
+- Fixed issues with duplicate IDs for downloaded items
+- Fixed automatic content type detection (live vs on-demand)
+- Fixed IPTV mode switching during runtime
 
 #### UI/UX
-- Corretti problemi di layout su RecyclingGrid
-- Fixati problemi di focus nella navigazione con controller
-- Risolti glitch visivi durante transizioni
-- Corretta visualizzazione progress bar su tutti i temi
+- Fixed layout issues on RecyclingGrid
+- Fixed focus issues in controller navigation
+- Fixed visual glitches during transitions
+- Fixed progress bar display on all themes
 
-### 📦 Dipendenze
+### 📦 Dependencies
 
-#### Aggiornamenti
-- **borealis**: Aggiornata libreria UI (submodule)
-- **OpenCC**: Aggiornata libreria conversione caratteri cinesi (submodule)
+#### Updates
+- **borealis**: Updated UI library (submodule)
+- **OpenCC**: Updated Chinese character conversion library (submodule)
 
-#### Nuove Configurazioni
-- **crowdin.yml**: Aggiunta configurazione per gestione traduzioni automatiche
-- **GitHub Workflows**: Nuovo workflow per generazione badge download automatici
+#### New Configurations
+- **crowdin.yml**: Added configuration for automatic translation management
+- **GitHub Workflows**: New workflow for automatic download badge generation
 
-### 🛠️ Build & Infrastruttura
+### 🛠️ Build & Infrastructure
 
 #### Scripts
-- `generate_downloads_badge.py`: Script Python per generare badge download da GitHub releases
-- Aggiornati script di build per Switch
-- Migliorati script di deploy
+- `generate_downloads_badge.py`: Python script to generate download badges from GitHub releases
+- Updated Switch build scripts
+- Improved deploy scripts
 
-#### Asset
-- **SVG Icons**: Aggiunti 3 nuovi file SVG per UI download
-  - `ico-downloads.svg`: Icona download inattiva
-  - `ico-downloads-activate.svg`: Icona download attiva
-  - `bpx-svg-sprite-thumb.svg`: Sprite per thumbnail
+#### Assets
+- **SVG Icons**: Added 3 new SVG files for download UI
+  - `ico-downloads.svg`: Inactive download icon
+  - `ico-downloads-activate.svg`: Active download icon
+  - `bpx-svg-sprite-thumb.svg`: Sprite for thumbnails
 
 #### XML Views
-- `fragment/home_downloads.xml`: Layout per tab downloads
-- `views/download_item_cell.xml`: Layout per elemento download nella lista
-- Ristrutturati XML settings per migliore organizzazione
+- `fragment/home_downloads.xml`: Layout for downloads tab
+- `views/download_item_cell.xml`: Layout for download item in list
+- Restructured XML settings for better organization
 
-### 📊 Statistiche
+### 📊 Statistics
 
-#### Modifiche al Codice
-- **76 file modificati**
-- **+8,621 righe aggiunte**
-- **-322 righe rimosse**
-- **19 nuovi file creati**
-- **3 file rinominati**
+#### Code Changes
+- **76 files changed**
+- **+8,621 lines added**
+- **-322 lines removed**
+- **19 new files created**
+- **3 files renamed**
 
-#### Nuove Classi
-- `DownloadManager`: Gestione completa download
-- `DownloadProgressManager`: Tracking progresso download globale
-- `XtreamAPI`: Integrazione Xtream Codes IPTV
-- `PlaybackPositionManager`: Salvataggio posizioni riproduzione
-- `ContributorsView` / `SponsorsView`: Viste per contributori e sponsor
+#### New Classes
+- `DownloadManager`: Complete download management
+- `DownloadProgressManager`: Global download progress tracking
+- `XtreamAPI`: Xtream Codes IPTV integration
+- `PlaybackPositionManager`: Playback position saving
+- `ContributorsView` / `SponsorsView`: Views for contributors and sponsors
 
-#### Classi Refactorate
-- `ChannelManager`: Supporto multi-sorgente
-- `VideoView`: Gestione ottimizzata riproduzione
-- `LivePlayerActivity`: Integrazione nuove funzionalità
-- `HomeFragments`: Supporto per nuovo tab Downloads
+#### Refactored Classes
+- `ChannelManager`: Multi-source support
+- `VideoView`: Optimized playback management
+- `LivePlayerActivity`: New features integration
+- `HomeFragments`: Support for new Downloads tab
 
-### 🔐 Sicurezza
+### 🔐 Security
 
-- Migliorata gestione credenziali Xtream con storage sicuro
-- Sanitizzazione input per URL esterni
-- Validazione robusta per file scaricati
+- Improved Xtream credentials management with secure storage
+- Input sanitization for external URLs
+- Robust validation for downloaded files
 
-### 📝 Documentazione
+### 📝 Documentation
 
-- Aggiunto `test_mode_change.md`: Documentazione per test cambio modalità IPTV
-- Migliorati commenti nel codice per funzionalità complesse
-- Aggiunta documentazione inline per nuove API
+- Added `test_mode_change.md`: Documentation for IPTV mode change testing
+- Improved code comments for complex features
+- Added inline documentation for new APIs
 
 ---
 
-## Note di Rilascio v0.3.0
+## Release Notes v0.3.0
 
-Questa versione introduce funzionalità significative che migliorano l'esperienza utente:
+This version introduces significant features that enhance user experience:
 
-1. **Download Offline**: Gli utenti possono ora scaricare i loro contenuti preferiti per visualizzarli offline
-2. **Flessibilità IPTV**: Supporto per più provider IPTV con switch rapido tra modalità
-3. **Esperienza Continua**: Ripresa automatica dei video dal punto di interruzione
-4. **Trasparenza**: Riconoscimento pubblico dei contributori e sponsor del progetto
+1. **Offline Downloads**: Users can now download their favorite content for offline viewing
+2. **IPTV Flexibility**: Support for multiple IPTV providers with quick mode switching
+3. **Seamless Experience**: Automatic video resume from interruption point
+4. **Transparency**: Public recognition of project contributors and sponsors
 
-### Compatibilità
+### Compatibility
 
 - ✅ Nintendo Switch
-- ✅ Playlist M3U8 tradizionali
-- ✅ Server Xtream Codes
-- ✅ Download multi-threaded su Switch
+- ✅ Traditional M3U8 playlists
+- ✅ Xtream Codes servers
+- ✅ Multi-threaded downloads on Switch
 
-### Requisiti
+### Requirements
 
-- Spazio di archiviazione sufficiente per download
-- Connessione internet per streaming e download
-- (Opzionale) Credenziali Xtream Codes per provider IPTV compatibili
+- Sufficient storage space for downloads
+- Internet connection for streaming and downloads
+- (Optional) Xtream Codes credentials for compatible IPTV providers
 
 ---
 
