@@ -14,6 +14,10 @@ All notable changes to this project will be documented in this file.
 - **Fixed missing header include** - added `<thread>` header in ChannelManager.cpp for proper compilation
 - **Fixed DownloadManager constructor initialization order** on macOS for member variable initialization compliance
 
+#### Crash Fixes
+- **Fixed segmentation fault in HomeLive destructor** - initialized `exitEventSubscription` member variable to prevent undefined behavior on app exit
+- **Fixed memory safety issue** in event subscription cleanup
+
 #### Initialization & Type Safety
 - **Fixed platform pointer null checks** to prevent crashes when platform is unavailable
 - **Fixed string localization** in live download error dialogs to use proper brls::getStr() instead of macro expansion
@@ -25,11 +29,13 @@ All notable changes to this project will be documented in this file.
 - ContributorsView
 - SponsorsView
 - StreamHelper utilities
+- HomeLive fragment
 
 ### 🔧 Technical Details
 - Improved type safety by removing unsafe casts
 - Enhanced macOS compatibility layer
 - Fixed member initialization order in structs
+- Proper initialization of event subscription members to prevent crashes on destruction
 
 ---
 
