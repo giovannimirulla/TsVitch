@@ -1767,7 +1767,7 @@ DownloadManager::DownloadManager() {
     brls::Logger::info("DownloadManager: Constructor - leaving callbacks unset for UI registration");
     
     // Subscribe to application exit event to stop downloads immediately
-    brls::Application::getExitEvent()->subscribe([this]() {
+    exitEventSubscription = brls::Application::getExitEvent()->subscribe([this]() {
         brls::Logger::debug("DownloadManager: Application exit event received, stopping all downloads");
         shouldStop = true;
         
@@ -1788,10 +1788,17 @@ DownloadManager::DownloadManager() {
         downloadCompleteCallbacks.clear();
         downloadErrorCallbacks.clear();
     });
+    hasExitSubscription = true;
 }
 DownloadManager::~DownloadManager() {
     brls::Logger::debug("DownloadManager: Starting destruction");
     shouldStop = true;
+    
+    // Unsubscribe from exit event if subscribed
+    if (hasExitSubscription) {
+        brls::Application::getExitEvent()->unsubscribe(exitEventSubscription);
+        brls::Logger::debug("DownloadManager: Exit event unsubscribed");
+    }
     
     // Pulisci tutti i callback prima di aspettare i thread
     {
