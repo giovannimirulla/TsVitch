@@ -147,6 +147,10 @@ public:
     std::set<std::string> completedDownloads;
     mutable std::mutex completedDownloadsMutex;
     
+    // Exit event subscription management
+    brls::Event<>::Subscription exitEventSubscription;
+    bool hasExitSubscription = false;
+    
 private:
     
     std::vector<std::thread> downloadThreads;
