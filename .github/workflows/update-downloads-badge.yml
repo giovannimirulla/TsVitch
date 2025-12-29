@@ -1,0 +1,87 @@
+name: Update Downloads Badge
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Aggiorna ogni 6 ore
+  workflow_dispatch:  # Permette l'esecuzione manuale
+
+jobs:
+  update-badge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install bc calculator
+        run: sudo apt-get update && sudo apt-get install -y bc
+
+      - name: Get GitHub downloads
+        id: github-downloads
+        run: |
+          GITHUB_DOWNLOADS=$(curl -s "https://api.github.com/repos/giovannimirulla/TsVitch/releases" | jq '[.[].assets[].download_count] | add // 0')
+          echo "github_downloads=$GITHUB_DOWNLOADS" >> $GITHUB_OUTPUT
+
+      - name: Get Homebrew Store downloads
+        id: homebrew-downloads
+        run: |
+          HOMEBREW_DOWNLOADS=$(curl -s "https://switch.cdn.fortheusers.org/repo.json" | jq '.packages | map(select(.name == "TsVitch"))[0].app_dls // 0')
+          echo "homebrew_downloads=$HOMEBREW_DOWNLOADS" >> $GITHUB_OUTPUT
+
+      - name: Calculate total downloads
+        id: total-downloads
+        run: |
+          TOTAL=$(((${{ steps.github-downloads.outputs.github_downloads }} + ${{ steps.homebrew-downloads.outputs.homebrew_downloads }})))
+          echo "total_downloads=$TOTAL" >> $GITHUB_OUTPUT
+
+      - name: Create downloads badge
+        run: |
+          TOTAL="${{ steps.total-downloads.outputs.total_downloads }}"
+          
+          # Formatta il numero con K per migliaia e M per milioni
+          if [ $TOTAL -ge 1000000 ]; then
+            # Milioni (es. 1.2M)
+            MILLIONS=$(echo "scale=1; $TOTAL / 1000000" | bc)
+            FORMATTED="${MILLIONS}M"
+          elif [ $TOTAL -ge 1000 ]; then
+            # Migliaia (es. 1.2K)
+            THOUSANDS=$(echo "scale=1; $TOTAL / 1000" | bc)
+            FORMATTED="${THOUSANDS}K"
+          else
+            FORMATTED=$TOTAL
+          fi
+          
+          # Crea il badge JSON
+          mkdir -p badges
+          cat > badges/downloads.json << EOF
+          {
+            "schemaVersion": 1,
+            "label": "downloads",
+            "message": "$FORMATTED",
+            "color": "brightgreen"
+          }
+          EOF
+
+      - name: Create orphan branch and deploy
+        run: |
+          # Configura git
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # Crea un branch orfano per evitare conflitti con il contenuto esistente
+          git checkout --orphan gh-pages-badges
+          
+          # Rimuovi tutti i file dal working tree
+          git rm -rf .
+          
+          # Copia solo il file badge
+          cp badges/downloads.json downloads.json
+          
+          # Crea .nojekyll per disabilitare Jekyll
+          touch .nojekyll
+          
+          # Aggiungi e committa
+          git add downloads.json .nojekyll
+          git commit -m "Update downloads badge"
+          
+          # Push al branch gh-pages
+          git push origin gh-pages-badges:gh-pages --force
