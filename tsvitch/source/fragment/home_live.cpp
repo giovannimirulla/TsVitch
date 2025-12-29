@@ -227,6 +227,7 @@ HomeLive::HomeLive() {
             validityFlag->store(false);
         }
     });
+    hasExitSubscription = true;
     
     recyclingGrid->registerCell("Cell", []() { return RecyclingGridItemLiveVideoCard::create(); });
 
@@ -761,8 +762,10 @@ void HomeLive::onCreate() {
 HomeLive::~HomeLive() { 
     brls::Logger::debug("Fragment HomeLiveActivity: delete");
     
-    // Cancella la sottoscrizione all'evento di uscita
-    brls::Application::getExitEvent()->unsubscribe(exitEventSubscription);
+    // Cancella la sottoscrizione all'evento di uscita solo se è stata creata
+    if (hasExitSubscription) {
+        brls::Application::getExitEvent()->unsubscribe(exitEventSubscription);
+    }
     
     // Invalidate the flag to prevent callbacks from accessing this object
     if (validityFlag) {

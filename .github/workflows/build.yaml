@@ -140,6 +140,7 @@ jobs:
             -e SERVER_URL="${SERVER_URL}" \
             -e SERVER_TOKEN="${SERVER_TOKEN}" \
             -e M3U8_URL="${M3U8_URL}" \
+            -e GITHUB_TOKEN="${{ secrets.GH_PAT }}" \
             -v $(pwd):/data devkitpro/devkita64:20240324 \
             bash -c "/data/scripts/build_switch${{ matrix.shuffix }}.sh"
 
@@ -197,7 +198,8 @@ jobs:
             -DANALYTICS_KEY="${GA_KEY}" \
             -DSERVER_URL="${SERVER_URL}" \
             -DSERVER_TOKEN="${SERVER_TOKEN}" \
-            -DM3U8_URL="${M3U8_URL}"
+            -DM3U8_URL="${M3U8_URL}" \
+            -DGITHUB_TOKEN="${{ secrets.GH_PAT }}"
           make -C build TsVitch.app -j$(sysctl -n hw.ncpu)
 
       - name: Name
