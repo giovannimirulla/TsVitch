@@ -101,7 +101,7 @@ add_definitions(-DFONS_HASH_LUT_SIZE=4096)
 # Project Info
 project(TsVitch)
 set(VERSION_MAJOR "0")
-set(VERSION_MINOR "2")
+set(VERSION_MINOR "3")
 set(VERSION_REVISION "1")
 if (NOT VERSION_BUILD)
     set(VERSION_BUILD "0")
