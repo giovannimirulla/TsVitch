@@ -48,11 +48,18 @@ if [ -n "${GITHUB_TOKEN}" ]; then
     GITHUB_TOKEN_FLAG="-DGITHUB_TOKEN=\"${GITHUB_TOKEN}\""
 fi
 
+# Disable unity build by default for stability on Switch
+# Can be re-enabled with ENABLE_UNITY_BUILD=true environment variable
+UNITY_BUILD_FLAG="-DBRLS_UNITY_BUILD=OFF"
+if [ "${ENABLE_UNITY_BUILD}" = "true" ]; then
+    UNITY_BUILD_FLAG="-DBRLS_UNITY_BUILD=ON"
+fi
+
 cmake -B ${BUILD_DIR} \
   -DCMAKE_BUILD_TYPE=Release \
   -DBUILTIN_NSP=ON \
   -DPLATFORM_SWITCH=ON \
-  -DBRLS_UNITY_BUILD=ON \
+  ${UNITY_BUILD_FLAG} \
   -DCMAKE_UNITY_BUILD_BATCH_SIZE=16 \
   -DANALYTICS=ON \
   -DANALYTICS_ID="${GA_ID}" \

@@ -127,11 +127,6 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Disable unity build
-        if: ${{ github.event.inputs.disable_unity_build == 'true' }}
-        run: |
-          sed -i 's/BRLS_UNITY_BUILD=ON/BRLS_UNITY_BUILD=OFF/' scripts/build_switch${{ matrix.shuffix }}.sh
-
       - name: Build Nro
         run: |
           docker run --platform linux/amd64 --rm \
@@ -141,7 +136,7 @@ jobs:
             -e SERVER_TOKEN="${SERVER_TOKEN}" \
             -e M3U8_URL="${M3U8_URL}" \
             -e GITHUB_TOKEN="${{ secrets.GH_PAT }}" \
-            -v $(pwd):/data devkitpro/devkita64:20240324 \
+            -v $(pwd):/data devkitpro/devkita64:latest \
             bash -c "/data/scripts/build_switch${{ matrix.shuffix }}.sh"
 
       - name: Upload dist
