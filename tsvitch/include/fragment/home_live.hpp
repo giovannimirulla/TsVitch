@@ -54,7 +54,7 @@ private:
     std::map<std::string, tsvitch::LiveM3u8ListResult> groupCache;
     std::mutex groupCacheMutex;
     std::shared_ptr<std::atomic<bool>> validityFlag;
-    brls::Event<>::Subscription exitEventSubscription;
+    brls::Event<>::Subscription exitEventSubscription = 0;
     BRLS_BIND(RecyclingGrid, recyclingGrid, "home/live/recyclingGrid");
     BRLS_BIND(RecyclingGrid, upRecyclingGrid, "dynamic/up/recyclingGrid");
     BRLS_BIND(CustomButton, searchField, "home/search");
