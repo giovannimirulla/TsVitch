@@ -144,6 +144,7 @@ typedef struct ProgramOption {
 class ProgramConfig : public brls::Singleton<ProgramConfig> {
 public:
     ProgramConfig();
+    ~ProgramConfig();
     ProgramConfig(const ProgramConfig& config);
     void setProgramConfig(const ProgramConfig& conf);
 
@@ -234,6 +235,8 @@ public:
     std::string device;
     std::string m3u8Url;
     std::string proxyUrl;
+    brls::Event<>::Subscription exitEventSubscription;
+    bool hasExitSubscription = false;
     static std::unordered_map<SettingItem, ProgramOption> SETTING_MAP;
 };
 

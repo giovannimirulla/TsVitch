@@ -42,6 +42,12 @@ if [ -z "${M3U8_URL}" ]; then
     exit 1
 fi
 
+# GITHUB_TOKEN is optional but pass it if available
+GITHUB_TOKEN_FLAG=""
+if [ -n "${GITHUB_TOKEN}" ]; then
+    GITHUB_TOKEN_FLAG="-DGITHUB_TOKEN=\"${GITHUB_TOKEN}\""
+fi
+
 cmake -B ${BUILD_DIR} \
   -DCMAKE_BUILD_TYPE=Release \
   -DBUILTIN_NSP=ON \
@@ -53,6 +59,7 @@ cmake -B ${BUILD_DIR} \
   -DANALYTICS_KEY="${GA_KEY}" \
   -DSERVER_URL="${SERVER_URL}" \
     -DSERVER_TOKEN="${SERVER_TOKEN}" \
-  -DM3U8_URL="${M3U8_URL}" 
+  -DM3U8_URL="${M3U8_URL}" \
+  ${GITHUB_TOKEN_FLAG} 
 
 make -C ${BUILD_DIR} TsVitch.nro -j$(nproc)

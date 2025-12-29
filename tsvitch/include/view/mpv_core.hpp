@@ -357,6 +357,10 @@ private:
     MPVEvent mpvCoreEvent;
 
     brls::Event<bool>::Subscription focusSubscription;
+    brls::Event<>::Subscription exitEventSubscription;
+    bool hasExitSubscription = false;
+    brls::Event<>::Subscription exitDoneEventSubscription;
+    bool hasExitDoneSubscription = false;
 
     void eventMainLoop();
 

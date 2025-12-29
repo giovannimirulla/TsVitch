@@ -266,7 +266,7 @@ MPVCore::MPVCore() {
 #endif
     this->init();
 
-    brls::Application::getExitDoneEvent()->subscribe([this]() {
+    exitDoneEventSubscription = brls::Application::getExitDoneEvent()->subscribe([this]() {
         this->clean();
 #ifdef MPV_SW_RENDER
         if (pixels) {
@@ -276,6 +276,7 @@ MPVCore::MPVCore() {
         }
 #endif
     });
+    hasExitDoneSubscription = true;
 }
 
 void MPVCore::init() {
@@ -450,7 +451,8 @@ void MPVCore::init() {
         }
     });
 
-    brls::Application::getExitEvent()->subscribe([]() { disableDimming(false); });
+    exitEventSubscription = brls::Application::getExitEvent()->subscribe([]() { disableDimming(false); });
+    hasExitSubscription = true;
 
     this->initializeVideo();
 }
@@ -465,6 +467,14 @@ void MPVCore::clean() {
     check_error(mpvCommandString(this->mpv, "quit"));
 
     brls::Application::getWindowFocusChangedEvent()->unsubscribe(focusSubscription);
+    
+    if (hasExitSubscription) {
+        brls::Application::getExitEvent()->unsubscribe(exitEventSubscription);
+    }
+    
+    if (hasExitDoneSubscription) {
+        brls::Application::getExitDoneEvent()->unsubscribe(exitDoneEventSubscription);
+    }
 
     brls::Logger::info("uninitialize Video");
     this->uninitializeVideo();

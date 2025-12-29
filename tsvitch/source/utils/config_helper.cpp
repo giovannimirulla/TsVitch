@@ -199,6 +199,15 @@ ProgramConfig::ProgramConfig(const ProgramConfig& conf) {
     this->client  = conf.client;
 }
 
+ProgramConfig::~ProgramConfig() {
+#ifdef IOS
+#elif defined(__APPLE__) || defined(__linux__) || defined(_WIN32)
+    if (hasExitSubscription) {
+        brls::Application::getExitEvent()->unsubscribe(exitEventSubscription);
+    }
+#endif
+}
+
 void ProgramConfig::setProgramConfig(const ProgramConfig& conf) {
     this->setting = conf.setting;
     this->client  = conf.client;
@@ -470,7 +479,8 @@ void ProgramConfig::load() {
 #ifdef IOS
 #elif defined(__APPLE__) || defined(__linux__) || defined(_WIN32)
 
-    brls::Application::getExitEvent()->subscribe([this]() { saveHomeWindowState(); });
+    exitEventSubscription = brls::Application::getExitEvent()->subscribe([this]() { saveHomeWindowState(); });
+    hasExitSubscription = true;
 #endif
 }
 
