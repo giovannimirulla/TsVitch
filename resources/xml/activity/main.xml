@@ -24,6 +24,20 @@
 
             <Tab label=""
                  fontSize="18"
+                 icon="@res/svg/ico-downloads.svg"
+                 iconActivate="@res/svg/ico-downloads-activate.svg">
+                <HomeVOD/>
+            </Tab>
+
+            <Tab label=""
+                 fontSize="18"
+                 icon="@res/svg/ico-history.svg"
+                 iconActivate="@res/svg/ico-history-activate.svg">
+                <HomeSeries/>
+            </Tab>
+
+            <Tab label=""
+                 fontSize="18"
                  icon="@res/svg/ico-favorites.svg"
                  iconActivate="@res/svg/ico-favorites-activate.svg">
                 <HomeFavorites/>
@@ -38,32 +52,18 @@
 
             <Tab label=""
                  fontSize="18"
-                 focusDown="main/setting"
                  icon="@res/svg/ico-history.svg"
                  iconActivate="@res/svg/ico-history-activate.svg">
                 <HomeHistory/>
             </Tab>
-        </AutoTabFrame>
-        <brls:Box
-                wireframe="false"
-                width="100"
-                axis="column"
-                justifyContent="center"
-                alignItems="center"
-                positionType="absolute"
-                positionBottom="20">
 
-            <CustomButton
-                    id="main/setting"
-                    focusable="true"
-                    highlightCornerRadius="50"
-                    cornerRadius="50"
-                    wireframe="false">
-                <SVGImage
-                        width="48"
-                        height="48"
-                        SVG="@res/svg/ico-setting.svg"/>
-            </CustomButton>
-        </brls:Box>
+            <Tab label=""
+                 fontSize="18"
+                 id="main/setting"
+                 icon="@res/svg/ico-setting.svg"
+                 iconActivate="@res/svg/ico-setting-activate.svg">
+                <brls:Box/>
+            </Tab>
+        </AutoTabFrame>
     </brls:Box>
 </brls:AppletFrame>

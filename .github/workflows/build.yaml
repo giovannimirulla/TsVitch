@@ -114,12 +114,6 @@ jobs:
   build-switch:
     needs: [version]
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { driver: opengl }
-        driver: [opengl]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -127,12 +121,7 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Disable unity build
-        if: ${{ github.event.inputs.disable_unity_build == 'true' }}
-        run: |
-          sed -i 's/BRLS_UNITY_BUILD=ON/BRLS_UNITY_BUILD=OFF/' scripts/build_switch${{ matrix.shuffix }}.sh
-
-      - name: Build Nro
+      - name: Build Nro (deko3d)
         run: |
           docker run --platform linux/amd64 --rm \
             -e GA_ID="${GA_ID}" \
@@ -140,13 +129,14 @@ jobs:
             -e SERVER_URL="${SERVER_URL}" \
             -e SERVER_TOKEN="${SERVER_TOKEN}" \
             -e M3U8_URL="${M3U8_URL}" \
-            -v $(pwd):/data devkitpro/devkita64:20240324 \
-            bash -c "/data/scripts/build_switch${{ matrix.shuffix }}.sh"
+            -e GITHUB_TOKEN="${{ secrets.GH_PAT }}" \
+            -v $(pwd):/data devkitpro/devkita64:latest \
+            bash -c "/data/scripts/build_switch.sh --renderer deko3d"
 
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ needs.version.outputs.DIST_NRO }}${{ matrix.shuffix }}
+          name: ${{ needs.version.outputs.DIST_NRO }}
           path: "cmake-build-switch/TsVitch.nro"
 
   build-macos:

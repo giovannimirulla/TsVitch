@@ -341,8 +341,6 @@ void MPVCore::init() {
 #if defined(__SWITCH__)
     mpvSetOptionString(mpv, "vd-lavc-dr", "no");
     mpvSetOptionString(mpv, "vd-lavc-threads", "4");
-
-    mpvSetOptionString(mpv, "opengl-glfinish", "yes");
 #elif defined(PS4)
     mpvSetOptionString(mpv, "vd-lavc-threads", "6");
 #elif defined(__PSV__)
@@ -358,7 +356,7 @@ void MPVCore::init() {
     if (MPVCore::TERMINAL) {
         mpvSetOptionString(mpv, "terminal", "yes");
         if (brls::Logger::getLogLevel() >= brls::LogLevel::LOG_DEBUG) {
-            mpvSetOptionString(mpv, "msg-level", "all=v");
+            mpvSetOptionString(mpv, "msg-level", "all=v,vd=trace,vo=trace");
         }
     }
 

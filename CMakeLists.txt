@@ -143,6 +143,10 @@ elseif (PLATFORM_DESKTOP)
         list(APPEND APP_PLATFORM_LIB ${WebP_LIBRARY})
     endif ()
 
+    if (APPLE)
+        list(APPEND APP_PLATFORM_LIB "-framework CoreWLAN" "-framework SystemConfiguration")
+    endif ()
+
     if (MINGW)
         set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static" CACHE STRING "" FORCE)
     endif ()
