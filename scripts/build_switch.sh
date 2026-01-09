@@ -7,6 +7,9 @@ BUILD_DIR=cmake-build-switch
 cd "$(dirname $0)/.."
 git config --global --add safe.directory `pwd`
 
+# Aggiorna i pacchetti nel container DevkitPro prima della build
+dkp-pacman -Syu --noconfirm
+
 BASE_URL="https://github.com/xfangfang/wiliwili/releases/download/v0.1.0/"
 
 PKGS=(

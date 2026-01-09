@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [0.3.2] - Hot Fix
+
+### 🔧 Build & Compatibility
+
+- **Recompiled with the latest libnx** to ensure compatibility with the current devkitPro toolchain and Switch SDK.
+- No functional changes; this hotfix focuses on build stability and forward compatibility.
+
+---
+
 ## [0.3.1] - Bug Fixes
 
 ### 🐛 Bug Fixes
