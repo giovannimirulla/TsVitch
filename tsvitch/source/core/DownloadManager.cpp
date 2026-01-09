@@ -3,6 +3,7 @@
 #include "utils/config_helper.hpp"
 #include <borealis/core/logger.hpp>
 #include <borealis/core/application.hpp>
+#include <borealis/core/thread.hpp>
 #include <fstream>
 #include <cstdio>
 #include <filesystem>

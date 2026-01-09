@@ -10,6 +10,7 @@
 #include "tsvitch.h"
 #include "tsvitch/util/http.hpp"
 #include "borealis/core/thread.hpp"
+#include "borealis/core/application.hpp"
 
 #include "tsvitch/result/home_live_result.h"
 #include "utils/config_helper.hpp"
