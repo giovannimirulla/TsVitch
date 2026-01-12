@@ -26,6 +26,18 @@ RENDERER="deko3d"
 MPV_VERSION="0.41.0"
 BUILD_DIR="cmake-build-switch"
 USE_DEKO3D="ON"
+BUILTIN_NSP="ON"
+
+# DevkitPro root (allows override via DEVKITPRO env)
+if [ -z "${DEVKITPRO:-}" ]; then
+    DEVKITPRO="/opt/devkitpro"
+    export DEVKITPRO
+fi
+
+# Prefer toolchain binaries on PATH (aarch64-none-elf-pkg-config, etc.)
+if [ -d "${DEVKITPRO}/tools/bin" ]; then
+    export PATH="${DEVKITPRO}/tools/bin:$PATH"
+fi
 
 # Add Homebrew paths to PATH for meson/ninja (macOS only)
 if [ -d "/opt/homebrew/bin" ]; then
@@ -63,9 +75,25 @@ while [[ $# -gt 0 ]]; do
                     ;;
             esac
             ;;
+        --builtin-nsp)
+            case "$2" in
+                on|ON|On|1|true|TRUE)
+                    BUILTIN_NSP="ON"
+                    ;;
+                off|OFF|Off|0|false|FALSE)
+                    BUILTIN_NSP="OFF"
+                    ;;
+                *)
+                    echo "❌ Invalid builtin-nsp value: $2"
+                    echo "Valid options: on, off"
+                    exit 1
+                    ;;
+            esac
+            shift 2
+            ;;
         *)
             echo "❌ Unknown option: $1"
-            echo "Usage: $0 [--renderer deko3d|opengl] [--mpv-version 0.36.0|0.41.0]"
+            echo "Usage: $0 [--renderer deko3d|opengl] [--mpv-version 0.36.0|0.41.0] [--builtin-nsp on|off]"
             exit 1
             ;;
     esac
@@ -82,7 +110,7 @@ cd "$(dirname $0)/.."
 git config --global --add safe.directory `pwd`
 
 # Ensure pkg-config can see Switch portlibs early (for libmpv detection)
-export PKG_CONFIG_PATH="/opt/devkitpro/portlibs/switch/lib/pkgconfig:${PKG_CONFIG_PATH}"
+export PKG_CONFIG_PATH="${DEVKITPRO}/portlibs/switch/lib/pkgconfig:${PKG_CONFIG_PATH}"
 
 # Ensure build prerequisites are installed
 ensure_prerequisites() {
@@ -139,7 +167,7 @@ has_build_prerequisites() {
     
     command -v meson &>/dev/null || missing="${missing}Meson "
     command -v ninja &>/dev/null || missing="${missing}Ninja "
-    [ -d "/opt/devkitpro" ] || missing="${missing}DevKit-Pro "
+    [ -d "${DEVKITPRO}" ] || missing="${missing}DevKit-Pro "
     
     if [ -n "$missing" ]; then
         return 1
@@ -185,12 +213,12 @@ try_mpv_0_41() {
         # When using deko3d, ensure both the deko header and patched render.h are present
         if [ "$RENDERER" = "deko3d" ]; then
             NEED_FIX=0
-            if [ ! -f "/opt/devkitpro/portlibs/switch/include/mpv/render_dk3d.h" ]; then
+            if [ ! -f "${DEVKITPRO}/portlibs/switch/include/mpv/render_dk3d.h" ]; then
                 NEED_FIX=1
             fi
-            if [ -f "/opt/devkitpro/portlibs/switch/include/mpv/render.h" ]; then
+            if [ -f "${DEVKITPRO}/portlibs/switch/include/mpv/render.h" ]; then
                 if ! grep -q "MPV_RENDER_PARAM_DEKO3D_FBO" \
-                    "/opt/devkitpro/portlibs/switch/include/mpv/render.h"; then
+                    "${DEVKITPRO}/portlibs/switch/include/mpv/render.h"; then
                     NEED_FIX=1
                 fi
             else
@@ -201,12 +229,12 @@ try_mpv_0_41() {
                 # Try to copy from mpv-build source if available (supports Docker mounts)
                 if [ -f "/data/mpv-build/mpv-0.41.0/include/mpv/render_dk3d.h" ]; then
                     echo "📋 Copying deko3d headers from local mpv-build source..."
-                    mkdir -p "/opt/devkitpro/portlibs/switch/include/mpv"
+                    mkdir -p "${DEVKITPRO}/portlibs/switch/include/mpv"
                     # Copy both render_dk3d.h AND the patched render.h
                     cp -f "/data/mpv-build/mpv-0.41.0/include/mpv/render_dk3d.h" \
-                        "/opt/devkitpro/portlibs/switch/include/mpv/"
+                        "${DEVKITPRO}/portlibs/switch/include/mpv/"
                     cp -f "/data/mpv-build/mpv-0.41.0/include/mpv/render.h" \
-                        "/opt/devkitpro/portlibs/switch/include/mpv/"
+                        "${DEVKITPRO}/portlibs/switch/include/mpv/"
                     echo "✅ Copied render_dk3d.h and patched render.h"
                     return 0
                 fi
@@ -228,7 +256,7 @@ try_mpv_0_41() {
         local missing=""
         command -v meson &>/dev/null || missing="${missing}meson "
         command -v ninja &>/dev/null || missing="${missing}ninja "
-        [ -d "/opt/devkitpro" ] || missing="${missing}devkitpro "
+        [ -d "${DEVKITPRO}" ] || missing="${missing}devkitpro "
         echo "❌ Missing build prerequisites: $missing"
         echo "   Install via: pacman -S meson ninja"
         return 1
@@ -313,10 +341,36 @@ install_package() {
         }
     fi
     
-    dkp-pacman -U --noconfirm "$pkg" || {
+    local local_pkg="$pkg"
+    if [ ! -f "$local_pkg" ] && [ -f "packages/$pkg" ]; then
+        local_pkg="packages/$pkg"
+    fi
+
+    if [ -f "$local_pkg" ]; then
+        echo "📦 Using local: $local_pkg"
+    else
+        echo "📥 Downloading: $pkg"
+        curl -LO "${BASE_URL}${pkg}" 2>/dev/null || {
+            echo "❌ Failed to download $pkg"
+            return 1
+        }
+        local_pkg="$pkg"
+    fi
+    dkp-pacman -U --noconfirm "$local_pkg" || {
         echo "❌ Failed to install $pkg"
         return 1
     }
+}
+
+# CPU core detection (portable between Linux/macOS)
+cpu_cores() {
+    if command -v nproc >/dev/null 2>&1; then
+        nproc
+    elif command -v sysctl >/dev/null 2>&1; then
+        sysctl -n hw.ncpu 2>/dev/null || echo 4
+    else
+        echo 4
+    fi
 }
 
 # Main build flow
@@ -347,10 +401,17 @@ echo "  Build Directory:     $BUILD_DIR"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
+# Load environment variables from .env if it exists
+if [ -f ".env" ]; then
+    echo "📄 Loading environment variables from .env"
+    export $(grep -v '^#' .env | xargs)
+fi
+
 # Validate required environment variables
 for var in GA_ID GA_KEY SERVER_URL SERVER_TOKEN M3U8_URL; do
     if [ -z "${!var}" ]; then
         echo "❌ Missing environment variable: $var"
+        echo "   Please create a .env file with the required variables"
         exit 1
     fi
 done
@@ -375,7 +436,7 @@ echo "🔨 Building TsVitch..."
 export PKG_CONFIG_PATH="/opt/devkitpro/portlibs/switch/lib/pkgconfig:${PKG_CONFIG_PATH}"
 cmake -B ${BUILD_DIR} \
   -DCMAKE_BUILD_TYPE=Release \
-  -DBUILTIN_NSP=ON \
+    -DBUILTIN_NSP=${BUILTIN_NSP} \
   -DPLATFORM_SWITCH=ON \
   -DUSE_DEKO3D=${USE_DEKO3D} \
   ${UNITY_BUILD_FLAG} \
@@ -388,4 +449,4 @@ cmake -B ${BUILD_DIR} \
   -DM3U8_URL="${M3U8_URL}" \
   ${GITHUB_TOKEN_FLAG}
 
-make -C ${BUILD_DIR} TsVitch.nro -j$(nproc)
+make -C ${BUILD_DIR} TsVitch.nro -j$(cpu_cores)

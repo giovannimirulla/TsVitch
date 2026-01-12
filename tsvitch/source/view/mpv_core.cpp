@@ -413,9 +413,15 @@ void MPVCore::init() {
                               {MPV_RENDER_PARAM_INVALID, nullptr}};
 #endif
 
-    if (mpvRenderContextCreate(&mpv_context, mpv, params) < 0) {
+    int render_status = mpvRenderContextCreate(&mpv_context, mpv, params);
+    if (render_status < 0) {
+        brls::Logger::error("mpvRenderContextCreate failed with error: {}", mpvErrorString(render_status));
+#ifdef BOREALIS_USE_DEKO3D
+        brls::Logger::error("Make sure libmpv >= 0.41.0 with deko3d support is installed on your Switch");
+        brls::Logger::error("Run: sudo dkp-pacman -U packages/switch-libmpv-0.41.0-1-any.pkg.tar.zst");
+#endif
         mpvTerminateDestroy(mpv);
-        brls::fatal("failed to initialize mpv GL context");
+        brls::fatal("failed to initialize mpv render context");
     }
 #ifdef BOREALIS_USE_D3D11
     tsvitch::initCrashDump();

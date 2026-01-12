@@ -19,9 +19,11 @@ if [ ! -d "$DEVKIT_BASE" ]; then
     exit 1
 fi
 
-# Setup environment
-source ${DEVKIT_BASE}/switchvars.sh
-source ${DEVKIT_BASE}/devkita64.sh
+# Setup environment manually (switchvars.sh and devkita64.sh don't exist on all installations)
+export DEVKITPRO="${DEVKIT_BASE}"
+export DEVKITARM="${DEVKITPRO}/devkitARM"
+export DEVKITA64="${DEVKITPRO}/devkitA64"
+export PATH="${DEVKITA64}/bin:${PATH}"
 
 # Create build directory
 mkdir -p "$MPVBUILD_DIR"
