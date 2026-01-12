@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [0.3.2] - Hot Fix
+
+### 🔧 Build & Compatibility
+
+- **Recompiled with the latest libnx** to ensure compatibility with the current devkitPro toolchain and Switch SDK.
+- No functional changes; this hotfix focuses on build stability and forward compatibility.
+
+---
+
 ## [0.3.1] - Bug Fixes
 
 ### 🐛 Bug Fixes
@@ -13,6 +22,10 @@ All notable changes to this project will be documented in this file.
 - **Fixed unsafe type casting** in platform detection - replaced unchecked cast with safe null checks in settings, contributors, and sponsors views
 - **Fixed missing header include** - added `<thread>` header in ChannelManager.cpp for proper compilation
 - **Fixed DownloadManager constructor initialization order** on macOS for member variable initialization compliance
+
+#### Crash Fixes
+- **Fixed segmentation fault in HomeLive destructor** - initialized `exitEventSubscription` member variable to prevent undefined behavior on app exit
+- **Fixed memory safety issue** in event subscription cleanup
 
 #### Initialization & Type Safety
 - **Fixed platform pointer null checks** to prevent crashes when platform is unavailable
@@ -25,11 +38,13 @@ All notable changes to this project will be documented in this file.
 - ContributorsView
 - SponsorsView
 - StreamHelper utilities
+- HomeLive fragment
 
 ### 🔧 Technical Details
 - Improved type safety by removing unsafe casts
 - Enhanced macOS compatibility layer
 - Fixed member initialization order in structs
+- Proper initialization of event subscription members to prevent crashes on destruction
 
 ---
 

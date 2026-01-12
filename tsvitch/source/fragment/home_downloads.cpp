@@ -246,7 +246,7 @@ HomeDownloads::HomeDownloads() {
     brls::Logger::error("HomeDownloads: XML inflated successfully");
     
     // Sottoscrivi l'exitEvent per shutdown rapido
-    brls::Application::getExitEvent()->subscribe([this]() {
+    exitEventSubscription = brls::Application::getExitEvent()->subscribe([this]() {
         brls::Logger::debug("HomeDownloads: Application exit event received");
 
         shouldAutoRefresh = false;
@@ -254,6 +254,7 @@ HomeDownloads::HomeDownloads() {
         // Notifica immediatamente il thread di refresh
         refreshCondition.notify_all();
     });
+    hasExitSubscription = true;
     brls::Logger::debug("HomeDownloads: Exit event subscribed");
     
     // Configura la data source
@@ -421,6 +422,12 @@ HomeDownloads::~HomeDownloads() {
         } catch (const std::exception& e) {
             brls::Logger::error("HomeDownloads: Error deleting data source: {}", e.what());
         }
+    }
+    
+    // Unsubscribe dall'exit event
+    if (hasExitSubscription) {
+        brls::Application::getExitEvent()->unsubscribe(exitEventSubscription);
+        brls::Logger::debug("HomeDownloads: Exit event unsubscribed");
     }
     
     brls::Logger::info("HomeDownloads: destructor completed");

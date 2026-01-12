@@ -38,6 +38,8 @@ private:
     std::atomic<bool> refreshThreadRunning{false};
     std::mutex refreshMutex;
     std::condition_variable refreshCondition;
+    brls::Event<>::Subscription exitEventSubscription;
+    bool hasExitSubscription = false;
     
     void setupRecyclingGrid();
     void startAutoRefresh();

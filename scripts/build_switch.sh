@@ -109,6 +109,9 @@ fi
 cd "$(dirname $0)/.."
 git config --global --add safe.directory `pwd`
 
+# Aggiorna i pacchetti nel container DevkitPro prima della build
+dkp-pacman -Syu --noconfirm
+
 # Ensure pkg-config can see Switch portlibs early (for libmpv detection)
 export PKG_CONFIG_PATH="${DEVKITPRO}/portlibs/switch/lib/pkgconfig:${PKG_CONFIG_PATH}"
 
@@ -374,6 +377,11 @@ cpu_cores() {
 }
 
 # Main build flow
+=======
+# Aggiorna i pacchetti nel container DevkitPro prima della build
+dkp-pacman -Syu --noconfirm
+
+>>>>>>> main
 BASE_URL="https://github.com/xfangfang/wiliwili/releases/download/v0.1.0/"
 
 # Attempt to use mpv 0.41.0 if requested (must succeed for deko3d)
@@ -424,6 +432,7 @@ UNITY_BUILD_FLAG="-DBRLS_UNITY_BUILD=OFF"
 [ "${ENABLE_UNITY_BUILD}" = "true" ] && UNITY_BUILD_FLAG="-DBRLS_UNITY_BUILD=ON"
 
 # Download and install packages
+# Download and install packages
 echo "📦 Installing dependencies..."
 while IFS= read -r pkg; do
     install_package "$pkg" || exit 1
@@ -433,10 +442,10 @@ done < <(select_packages "$RENDERER" "$MPV_VERSION")
 echo ""
 echo "🔨 Building TsVitch..."
 # Ensure pkg-config sees portlibs (needed for libuam detection)
-export PKG_CONFIG_PATH="/opt/devkitpro/portlibs/switch/lib/pkgconfig:${PKG_CONFIG_PATH}"
+export PKG_CONFIG_PATH="${DEVKITPRO}/portlibs/switch/lib/pkgconfig:${PKG_CONFIG_PATH}"
 cmake -B ${BUILD_DIR} \
   -DCMAKE_BUILD_TYPE=Release \
-    -DBUILTIN_NSP=${BUILTIN_NSP} \
+  -DBUILTIN_NSP=${BUILTIN_NSP} \
   -DPLATFORM_SWITCH=ON \
   -DUSE_DEKO3D=${USE_DEKO3D} \
   ${UNITY_BUILD_FLAG} \
