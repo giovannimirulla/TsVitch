@@ -377,11 +377,9 @@ cpu_cores() {
 }
 
 # Main build flow
-=======
 # Aggiorna i pacchetti nel container DevkitPro prima della build
 dkp-pacman -Syu --noconfirm
 
->>>>>>> main
 BASE_URL="https://github.com/xfangfang/wiliwili/releases/download/v0.1.0/"
 
 # Attempt to use mpv 0.41.0 if requested (must succeed for deko3d)
