@@ -536,7 +536,7 @@ void MPVCore::initializeVideo() {
 #endif
 #endif
 
-#if defined(MPV_NO_FB)
+#if defined(MPV_NO_FB) && !defined(MPV_SW_RENDER)
     mpv_fbo.fbo = default_framebuffer;
     glBindFramebuffer(GL_FRAMEBUFFER, default_framebuffer);
 #elif defined(MPV_USE_FB)

@@ -120,7 +120,7 @@ void SettingsActivity::onContentAvailable() {
 #if defined(__SWITCH__) || defined(__PSV__) || defined(PS4)
     btnOpenConfig->title->setText("tsvitch/setting/tools/others/config_dir"_i18n);
 #endif
-#ifdef __linux__
+#if defined(__linux__) && !defined(__ANDROID__)
     if (brls::isSteamDeck()) {
         btnOpenConfig->title->setText("tsvitch/setting/tools/others/config_dir"_i18n);
     }
@@ -129,7 +129,7 @@ void SettingsActivity::onContentAvailable() {
         auto configPath = ProgramConfig::instance().getConfigDir();
         brls::Application::notify("tsvitch/setting/tools/others/config_dir"_i18n + ": " + configPath);
 #if !defined(__SWITCH__) && !defined(__PSV__) && !defined(PS4)
-#ifdef __linux__
+#if defined(__linux__) && !defined(__ANDROID__)
         if (!brls::isSteamDeck())
 #endif
         {

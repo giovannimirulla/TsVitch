@@ -16,6 +16,7 @@
 
 <div align="center"><img src="https://img.shields.io/badge/-Nintendo%20Switch-e4000f?style=flat&logo=Nintendo%20Switch"/>
 <img src="https://img.shields.io/badge/-macOS%2010.11+-black?style=flat&logo=Apple">
+<img src="https://img.shields.io/badge/-Android%205.0+-3DDC84?style=flat&logo=Android&logoColor=white">
 </div>
 <br>
 
@@ -65,7 +66,7 @@ cd TsVitch
 
 ### PC
 
-Currently TsVitch is supported on macOS.
+Currently TsVitch is supported on macOS and Android.
 
 <details>
 
@@ -84,6 +85,62 @@ cmake -B build -DCPR_USE_SYSTEM_CURL=ON \
   -DPLATFORM_DESKTOP=ON
 make -C build TsVitch -j$(sysctl -n hw.ncpu)
 ```
+
+</details>
+
+### Android
+
+<details>
+
+#### Prerequisites
+
+- [Android Studio](https://developer.android.com/studio) (latest stable)
+- NDK r22+ (install via Android Studio → SDK Manager → SDK Tools → NDK)
+- CMake 3.16+ (install via Android Studio → SDK Manager → SDK Tools → CMake)
+- Java 11+
+- Precompiled `libmpv` `.so` files (see below)
+
+#### 1. Get precompiled libmpv libraries
+
+Download the precompiled `.so` files from [mpv-android releases](https://github.com/mpv-android/mpv-android/releases) and place them in:
+
+```
+android-project/app/libs/arm64-v8a/    ← libmpv.so, libavcodec.so, libavformat.so, libavutil.so, libswresample.so, libswscale.so, libavfilter.so
+android-project/app/libs/armeabi-v7a/  ← same files for 32-bit ARM
+```
+
+See `android-project/app/libs/README.md` for detailed instructions.
+
+#### 2. Build
+
+```shell
+export SERVER_URL="https://your-server.com"
+export SERVER_TOKEN="your-token"
+bash scripts/build_android.sh
+```
+
+The APK will be generated at `android-project/app/build/outputs/apk/release/app-release.apk`.
+
+#### 3. Install on device
+
+```shell
+# Install via adb (device must be connected with USB debugging enabled)
+adb install android-project/app/build/outputs/apk/release/app-release.apk
+
+# Or install debug build directly
+cd android-project && ./gradlew installDebug
+```
+
+#### 4. Sign for distribution
+
+To sign the release APK, generate a keystore and update `android-project/app/build.gradle`:
+
+```shell
+keytool -genkey -alias tsvitch -keyalg RSA -keypass yourpassword \
+  -keystore android-project/app/tsvitch.jks -storepass yourpassword -validity 100000
+```
+
+Then update the `signingConfigs.release` block in `android-project/app/build.gradle` with your keystore path and passwords.
 
 </details>
 

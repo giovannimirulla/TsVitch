@@ -178,7 +178,7 @@ void ContributorsView::renderList(const json& arr) {
         // Make card clickable
         card->registerClickAction([url](...) -> bool {
 #if !defined(__SWITCH__) && !defined(__PSV__) && !defined(PS4)
-#ifdef __linux__
+#if defined(__linux__) && !defined(__ANDROID__)
             if (!brls::isSteamDeck())
 #endif
             {

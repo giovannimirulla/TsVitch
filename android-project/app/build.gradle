@@ -1,0 +1,77 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace = "com.giovannimirulla.tsvitch"
+    compileSdkVersion 34
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion 34
+        versionCode 1
+        versionName "1.0"
+        // borealis need at least ndk r22 (r21 don't have std::filesystem support)
+        ndkVersion "22.1.7171670"
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_PLATFORM=android-21",
+                          "-DANDROID_STL=c++_shared",
+                          "-DCMAKE_WARN_DEPRECATED=FALSE",
+                          "-DSERVER_URL=${SERVER_URL}",
+                          "-DSERVER_TOKEN=${SERVER_TOKEN}",
+                          "-DM3U8_URL=${M3U8_URL}",
+                          "-DANALYTICS=ON",
+                          "-DANALYTICS_ID=${GA_ID}",
+                          "-DANALYTICS_KEY=${GA_KEY}",
+                          "-DSDL_CCACHE=OFF",
+                          "-DCURL_USE_LIBIDN2=OFF",
+                          "-DUSE_LIBIDN2=OFF",
+                          "-DANDROID_PLATFORM=android-21"
+                abiFilters 'arm64-v8a'
+                // armeabi-v7a disabled: curl/fseeko issue on API<24 (32-bit)
+                // Re-enable when curl is updated or API min is raised to 24
+            }
+        }
+    }
+    signingConfigs {
+        release {
+            // keytool -genkey -alias tsvitch -keyalg RSA -keypass password -keystore tsvitch.jks -storepass password -validity 100000
+            storeFile file("tsvitch.jks")
+            storePassword 'password'
+            keyAlias 'tsvitch'
+            keyPassword 'password'
+            v1SigningEnabled true
+            v2SigningEnabled true
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+        debug {
+            // standard debug build
+        }
+    }
+    applicationVariants.all { variant ->
+        tasks["merge${variant.name.capitalize()}Assets"]
+            .dependsOn("externalNativeBuild${variant.name.capitalize()}")
+    }
+    sourceSets.main {
+        jniLibs.srcDir 'libs'
+    }
+    externalNativeBuild {
+        cmake {
+            path 'jni/CMakeLists.txt'
+            version = '3.16.0+'
+        }
+    }
+    lint {
+        abortOnError = false
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+}
