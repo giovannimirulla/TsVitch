@@ -24,9 +24,20 @@ using ErrorCallback = std::function<void(const std::string&, int code)>;
 #endif
 #define CALLBACK(data) \
     if (callback) callback(data)
+#ifdef __ANDROID__
+#define CPR_HTTP_BASE                                                                               \
+    cpr::HttpVersion{cpr::HttpVersionCode::VERSION_2_0_TLS}, cpr::Timeout{tsvitch::HTTP::TIMEOUT}, \
+        tsvitch::HTTP::HEADERS, tsvitch::HTTP::COOKIES, tsvitch::HTTP::PROXIES,                    \
+        tsvitch::HTTP::SSL_OPTIONS
+// SSL option for individual requests on Android
+#define CPR_SSL tsvitch::HTTP::SSL_OPTIONS
+#else
 #define CPR_HTTP_BASE                                                                               \
     cpr::HttpVersion{cpr::HttpVersionCode::VERSION_2_0_TLS}, cpr::Timeout{tsvitch::HTTP::TIMEOUT}, \
         tsvitch::HTTP::HEADERS, tsvitch::HTTP::COOKIES, tsvitch::HTTP::PROXIES, tsvitch::HTTP::VERIFY
+// SSL option for individual requests on non-Android
+#define CPR_SSL tsvitch::HTTP::VERIFY
+#endif
 
 class HTTP {
 public:
@@ -37,6 +48,13 @@ public:
     static inline int TIMEOUT = 10000;
     static inline cpr::Proxies PROXIES = {};
     static inline cpr::VerifySsl VERIFY = true;
+#ifdef __ANDROID__
+    // On Android, use the Mozilla CA bundle bundled with the app
+    // Initialized at runtime via initAndroidSSL() in ProgramConfig::init()
+    // Default: verify peer enabled, CA bundle set after init
+    static inline cpr::SslOptions SSL_OPTIONS = cpr::Ssl(cpr::ssl::VerifyPeer{true});
+    static void initAndroidSSL(const std::string& configDir);
+#endif
 
     static cpr::Response get(const std::string& url, const cpr::Parameters& parameters = {}, int timeout = 10000);
 
@@ -92,7 +110,7 @@ public:
             HTTP::HEADERS,
             HTTP::COOKIES,
             HTTP::PROXIES,
-            HTTP::VERIFY);
+            CPR_SSL);
     }
 
     template <typename ReturnType>

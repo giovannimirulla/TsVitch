@@ -124,6 +124,6 @@ void APPVersion::checkUpdate(int delay, bool showUpToDateDialog) {
                     brls::Logger::error("check update failed: {} {} {}", r.status_code, r.text.c_str(), e.what());
                 }
             },
-            tsvitch::HTTP::VERIFY, tsvitch::HTTP::PROXIES, cpr::Url{url}, cpr::Timeout{10000});
+            CPR_SSL, tsvitch::HTTP::PROXIES, cpr::Url{url}, cpr::Timeout{10000});
     });
 }

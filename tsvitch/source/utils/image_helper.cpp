@@ -81,7 +81,7 @@ void ImageHelper::load(std::string url) {
 void ImageHelper::requestImage() {
     brls::Logger::verbose("request Image 2: {} {}", this->imageUrl, this->isCancel);
 
-    cpr::Response r = cpr::Get(tsvitch::HTTP::VERIFY, tsvitch::HTTP::PROXIES, cpr::Url{this->imageUrl},
+    cpr::Response r = cpr::Get(CPR_SSL, tsvitch::HTTP::PROXIES, cpr::Url{this->imageUrl},
                                cpr::ProgressCallback([this](...) -> bool { return !this->isCancel; }));
 
     if (r.status_code != 200 || r.downloaded_bytes == 0 || this->isCancel) {

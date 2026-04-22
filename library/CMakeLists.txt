@@ -23,13 +23,14 @@ else ()
         set(CPR_USE_SYSTEM_CURL OFF)
         set(CPR_SKIP_CA_BUNDLE_SEARCH ON)
     elseif (PLATFORM_ANDROID)
-        # Android: disable SSL in cpr (no OpenSSL/MbedTLS in NDK by default)
-        # HTTPS is handled at the system level via Android's network stack
-        set(CPR_ENABLE_SSL OFF)
+        # Android: OpenSSL targets are created in android-project/app/jni/CMakeLists.txt
+        # before this file is included, so cpr will find them via the imported targets
         set(CPR_USE_SYSTEM_CURL OFF)
-        # Disable libidn2 (not available in NDK, and CMake finds the host version via Homebrew)
+        # CPR_ENABLE_SSL and CPR_FORCE_OPENSSL_BACKEND are set by JNI CMakeLists.txt
+        # Disable features not available in NDK
         set(CURL_USE_LIBIDN2 OFF)
         set(USE_LIBIDN2 OFF)
+        set(CURL_USE_LIBPSL OFF)
     elseif (PLATFORM_SWITCH OR PLATFORM_PS4 OR PLATFORM_PSV)
         set(CPR_USE_SYSTEM_CURL ON)
         set(CPR_FORCE_MBEDTLS_BACKEND ON)

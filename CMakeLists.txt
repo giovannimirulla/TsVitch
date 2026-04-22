@@ -181,6 +181,18 @@ elseif (PLATFORM_ANDROID)
     # Android system libraries
     list(APPEND APP_PLATFORM_LIB android log)
 
+    # OpenSSL for HTTPS support (compiled via scripts/build_openssl_android.sh)
+    # cpr is built without SSL, but we link OpenSSL directly to TsVitch
+    # and patch curl to use it via CURLOPT_CAINFO at runtime
+    if (DEFINED ANDROID_PROJECT_LIBS_DIR)
+        set(_ANDROID_OPENSSL_INCLUDE "${ANDROID_PROJECT_LIBS_DIR}/../jni/openssl/include")
+        list(APPEND APP_PLATFORM_INCLUDE ${_ANDROID_OPENSSL_INCLUDE})
+        list(APPEND APP_PLATFORM_LIB
+            "${ANDROID_PROJECT_LIBS_DIR}/${ANDROID_ABI}/libssl.so"
+            "${ANDROID_PROJECT_LIBS_DIR}/${ANDROID_ABI}/libcrypto.so"
+        )
+    endif()
+
 elseif (APP_PLATFORM_CUSTOM_LIBS)
     message(STATUS "Using custom libraries for mpv and webp")
     # If you want to manually specify dependencies:

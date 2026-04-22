@@ -582,7 +582,7 @@ void TsVitchClient::get_xtream_channels_with_retry(const std::function<void(Live
         HTTP::HEADERS,
         HTTP::COOKIES,
         HTTP::PROXIES,
-        HTTP::VERIFY);
+        CPR_SSL);
 }
 
 void TsVitchClient::get_live_channels(const std::function<void(LiveM3u8ListResult)>& callback,

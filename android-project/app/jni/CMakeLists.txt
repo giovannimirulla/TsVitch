@@ -53,12 +53,46 @@ if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../libs/${ANDROID_ABI}/libmpv.so")
     )
 endif()
 
-# Disable SSL for cpr on Android (no OpenSSL/MbedTLS available in NDK by default)
-# Using set() before add_subdirectory ensures it takes precedence over option() in cpr
-# The -D flag from Gradle also passes it, but we set it here as a normal variable too
-set(CPR_ENABLE_SSL OFF CACHE BOOL "" FORCE)
-# Also set as a normal variable so it shadows the cache when cpr reads it
-set(CPR_ENABLE_SSL OFF)
+# OpenSSL for HTTPS support
+# Create imported targets BEFORE add_subdirectory(tsvitch) so that cpr/curl can find them
+# without needing find_package(OpenSSL) which doesn't work cross-compiled for Android
+set(_OPENSSL_LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../libs/${ANDROID_ABI}")
+set(_OPENSSL_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/openssl/include")
+
+if (EXISTS "${_OPENSSL_LIBS_DIR}/libssl.so" AND EXISTS "${_OPENSSL_LIBS_DIR}/libcrypto.so")
+    message(STATUS "Android: OpenSSL found at ${_OPENSSL_LIBS_DIR}")
+
+    # Set variables that FindOpenSSL.cmake and cpr use
+    set(OPENSSL_FOUND TRUE CACHE BOOL "" FORCE)
+    set(OPENSSL_INCLUDE_DIR "${_OPENSSL_INCLUDE_DIR}" CACHE PATH "" FORCE)
+    set(OPENSSL_CRYPTO_LIBRARY "${_OPENSSL_LIBS_DIR}/libcrypto.so" CACHE FILEPATH "" FORCE)
+    set(OPENSSL_SSL_LIBRARY "${_OPENSSL_LIBS_DIR}/libssl.so" CACHE FILEPATH "" FORCE)
+    set(OPENSSL_LIBRARIES "${_OPENSSL_LIBS_DIR}/libssl.so;${_OPENSSL_LIBS_DIR}/libcrypto.so" CACHE STRING "" FORCE)
+    set(OPENSSL_VERSION "3.3.2" CACHE STRING "" FORCE)
+
+    # Create imported targets so cpr doesn't need to call find_package(OpenSSL)
+    add_library(OpenSSL::Crypto SHARED IMPORTED GLOBAL)
+    set_target_properties(OpenSSL::Crypto PROPERTIES
+        IMPORTED_LOCATION "${_OPENSSL_LIBS_DIR}/libcrypto.so"
+        INTERFACE_INCLUDE_DIRECTORIES "${_OPENSSL_INCLUDE_DIR}"
+    )
+    add_library(OpenSSL::SSL SHARED IMPORTED GLOBAL)
+    set_target_properties(OpenSSL::SSL PROPERTIES
+        IMPORTED_LOCATION "${_OPENSSL_LIBS_DIR}/libssl.so"
+        INTERFACE_INCLUDE_DIRECTORIES "${_OPENSSL_INCLUDE_DIR}"
+        INTERFACE_LINK_LIBRARIES "OpenSSL::Crypto"
+    )
+
+    # Enable SSL in cpr with OpenSSL backend
+    set(CPR_ENABLE_SSL ON CACHE BOOL "" FORCE)
+    set(CPR_FORCE_OPENSSL_BACKEND ON CACHE BOOL "" FORCE)
+    set(CURL_USE_OPENSSL ON CACHE INTERNAL "" FORCE)
+else()
+    message(WARNING "Android: OpenSSL not found at ${_OPENSSL_LIBS_DIR}, HTTPS will not work")
+    message(WARNING "Run: bash scripts/build_openssl_android.sh")
+    set(CPR_ENABLE_SSL OFF CACHE BOOL "" FORCE)
+    set(CPR_ENABLE_SSL OFF)
+endif()
 
 # Include TsVitch root CMakeLists.txt
 # The 'tsvitch' directory is a symlink to the TsVitch project root

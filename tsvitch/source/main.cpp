@@ -20,6 +20,10 @@
 #include <SDL2/SDL_main.h>
 #endif
 
+#ifdef __ANDROID__
+#include <SDL2/SDL_main.h>
+#endif
+
 int main(int argc, char* argv[]) {
     for (int i = 1; i < argc; i++) {
         if (std::strcmp(argv[i], "-d") == 0) {

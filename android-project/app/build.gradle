@@ -10,6 +10,8 @@ android {
         targetSdkVersion 34
         versionCode 1
         versionName "1.0"
+        multiDexEnabled true
+        multiDexKeepFile file('multidex-config.txt')
         // borealis need at least ndk r22 (r21 don't have std::filesystem support)
         ndkVersion "22.1.7171670"
         externalNativeBuild {
@@ -26,7 +28,7 @@ android {
                           "-DSDL_CCACHE=OFF",
                           "-DCURL_USE_LIBIDN2=OFF",
                           "-DUSE_LIBIDN2=OFF",
-                          "-DANDROID_PLATFORM=android-21"
+                          "-DCURL_USE_LIBPSL=OFF"
                 abiFilters 'arm64-v8a'
                 // armeabi-v7a disabled: curl/fseeko issue on API<24 (32-bit)
                 // Re-enable when curl is updated or API min is raised to 24
@@ -61,6 +63,12 @@ android {
     sourceSets.main {
         jniLibs.srcDir 'libs'
     }
+    packagingOptions {
+        // Use libc++_shared.so from libs/ (mpv-android version) instead of NDK version
+        // The mpv-android version is newer and required by libmpv.so
+        pickFirst 'lib/arm64-v8a/libc++_shared.so'
+        pickFirst 'lib/armeabi-v7a/libc++_shared.so'
+    }
     externalNativeBuild {
         cmake {
             path 'jni/CMakeLists.txt'
@@ -74,4 +82,5 @@ android {
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation 'androidx.multidex:multidex:2.0.1'
 }

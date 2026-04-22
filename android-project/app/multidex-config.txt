@@ -1,0 +1,12 @@
+org/libsdl/app/SDLActivity.class
+org/libsdl/app/SDL.class
+org/libsdl/app/SDLAudioManager.class
+org/libsdl/app/SDLControllerManager.class
+org/libsdl/app/SDLSurface.class
+org/libsdl/app/PlatformUtils.class
+org/libsdl/app/BorealisHandler.class
+org/libsdl/app/HIDDevice.class
+org/libsdl/app/HIDDeviceBLESteamController.class
+org/libsdl/app/HIDDeviceManager.class
+org/libsdl/app/HIDDeviceUSB.class
+com/giovannimirulla/tsvitch/TsVitchActivity.class
