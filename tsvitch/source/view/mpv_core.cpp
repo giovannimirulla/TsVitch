@@ -339,7 +339,14 @@ void MPVCore::init() {
         mpvSetOptionString(mpv, "hwdec", "no");
     }
 
-#if defined(__SWITCH__)
+#if defined(__ANDROID__)
+    // On Android, force software decoding to avoid MediaCodec crashes
+    // Hardware decoding via MediaCodec requires additional JNI setup
+    mpvSetOptionString(mpv, "hwdec", "no");
+    mpvSetOptionString(mpv, "vd-lavc-dr", "no");
+    mpvSetOptionString(mpv, "vd-lavc-threads", "4");
+    brls::Logger::info("Android: forced software decoding");
+#elif defined(__SWITCH__)
     mpvSetOptionString(mpv, "vd-lavc-dr", "no");
     mpvSetOptionString(mpv, "vd-lavc-threads", "4");
 #elif defined(PS4)
