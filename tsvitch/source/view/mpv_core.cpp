@@ -346,6 +346,9 @@ void MPVCore::init() {
     mpvSetOptionString(mpv, "vd-lavc-dr", "no");
     mpvSetOptionString(mpv, "vd-lavc-threads", "4");
     brls::Logger::info("Android: forced software decoding");
+    // Use null video output to avoid mpv render context issues on Android
+    // TODO: implement proper OpenGL ES rendering for Android
+    mpvSetOptionString(mpv, "vo", "null");
 #elif defined(__SWITCH__)
     mpvSetOptionString(mpv, "vd-lavc-dr", "no");
     mpvSetOptionString(mpv, "vd-lavc-threads", "4");
@@ -421,6 +424,13 @@ void MPVCore::init() {
                               {MPV_RENDER_PARAM_INVALID, nullptr}};
 #endif
 
+#ifdef __ANDROID__
+    // On Android, skip mpv render context creation to avoid heap corruption
+    // mpv is used for audio-only playback on Android for now
+    // TODO: implement proper OpenGL ES render context for Android
+    mpv_context = nullptr;
+    brls::Logger::info("Android: skipping mpvRenderContextCreate (audio-only mode)");
+#else
     int render_status = mpvRenderContextCreate(&mpv_context, mpv, params);
     if (render_status < 0) {
         brls::Logger::error("mpvRenderContextCreate failed with error: {}", mpvErrorString(render_status));
@@ -431,9 +441,11 @@ void MPVCore::init() {
         mpvTerminateDestroy(mpv);
         brls::fatal("failed to initialize mpv render context");
     }
+    brls::Logger::info("mpvRenderContextCreate OK, context={}", (void*)mpv_context);
 #ifdef BOREALIS_USE_D3D11
     tsvitch::initCrashDump();
 #endif
+#endif // __ANDROID__
     brls::Logger::info("MPV Version: {}", mpvGetPropertyString(mpv, "mpv-version"));
     brls::Logger::info("FFMPEG Version: {}", mpvGetPropertyString(mpv, "ffmpeg-version"));
     command_async("set", "audio-client-name", APPVersion::getPackageName());
@@ -441,7 +453,9 @@ void MPVCore::init() {
 
     mpvSetWakeupCallback(mpv, on_wakeup, this);
 
+#ifndef __ANDROID__
     mpvRenderContextSetUpdateCallback(mpv_context, on_update, this);
+#endif
 
     focusSubscription = brls::Application::getWindowFocusChangedEvent()->subscribe([this](bool focus) {
         static bool playing = false;
@@ -640,13 +654,14 @@ void MPVCore::setFrameSize(brls::Rect r) {
         mpv_params[3].data = pixels;
     }
 
-    if (nvg_image) nvgDeleteImage(brls::Application::getNVGContext(), nvg_image);
-    nvg_image = nvgCreateImageRGBA(brls::Application::getNVGContext(), drawWidth, drawHeight, mpvImageFlags,
-                                   (const unsigned char *)pixels);
-
+    // Update sw_size BEFORE rendering to ensure mpv uses correct dimensions
     sw_size[0] = drawWidth;
     sw_size[1] = drawHeight;
     pitch      = PIXCEL_SIZE * drawWidth;
+
+    if (nvg_image) nvgDeleteImage(brls::Application::getNVGContext(), nvg_image);
+    nvg_image = nvgCreateImageRGBA(brls::Application::getNVGContext(), drawWidth, drawHeight, mpvImageFlags,
+                                   (const unsigned char *)pixels);
 
     mpvRenderContextRender(mpv_context, mpv_params);
     mpvRenderContextReportSwap(mpv_context);
@@ -1228,6 +1243,11 @@ void MPVCore::setShader(const std::string &profile, const std::string &shaders,
                         const std::vector<std::vector<std::string>> &settings, bool reset) {
     brls::Logger::info("Set shader [{}]: {}", profile, shaders);
 
+#ifdef __ANDROID__
+    // On Android with SW_RENDER, glsl-shaders are not supported
+    return;
+#endif
+
     if (!currentSetting.empty() && reset) clearShader(false);
 
     currentShaderProfile = profile;
@@ -1245,6 +1265,15 @@ void MPVCore::setShader(const std::string &profile, const std::string &shaders,
 
 void MPVCore::clearShader(bool showHint) {
     brls::Logger::info("Clear shader");
+
+#ifdef __ANDROID__
+    // On Android with SW_RENDER, glsl-shaders are not supported
+    currentShader.clear();
+    currentShaderProfile.clear();
+    currentSetting.clear();
+    if (showHint) brls::Application::notify("Clear profile");
+    return;
+#endif
 
     bool reset = !currentSetting.empty();
 

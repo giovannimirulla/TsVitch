@@ -175,8 +175,10 @@ elseif (PLATFORM_ANDROID)
         list(APPEND APP_PLATFORM_LIB "${MPV_ANDROID_LIBS_DIR}/lib${mpv_lib}.so")
     endforeach()
 
-    # Android requires software rendering path and no framebuffer for mpv
-    list(APPEND APP_PLATFORM_OPTION -DMPV_SW_RENDER -DMPV_NO_FB)
+    # Android: use OpenGL ES rendering with system framebuffer (MPV_NO_FB)
+    # MPV_SW_RENDER causes heap corruption on Android due to mpv's internal buffer management
+    # MPV_NO_FB tells mpv to render directly to the system framebuffer via OpenGL ES
+    list(APPEND APP_PLATFORM_OPTION -DMPV_NO_FB)
 
     # Android system libraries
     list(APPEND APP_PLATFORM_LIB android log)
