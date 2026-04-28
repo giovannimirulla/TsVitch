@@ -15,6 +15,7 @@ VideoProfile::VideoProfile() {
 
 void VideoProfile::update() {
     auto mpvCore = &MPVCore::instance();
+    if (!mpvCore->isValid()) return;  // Android: mpv not initialized
 
     
     if (mpvCore->filepath != labelUrl->getFullText()) labelUrl->setText(mpvCore->filepath);

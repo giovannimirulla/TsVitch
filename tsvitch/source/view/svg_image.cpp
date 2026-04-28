@@ -27,6 +27,11 @@ SVGImage::SVGImage() {
 }
 
 void SVGImage::setImageFromSVGRes(const std::string& value) {
+#ifdef __ANDROID__
+    // On Android, defer SVG loading to avoid heap corruption during inflate
+    filePath = "@res/" + value;
+    return;
+#endif
 #ifdef USE_LIBROMFS
     filePath = "@res/" + value;
     if (checkCache(filePath) > 0) return;
@@ -89,6 +94,7 @@ void SVGImage::updateBitmap() {
 
     float width  = this->_width * brls::Application::windowScale;
     float height = this->_height * brls::Application::windowScale;
+    if (width <= 0 || height <= 0) return;  // Skip if dimensions not set yet
     auto bitmap  = this->document->renderToBitmap(width, height);
     bitmap.convertToRGBA();
     NVGcontext* vg = brls::Application::getNVGContext();

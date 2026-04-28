@@ -42,6 +42,8 @@ LiveActivity::LiveActivity(const std::vector<tsvitch::LiveM3u8>& channels, size_
 void LiveActivity::onContentAvailable() {
     brls::Logger::debug("LiveActivity: onContentAvailable");
 
+    try {
+
     // Ottieni i riferimenti agli elementi UI
     video = dynamic_cast<VideoView*>(this->getView("video"));
 
@@ -159,6 +161,11 @@ void LiveActivity::onContentAvailable() {
         {"group", this->liveData.groupTitle},
         {"index", std::to_string(currentChannelIndex)},
     });
+    } catch (const std::exception& e) {
+        brls::Logger::error("LiveActivity::onContentAvailable exception: {}", e.what());
+    } catch (...) {
+        brls::Logger::error("LiveActivity::onContentAvailable unknown exception");
+    }
 }
 void LiveActivity::startAd(std::string adUrl) {
     brls::Logger::debug("LiveActivity: adUrl: {}", adUrl);

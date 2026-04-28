@@ -280,6 +280,15 @@ MPVCore::MPVCore() {
 }
 
 void MPVCore::init() {
+#ifdef __ANDROID__
+    // On Android, skip mpv initialization to avoid heap corruption
+    // mpv's memory allocations conflict with nanovg's heap on Android
+    // TODO: investigate proper mpv initialization for Android
+    brls::Logger::info("Android: skipping mpv initialization");
+    this->mpv = nullptr;
+    this->mpv_context = nullptr;
+    return;
+#endif
     setlocale(LC_NUMERIC, "C");
     this->mpv = mpvCreate();
     if (!mpv) {
@@ -489,6 +498,7 @@ MPVCore::~MPVCore() = default;
 #endif
 
 void MPVCore::clean() {
+    if (!this->mpv) return;  // Android: mpv not initialized
     check_error(mpvCommandString(this->mpv, "quit"));
 
     brls::Application::getWindowFocusChangedEvent()->unsubscribe(focusSubscription);
@@ -818,6 +828,7 @@ std::string MPVCore::getCacheSpeed() const {
 }
 
 void MPVCore::eventMainLoop() {
+    if (!this->mpv) return;  // Android: mpv not initialized
     while (true) {
         auto event = mpvWaitEvent(this->mpv, 0);
         switch (event->event_id) {
@@ -1074,6 +1085,7 @@ void MPVCore::reset() {
 }
 
 void MPVCore::setUrl(const std::string &url, const std::string &extra, const std::string &method) {
+    if (!this->mpv) return;  // Android: mpv not initialized
     brls::Logger::debug("{} Url: {}, extra: {}", method, url, extra);
     if (extra.empty()) {
         command_async("loadfile", url, method);
@@ -1193,6 +1205,7 @@ int MPVCore::getGamma() const { return video_gamma; }
 int MPVCore::getHue() const { return video_hue; }
 
 std::string MPVCore::getString(const std::string &key) {
+    if (!mpv) return "";
     char *value = nullptr;
     mpvGetProperty(mpv, key.c_str(), MPV_FORMAT_STRING, &value);
     if (!value) return "";
@@ -1202,20 +1215,23 @@ std::string MPVCore::getString(const std::string &key) {
 }
 
 double MPVCore::getDouble(const std::string &key) {
+    if (!mpv) return 0;
     double value = 0;
     mpvGetProperty(mpv, key.c_str(), MPV_FORMAT_DOUBLE, &value);
     return value;
 }
 
 int64_t MPVCore::getInt(const std::string &key) {
+    if (!mpv) return 0;
     int64_t value = 0;
     mpvGetProperty(mpv, key.c_str(), MPV_FORMAT_INT64, &value);
     return value;
 }
 
 std::unordered_map<std::string, mpv_node> MPVCore::getNodeMap(const std::string &key) {
-    mpv_node node;
     std::unordered_map<std::string, mpv_node> nodeMap;
+    if (!mpv) return nodeMap;
+    mpv_node node;
     if (mpvGetProperty(mpv, key.c_str(), MPV_FORMAT_NODE, &node) < 0) return nodeMap;
     if (node.format != MPV_FORMAT_NODE_MAP) return nodeMap;
 
@@ -1291,6 +1307,7 @@ void MPVCore::clearShader(bool showHint) {
 void MPVCore::showOsdText(const std::string &value, int d) { command_async("show-text", value, d); }
 
 void MPVCore::_command_async(const std::vector<std::string> &commands) {
+    if (!mpv) return;  // Android: mpv not initialized
     std::vector<const char *> res;
     res.reserve(commands.size() + 1);
     for (auto &i : commands) {

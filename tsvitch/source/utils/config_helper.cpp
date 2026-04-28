@@ -758,6 +758,7 @@ void ProgramConfig::exit(char* argv[]) {
 void ProgramConfig::loadCustomThemes() {
     customThemes.clear();
     std::string directoryPath = getConfigDir() + "/theme";
+    try {
     if (!cpr::fs::exists(directoryPath)) return;
 
     for (const auto& entry : cpr::fs::directory_iterator(getConfigDir() + "/theme")) {
@@ -787,6 +788,11 @@ void ProgramConfig::loadCustomThemes() {
                 continue;
             }
         }
+    }
+    } catch (const std::exception& e) {
+        brls::Logger::error("loadCustomThemes: filesystem error: {}", e.what());
+    } catch (...) {
+        brls::Logger::error("loadCustomThemes: unknown error");
     }
 }
 

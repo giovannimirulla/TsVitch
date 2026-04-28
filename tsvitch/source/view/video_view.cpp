@@ -47,13 +47,30 @@ enum ClickState { IDLE = 0, PRESS = 1, FAST_RELEASE = 3, FAST_PRESS = 4, CLICK_D
 
 VideoView::VideoView() {
     mpvCore = &MPVCore::instance();
+    brls::Logger::info("VideoView: constructor, mpvCore->isValid()={}", mpvCore->isValid());
+#ifdef __ANDROID__
+    try {
+        this->inflateFromXMLRes("xml/views/video_view_android.xml");
+    } catch (const std::exception& e) {
+        brls::Logger::error("VideoView: inflateFromXMLRes exception: {}", e.what());
+        return;
+    } catch (...) {
+        brls::Logger::error("VideoView: inflateFromXMLRes unknown exception - continuing");
+        // Don't return - the view might be partially initialized
+    }
+#else
     this->inflateFromXMLRes("xml/views/video_view.xml");
+#endif
+    brls::Logger::info("VideoView: inflateFromXMLRes done");
     this->setHideHighlightBackground(true);
     this->setHideClickAnimation(true);
+    brls::Logger::info("VideoView: setHide done");
 
     setTvControlMode(ProgramConfig::instance().getBoolOption(SettingItem::PLAYER_OSD_TV_MODE));
+    brls::Logger::info("VideoView: setTvControlMode done");
 
     input = brls::Application::getPlatform()->getInputManager();
+    brls::Logger::info("VideoView: getInputManager done");
 
     this->registerBoolXMLAttribute("allowFullscreen", [this](bool value) {
         this->allowFullscreen = value;
@@ -68,7 +85,10 @@ VideoView::VideoView() {
                 true);
         }
     });
+    brls::Logger::info("VideoView: registerBoolXMLAttribute allowFullscreen done");
 
+    brls::Logger::info("VideoView: about to register disabledSliderGesture");
+#ifndef __ANDROID__
     this->registerBoolXMLAttribute("disabledSliderGesture", [this](bool value) {
         this->disabledSliderGesture = value;
         if (!this->disabledSliderGesture) {
@@ -88,6 +108,12 @@ VideoView::VideoView() {
             });
         }
     });
+#else
+    // On Android, register as no-op to avoid heap corruption
+    // The disabledSliderGesture attribute is in the XML but not needed on Android
+    this->disabledSliderGesture = false;
+#endif
+    brls::Logger::info("VideoView: disabledSliderGesture registered");
 
     this->registerAction(
         "toggleOSD", brls::ControllerButton::BUTTON_Y,
