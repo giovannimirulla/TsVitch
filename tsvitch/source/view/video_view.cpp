@@ -47,34 +47,18 @@ enum ClickState { IDLE = 0, PRESS = 1, FAST_RELEASE = 3, FAST_PRESS = 4, CLICK_D
 
 VideoView::VideoView() {
     mpvCore = &MPVCore::instance();
-    brls::Logger::info("VideoView: constructor, mpvCore->isValid()={}", mpvCore->isValid());
-#ifdef __ANDROID__
-    try {
-        this->inflateFromXMLRes("xml/views/video_view_android.xml");
-    } catch (const std::exception& e) {
-        brls::Logger::error("VideoView: inflateFromXMLRes exception: {}", e.what());
-        return;
-    } catch (...) {
-        brls::Logger::error("VideoView: inflateFromXMLRes unknown exception - continuing");
-        // Don't return - the view might be partially initialized
-    }
-#else
     this->inflateFromXMLRes("xml/views/video_view.xml");
-#endif
-    brls::Logger::info("VideoView: inflateFromXMLRes done");
+    androidInitialized = true;
     this->setHideHighlightBackground(true);
     this->setHideClickAnimation(true);
-    brls::Logger::info("VideoView: setHide done");
 
     setTvControlMode(ProgramConfig::instance().getBoolOption(SettingItem::PLAYER_OSD_TV_MODE));
-    brls::Logger::info("VideoView: setTvControlMode done");
 
     input = brls::Application::getPlatform()->getInputManager();
-    brls::Logger::info("VideoView: getInputManager done");
 
     this->registerBoolXMLAttribute("allowFullscreen", [this](bool value) {
         this->allowFullscreen = value;
-        if (!value) {
+        if (!value && this->btnFullscreenIcon) {
             this->btnFullscreenIcon->getParent()->setVisibility(brls::Visibility::GONE);
             this->registerAction(
                 "cancel", brls::ControllerButton::BUTTON_B,
@@ -86,10 +70,10 @@ VideoView::VideoView() {
         }
     });
     brls::Logger::info("VideoView: registerBoolXMLAttribute allowFullscreen done");
-
-    brls::Logger::info("VideoView: about to register disabledSliderGesture");
-#ifndef __ANDROID__
     this->registerBoolXMLAttribute("disabledSliderGesture", [this](bool value) {
+#ifdef __ANDROID__
+        this->disabledSliderGesture = true; // Always disabled on Android (slider gesture causes crashes)
+#else
         this->disabledSliderGesture = value;
         if (!this->disabledSliderGesture) {
             osdSlider->getProgressSetEvent()->subscribe([this](float progress) {
@@ -107,14 +91,14 @@ VideoView::VideoView() {
                 leftStatusLabel->setText(tsvitch::sec2Time(getRealDuration() * progress));
             });
         }
+#endif
     });
-#else
-    // On Android, register as no-op to avoid heap corruption
-    // The disabledSliderGesture attribute is in the XML but not needed on Android
-    this->disabledSliderGesture = false;
+#ifdef __ANDROID__
+    this->disabledSliderGesture = true;
 #endif
     brls::Logger::info("VideoView: disabledSliderGesture registered");
 
+#ifndef __ANDROID__
     this->registerAction(
         "toggleOSD", brls::ControllerButton::BUTTON_Y,
         [this](brls::View* view) -> bool {
@@ -151,9 +135,12 @@ VideoView::VideoView() {
             return false;
         },
         true, true);
+#endif // !__ANDROID__
 
     this->registerMpvEvent();
 
+    brls::Logger::info("VideoView: about to addGestureRecognizer OsdGestureRecognizer");
+#ifndef __ANDROID__
     this->addGestureRecognizer(new OsdGestureRecognizer([this](OsdGestureStatus status) {
         switch (status.osdGestureType) {
             case OsdGestureType::TAP:
@@ -235,18 +222,27 @@ VideoView::VideoView() {
                 break;
         }
     }));
+#endif // !__ANDROID__
 
-    this->btnToggle->addGestureRecognizer(
-        new brls::TapGestureRecognizer(this->btnToggle, [this]() { this->togglePlay(); }));
-    this->btnToggle->registerClickAction([this](...) {
-        this->togglePlay();
-        return true;
-    });
+    brls::Logger::info("VideoView: about to access btnToggle");
+    // Register play/pause toggle — works on all platforms
+    if (this->btnToggle) {
+        this->btnToggle->addGestureRecognizer(
+            new brls::TapGestureRecognizer(this->btnToggle, [this]() { this->togglePlay(); }));
+        this->btnToggle->registerClickAction([this](...) {
+            this->togglePlay();
+            return true;
+        });
+    }
+    brls::Logger::info("VideoView: btnToggle done");
 
+    brls::Logger::info("VideoView: about to register profile action");
+#ifndef __ANDROID__
     this->registerAction(
         "profile", brls::ControllerButton::BUTTON_BACK,
         [this](brls::View* view) -> bool {
             CHECK_OSD(true);
+            if (!videoProfile) return true;
             if (videoProfile->getVisibility() == brls::Visibility::VISIBLE) {
                 videoProfile->setVisibility(brls::Visibility::INVISIBLE);
                 return true;
@@ -256,36 +252,67 @@ VideoView::VideoView() {
             return true;
         },
         true);
+#endif // !__ANDROID__
+    brls::Logger::info("VideoView: profile action registered");
 
-    this->btnFullscreenIcon->getParent()->registerClickAction([this](...) {
-        if (this->isFullscreen()) {
-            this->setFullScreen(false);
-        } else {
-            this->setFullScreen(true);
+    brls::Logger::info("VideoView: about to check btnFullscreenIcon");
+    // Back button — works on all platforms
+    {
+        brls::Box* backBox = static_cast<brls::Box*>(this->getView("video/osd/back"));
+        if (backBox) {
+            backBox->registerClickAction([this](...) {
+#ifdef __ANDROID__
+                // On Android: pop the activity directly
+                brls::Application::popActivity();
+#else
+                if (this->isFullscreen()) {
+                    this->setFullScreen(false);
+                } else {
+                    this->dismiss();
+                }
+#endif
+                return true;
+            });
+            backBox->addGestureRecognizer(new brls::TapGestureRecognizer(backBox));
         }
-        return true;
-    });
-    this->btnFullscreenIcon->getParent()->addGestureRecognizer(
-        new brls::TapGestureRecognizer(this->btnFullscreenIcon->getParent()));
+    }
 
-    this->btnFavoriteIcon->getParent()->registerClickAction([this](...) {
-        this->toggleFavorite();
-        return true;
-    });
-    this->btnFavoriteIcon->getParent()->addGestureRecognizer(
-        new brls::TapGestureRecognizer(this->btnFavoriteIcon->getParent()));
+#ifndef __ANDROID__
+    if (this->btnFullscreenIcon) {
+        this->btnFullscreenIcon->getParent()->registerClickAction([this](...) {
+            if (this->isFullscreen()) {
+                this->setFullScreen(false);
+            } else {
+                this->setFullScreen(true);
+            }
+            return true;
+        });
+        this->btnFullscreenIcon->getParent()->addGestureRecognizer(
+            new brls::TapGestureRecognizer(this->btnFullscreenIcon->getParent()));
+    }
+    if (this->btnFavoriteIcon) {
+        this->btnFavoriteIcon->getParent()->registerClickAction([this](...) {
+            this->toggleFavorite();
+            return true;
+        });
+        this->btnFavoriteIcon->getParent()->addGestureRecognizer(
+            new brls::TapGestureRecognizer(this->btnFavoriteIcon->getParent()));
+    }
 
-    this->btnSettingIcon->getParent()->registerClickAction([](...) {
-        auto setting = new PlayerSetting();
+    if (this->btnSettingIcon) {
+        this->btnSettingIcon->getParent()->registerClickAction([](...) {
+            auto setting = new PlayerSetting();
 
-        brls::Application::pushActivity(new brls::Activity(setting));
-        GA("open_player_setting")
-        return true;
-    });
-    this->btnSettingIcon->getParent()->addGestureRecognizer(
-        new brls::TapGestureRecognizer(this->btnSettingIcon->getParent()));
+            brls::Application::pushActivity(new brls::Activity(setting));
+            GA("open_player_setting")
+            return true;
+        });
+        this->btnSettingIcon->getParent()->addGestureRecognizer(
+            new brls::TapGestureRecognizer(this->btnSettingIcon->getParent()));
+    }
 
-    this->btnVolumeIcon->getParent()->registerClickAction([this](brls::View* view) {
+    if (this->btnVolumeIcon) {
+        this->btnVolumeIcon->getParent()->registerClickAction([this](brls::View* view) {
         this->showOSD(false);
         auto theme     = brls::Application::getTheme();
         auto container = new brls::Box();
@@ -327,17 +354,87 @@ VideoView::VideoView() {
         return true;
     });
     this->btnVolumeIcon->getParent()->addGestureRecognizer(
-        new brls::TapGestureRecognizer(this->btnVolumeIcon->getParent()));
-    if (mpvCore->volume <= 0) {
-        this->btnVolumeIcon->setImageFromSVGRes("svg/bpx-svg-sprite-volume-off.svg");
+            new brls::TapGestureRecognizer(this->btnVolumeIcon->getParent()));
+        if (mpvCore->volume <= 0) {
+            this->btnVolumeIcon->setImageFromSVGRes("svg/bpx-svg-sprite-volume-off.svg");
+        }
+    }  // end if (btnVolumeIcon)
+#endif // !__ANDROID__
+
+#ifdef __ANDROID__
+    // Tap on video area → toggle OSD (Android touch via mouse events)
+    // updateTouchStates is disabled on Android to avoid double-triggering,
+    // so we use a TapGestureRecognizer that works via the mouse path.
+    this->addGestureRecognizer(new brls::TapGestureRecognizer(this, [this]() {
+        this->toggleOSD();
+    }));
+
+    // Fullscreen button → dismiss on Android (no real fullscreen toggle needed)
+    {
+        brls::Box* fsBox = static_cast<brls::Box*>(this->getView("video/osd/fullscreen"));
+        if (fsBox) {
+            fsBox->registerClickAction([this](...) {
+                this->dismiss();
+                return true;
+            });
+            fsBox->addGestureRecognizer(new brls::TapGestureRecognizer(fsBox));
+        }
     }
 
+    // Volume button → mute/unmute on Android
+    {
+        brls::Box* volBox = static_cast<brls::Box*>(this->getView("video/osd/danmaku/box/volume"));
+        if (volBox) {
+            volBox->registerClickAction([this](...) {
+                int64_t vol = MPVCore::instance().getVolume();
+                MPVCore::instance().setVolume(vol > 0 ? 0 : 100);
+                return true;
+            });
+            volBox->addGestureRecognizer(new brls::TapGestureRecognizer(volBox));
+        }
+    }
+
+    // Favorite button → toggle favorite on Android
+    {
+        brls::Box* favBox = static_cast<brls::Box*>(this->getView("video/osd/favorite"));
+        if (favBox) {
+            favBox->registerClickAction([this](...) {
+                this->toggleFavorite();
+                return true;
+            });
+            favBox->addGestureRecognizer(new brls::TapGestureRecognizer(favBox));
+        }
+    }
+
+    // Settings button → open player settings on Android
+    {
+        brls::View* settingView = this->getView("video/osd/setting");
+        brls::Logger::debug("VideoView: Android settings button view: {}", settingView ? "found" : "null");
+        if (settingView) {
+            settingView->registerClickAction([this](...) {
+                auto setting = new PlayerSetting();
+                brls::Application::pushActivity(new brls::Activity(setting));
+                GA("open_player_setting")
+                return true;
+            });
+            settingView->addGestureRecognizer(new brls::TapGestureRecognizer(settingView));
+        } else {
+            brls::Logger::warning("VideoView: video/osd/setting not found on Android");
+        }
+    }
+#endif // __ANDROID__
+
+    brls::Logger::info("VideoView: icon buttons done");
+
+    brls::Logger::info("VideoView: about to register osdLockBox actions");
     this->osdLockBox->registerClickAction([this](...) {
         this->toggleOSDLock();
         return true;
     });
     this->osdLockBox->addGestureRecognizer(new brls::TapGestureRecognizer(this->osdLockBox));
+    brls::Logger::info("VideoView: osdLockBox actions registered");
 
+#ifndef __ANDROID__
     this->registerAction(
         "cancel", brls::ControllerButton::BUTTON_B,
         [this](brls::View* view) -> bool {
@@ -357,7 +454,9 @@ VideoView::VideoView() {
             return true;
         },
         true);
+#endif // !__ANDROID__
 
+    brls::Logger::info("VideoView: about to subscribe customEvent");
     customEventSubscribeID = APP_E->subscribe([this](const std::string& event, void* data) {
         if (event == VideoView::SET_TITLE) {
             this->setTitle((const char*)data);
@@ -376,11 +475,19 @@ VideoView::VideoView() {
         } else if (event == VideoView::HINT) {
             this->showHint((const char*)data);
         } else if (event == VideoView::CLIP_INFO) {
-            osdSlider->addClipPoint(*(float*)data);
+            if (osdSlider) osdSlider->addClipPoint(*(float*)data);
         } else if (event == VideoView::HIGHLIGHT_INFO) {
             this->setHighlightProgress(*(VideoHighlightData*)data);
         }
     });
+// #ifdef __ANDROID__  // disabled
+//     } catch (const std::exception& e) {
+//         brls::Logger::error("VideoView: constructor exception after inflate: {}", e.what());
+//     } catch (...) {
+//         brls::Logger::error("VideoView: constructor unknown exception after inflate");
+//     }
+// #endif
+    brls::Logger::info("VideoView: constructor COMPLETE");
 }
 
 void VideoView::requestVolume(int volume, int delay) {
@@ -433,7 +540,9 @@ void VideoView::requestSeeking(int seek, int delay) {
         setCenterHintIcon("svg/arrow-left-right.svg");
     }
     setCenterHintText(fmt::format("{:+d} s", seek));
-    osdSlider->setProgress((float)progress);
+#ifndef __ANDROID__
+    if (osdSlider) osdSlider->setProgress((float)progress);
+#endif
     leftStatusLabel->setText(tsvitch::sec2Time(getRealDuration() * progress));
 
     brls::cancelDelay(seeking_iter);
@@ -457,8 +566,26 @@ void VideoView::requestSeeking(int seek, int delay) {
     }
 }
 
-VideoView::~VideoView() {
-    brls::Logger::debug("trying delete VideoView...");
+#ifdef __ANDROID__
+void VideoView::willAppear(bool resetState) {
+    // On Android, ProgressSpinner::willAppear() crashes because it starts
+    // an animation that is not safe to run during the initial layout pass.
+    // Skip willAppear for the spinner; it will be started explicitly in showLoading().
+    brls::ProgressSpinner* spinner = this->osdSpinner;
+    for (brls::View* child : this->getChildren()) {
+        if (child == spinner) continue;
+        if (!child) continue;
+        uintptr_t vtablePtr = *reinterpret_cast<uintptr_t*>(child);
+        if (vtablePtr < 0x10000) {
+            brls::Logger::error("VideoView::willAppear: corrupted vtable for child {}", (void*)child);
+            continue;
+        }
+        child->willAppear(resetState);
+    }
+}
+#endif
+
+VideoView::~VideoView() {    brls::Logger::debug("trying delete VideoView...");
     this->unRegisterMpvEvent();
     APP_E->unsubscribe(customEventSubscribeID);
 #ifdef __SWITCH__
@@ -471,6 +598,7 @@ VideoView::~VideoView() {
 void VideoView::draw(NVGcontext* vg, float x, float y, float width, float height, brls::Style style,
                      brls::FrameContext* ctx) {
     if (!mpvCore->isValid()) return;
+    if (!androidInitialized) return;  // Android: not fully initialized
     float alpha    = this->getAlpha();
     time_t current = tsvitch::unix_time();
     bool drawOSD   = current < this->osdLastShowTime;
@@ -498,9 +626,11 @@ void VideoView::draw(NVGcontext* vg, float x, float y, float width, float height
         }
 
         if (!is_osd_lock) {
-            auto sliderRect = osdSlider->getFrame();
-            drawHighlightProgress(vg, sliderRect.getMinX() + 30, sliderRect.getMinY() + 25, sliderRect.getWidth() - 60,
-                                  alpha);
+            if (osdSlider) {
+                auto sliderRect = osdSlider->getFrame();
+                drawHighlightProgress(vg, sliderRect.getMinX() + 30, sliderRect.getMinY() + 25, sliderRect.getWidth() - 60,
+                                      alpha);
+            }
 
             osdTopBox->setVisibility(brls::Visibility::VISIBLE);
             osdBottomBox->setVisibility(brls::Visibility::VISIBLE);
@@ -532,7 +662,7 @@ void VideoView::draw(NVGcontext* vg, float x, float y, float width, float height
 
     osdCenterBox2->frame(ctx);
 
-    videoProfile->frame(ctx);
+    if (videoProfile) videoProfile->frame(ctx);
 }
 
 void VideoView::drawHighlightProgress(NVGcontext* vg, float x, float y, float width, float alpha) {
@@ -687,7 +817,7 @@ void VideoView::onOSDStateChanged(bool state) {
 
 void VideoView::toggleOSDLock() {
     is_osd_lock = !is_osd_lock;
-    this->osdLockIcon->setImageFromSVGRes(is_osd_lock ? "svg/player-lock.svg" : "svg/player-unlock.svg");
+    if (osdLockIcon) this->osdLockIcon->setImageFromSVGRes(is_osd_lock ? "svg/player-lock.svg" : "svg/player-unlock.svg");
     if (is_osd_lock) {
         osdTopBox->setVisibility(brls::Visibility::INVISIBLE);
         osdBottomBox->setVisibility(brls::Visibility::INVISIBLE);
@@ -729,7 +859,7 @@ void VideoView::hideLoading() {
 
 void VideoView::setCenterHintText(const std::string& text) { centerLabel2->setText(text); }
 
-void VideoView::setCenterHintIcon(const std::string& svg) { centerIcon2->setImageFromSVGRes(svg); }
+void VideoView::setCenterHintIcon(const std::string& svg) { if (centerIcon2) centerIcon2->setImageFromSVGRes(svg); }
 
 void VideoView::showCenterHint() { osdCenterBox2->setVisibility(brls::Visibility::VISIBLE); }
 
@@ -751,8 +881,9 @@ void VideoView::setLiveMode() {
     leftStatusLabel->setVisibility(brls::Visibility::GONE);
     centerStatusLabel->setVisibility(brls::Visibility::GONE);
     rightStatusLabel->setVisibility(brls::Visibility::GONE);
-    // Nascondi il pointer per le live
-    osdSlider->setPointerVisible(false);
+#ifndef __ANDROID__
+    if (osdSlider) osdSlider->setPointerVisible(false);
+#endif
     _setTvControlMode(false);
 }
 
@@ -761,8 +892,9 @@ void VideoView::setVideoMode() {
     leftStatusLabel->setVisibility(brls::Visibility::VISIBLE);
     centerStatusLabel->setVisibility(brls::Visibility::VISIBLE);
     rightStatusLabel->setVisibility(brls::Visibility::VISIBLE);
-    // Mostra il pointer per i video
-    osdSlider->setPointerVisible(true);
+#ifndef __ANDROID__
+    if (osdSlider) osdSlider->setPointerVisible(true);
+#endif
     _setTvControlMode(isTvControlMode && !isLiveMode);
 }
 
@@ -771,8 +903,9 @@ void VideoView::setAdMode() {
     leftStatusLabel->setVisibility(brls::Visibility::VISIBLE);
     centerStatusLabel->setVisibility(brls::Visibility::VISIBLE);
     rightStatusLabel->setVisibility(brls::Visibility::VISIBLE);
-    // Nascondi il pointer per gli ad
-    osdSlider->setPointerVisible(false);
+#ifndef __ANDROID__
+    if (osdSlider) osdSlider->setPointerVisible(false);
+#endif
     _setTvControlMode(false);
 }
 
@@ -785,6 +918,7 @@ void VideoView::setTvControlMode(bool state) {
 bool VideoView::getTvControlMode() const { return isTvControlMode; }
 
 void VideoView::_setTvControlMode(bool state) {
+    if (!btnToggle || !osdSlider || !iconBox || !btnVolumeIcon || !osdLockBox || !btnFullscreenIcon || !btnFavoriteIcon) return;
     btnToggle->setCustomNavigationRoute(brls::FocusDirection::RIGHT, state ? osdSlider : iconBox);
     btnVolumeIcon->setCustomNavigationRoute(brls::FocusDirection::UP, state ? osdSlider : osdLockBox);
 
@@ -792,7 +926,9 @@ void VideoView::_setTvControlMode(bool state) {
     btnFavoriteIcon->setCustomNavigationRoute(brls::FocusDirection::UP, state ? osdSlider : osdLockBox);
 
     osdLockBox->setCustomNavigationRoute(brls::FocusDirection::DOWN, state ? osdSlider : iconBox);
+#ifndef __ANDROID__
     osdSlider->setFocusable(state);
+#endif
 }
 
 void VideoView::setStatusLabelLeft(const std::string& value) { leftStatusLabel->setText(value); }
@@ -811,14 +947,16 @@ void VideoView::hideBottomLineSetting() { showBottomLineSetting = false; }
 
 void VideoView::hideHighlightLineSetting() { showHighlightLineSetting = false; }
 
-void VideoView::hideVideoProgressSlider() { osdSlider->setVisibility(brls::Visibility::GONE); }
+void VideoView::hideVideoProgressSlider() { if (osdSlider) osdSlider->setVisibility(brls::Visibility::GONE); }
 
-void VideoView::showVideoProgressSlider() { osdSlider->setVisibility(brls::Visibility::VISIBLE); }
+void VideoView::showVideoProgressSlider() { if (osdSlider) osdSlider->setVisibility(brls::Visibility::VISIBLE); }
 
 void VideoView::disableProgressSliderSeek(bool disabled) {
     brls::Logger::debug("VideoView: disableProgressSliderSeek = {}", disabled);
     this->disabledSliderGesture = disabled;
-    osdSlider->setDisabledPointerGesture(disabled);
+#ifndef __ANDROID__
+    if (osdSlider) osdSlider->setDisabledPointerGesture(disabled);
+#endif
 }
 
 void VideoView::setTitle(const std::string& title) { this->videoTitleLabel->setText(title); }
@@ -834,6 +972,7 @@ void VideoView::setPlaybackTime(const std::string& value) {
 }
 
 void VideoView::setFullscreenIcon(bool fs) {
+    if (!btnFullscreenIcon) return;
     if (fs) {
         btnFullscreenIcon->setImageFromSVGRes("svg/bpx-svg-sprite-fullscreen-off.svg");
     } else {
@@ -844,6 +983,7 @@ void VideoView::setFullscreenIcon(bool fs) {
 brls::View* VideoView::getFullscreenIcon() { return btnFullscreenIcon; }
 
 void VideoView::setFavoriteIcon(bool fs) {
+    if (!btnFavoriteIcon) return;
     brls::Logger::debug("Set favorite icon: {}", fs);
     if (fs) {
         btnFavoriteIcon->setImageFromSVGRes("svg/ico-favorites-activate.svg");
@@ -866,6 +1006,7 @@ void VideoView::toggleFavorite() {
 brls::View* VideoView::getFavoriteIcon() { return btnFavoriteIcon; }
 
 void VideoView::refreshToggleIcon() {
+    if (!btnToggleIcon) return;
     if (!mpvCore->isPlaying()) {
         if (showReplay) {
             btnToggleIcon->setImageFromSVGRes("svg/bpx-svg-sprite-re-play.svg");
@@ -879,11 +1020,20 @@ void VideoView::refreshToggleIcon() {
 
 void VideoView::setProgress(float value) {
     if (is_seeking) return;
-   if (std::isnan(value)) return;
+    if (std::isnan(value)) return;
+    if (!osdSlider) return;
+#ifndef __ANDROID__
     this->osdSlider->setProgress(value);
+#endif
 }
 
-float VideoView::getProgress() { return this->osdSlider->getProgress(); }
+float VideoView::getProgress() {
+#ifndef __ANDROID__
+    return osdSlider ? this->osdSlider->getProgress() : 0.0f;
+#else
+    return 0.0f;
+#endif
+}
 
 void VideoView::setHighlightProgress(const VideoHighlightData& data) { this->highlightData = data; }
 
@@ -942,7 +1092,11 @@ void VideoView::setFullScreen(bool fs) {
         video->showReplay    = showReplay;
         video->real_duration = real_duration;
         video->setLastPlayedPosition(lastPlayedPosition);
-        video->osdSlider->setClipPoint(osdSlider->getClipPoint());
+        if (video->osdSlider && osdSlider) {
+#ifndef __ANDROID__
+            video->osdSlider->setClipPoint(osdSlider->getClipPoint());
+#endif
+        }
         video->refreshToggleIcon();
         video->setHighlightProgress(highlightData);
         if (video->isLiveMode) video->setLiveMode();
@@ -1062,14 +1216,15 @@ void VideoView::registerMpvEvent() {
                 }
                 break;
             case MpvEventEnum::VIDEO_MUTE:
-                this->btnVolumeIcon->setImageFromSVGRes("svg/bpx-svg-sprite-volume-off.svg");
+                if (btnVolumeIcon) this->btnVolumeIcon->setImageFromSVGRes("svg/bpx-svg-sprite-volume-off.svg");
                 break;
             case MpvEventEnum::VIDEO_UNMUTE:
-                this->btnVolumeIcon->setImageFromSVGRes("svg/bpx-svg-sprite-volume.svg");
+                if (btnVolumeIcon) this->btnVolumeIcon->setImageFromSVGRes("svg/bpx-svg-sprite-volume.svg");
                 break;
             case MpvEventEnum::RESET:
-
-                osdSlider->clearClipPoint();
+#ifndef __ANDROID__
+                if (osdSlider) osdSlider->clearClipPoint();
+#endif
                 real_duration = 0;
                 break;
             default:

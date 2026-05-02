@@ -12,11 +12,36 @@
                 backgroundStartColor="#000000CC"
                 backgroundEndColor="#00000000"
                 background="vertical_linear">
+
+                <!-- Back button on Android to return to channel list -->
+                <brls:Box
+                        id="video/osd/back"
+                        hideClickAnimation="true"
+                        alignItems="center"
+                        justifyContent="center"
+                        marginLeft="10"
+                        height="60"
+                        width="60">
+                        <SVGImage
+                                id="video/osd/back/icon"
+                                focusable="true"
+                                focusUp="video/osd/back/icon"
+                                focusLeft="video/osd/back/icon"
+                                focusRight="video/osd/setting/icon"
+                                focusDown="video/osd/lock/box"
+                                hideHighlightBackground="true"
+                                highlightCornerRadius="30"
+                                height="30"
+                                width="30"
+                                SVG="@res/svg/arrow-left.svg" />
+                </brls:Box>
+
                 <brls:Label
                         id="video/osd/title"
                         height="100%"
-                        marginLeft="20"
+                        marginLeft="10"
                         marginRight="120"
+                        grow="1"
                         singleLine="true"
                         textColor="#FFFFFF" />
 
@@ -34,32 +59,14 @@
                         <brls:Box
                                 id="video/osd/setting/icon"
                                 focusable="true"
+                                focusUp="video/osd/setting/icon"
+                                focusLeft="video/osd/setting/icon"
+                                focusRight="video/osd/setting/icon"
+                                focusDown="video/osd/lock/box"
                                 hideHighlightBackground="true"
                                 highlightCornerRadius="30"
                                 height="30"
                                 width="30" />
-                </brls:Box>
-                <brls:Box
-                        id="video/speed/hint/box"
-                        width="100%"
-                        positionBottom="-10"
-                        visibility="gone"
-                        positionType="absolute"
-                        justifyContent="center"
-                        alignItems="center">
-                        <brls:Box
-                                backgroundColor="#00000080"
-                                cornerRadius="4"
-                                justifyContent="center"
-                                alignItems="center">
-                                <brls:Label
-                                        marginLeft="64"
-                                        marginRight="8"
-                                        marginTop="6"
-                                        marginBottom="6"
-                                        textColor="#FFFFFF"
-                                        id="video/speed/hint/label" />
-                        </brls:Box>
                 </brls:Box>
         </brls:Box>
 
@@ -73,7 +80,7 @@
                 height="100"
                 backgroundColor="#303030A0"
                 id="video/osd/center/box2">
-                <brls:Box
+                <SVGImage
                         id="video/osd/center/icon2"
                         height="30"
                         width="30"
@@ -118,6 +125,9 @@
                         id="video/osd/toggle"
                         wireframe="false"
                         focusable="true"
+                        focusUp="video/osd/setting/icon"
+                        focusLeft="video/osd/toggle"
+                        focusRight="video/osd/icon/box"
                         hideHighlightBackground="true"
                         highlightCornerRadius="100"
                         hideClickAnimation="true"
@@ -127,19 +137,24 @@
                         marginBottom="20"
                         height="100"
                         width="100">
-                        <brls:Box
+                        <SVGImage
                                 id="video/osd/toggle/icon"
                                 wireframe="false"
                                 height="100"
-                                width="100" />
+                                width="100"
+                                SVG="@res/svg/bpx-svg-sprite-play.svg" />
                 </brls:Box>
                 <brls:Box
                         width="auto"
                         grow="1"
                         height="130"
                         axis="column">
+                        <!-- VideoProgressSlider disabled on Android to avoid heap corruption -->
                         <brls:Box
-                                id="video/osd/bottom/progress"
+                                focusable="true"
+                                id="video/osd/bottom/progress/android"
+                                focusUp="video/osd/lock/box"
+                                focusRight="video/osd/bottom/progress/android"
                                 width="100%"
                                 height="50"
                                 marginTop="10"
@@ -175,6 +190,7 @@
                                         id="video/osd/icon/box"
                                         positionType="absolute"
                                         positionRight="20">
+
                                         <brls:Box
                                                 id="video/osd/danmaku/box/volume"
                                                 hideClickAnimation="true"
@@ -182,15 +198,19 @@
                                                 justifyContent="center"
                                                 height="60"
                                                 width="60">
-                                                <brls:Box
+                                                <SVGImage
                                                         id="video/osd/danmaku/volume/icon"
                                                         focusable="true"
+                                                        focusUp="video/osd/lock/box"
+                                                        focusDown="video/osd/danmaku/volume/icon"
                                                         hideHighlightBackground="true"
                                                         highlightCornerRadius="30"
                                                         wireframe="false"
                                                         height="30"
-                                                        width="30" />
+                                                        width="30"
+                                                        SVG="@res/svg/bpx-svg-sprite-volume.svg" />
                                         </brls:Box>
+
                                         <brls:Box
                                                 id="video/osd/favorite"
                                                 hideClickAnimation="true"
@@ -198,15 +218,20 @@
                                                 justifyContent="center"
                                                 height="60"
                                                 width="60">
-                                                <brls:Box
+                                                <SVGImage
                                                         id="video/osd/favorite/icon"
                                                         wireframe="false"
                                                         focusable="true"
+                                                        focusUp="video/osd/lock/box"
+                                                        focusDown="video/osd/favorite/icon"
                                                         hideHighlightBackground="true"
                                                         highlightCornerRadius="30"
                                                         height="30"
-                                                        width="30" />
+                                                        width="30"
+                                                        SVG="@res/svg/ico-favorites.svg" />
                                         </brls:Box>
+
+                                        <!-- Fullscreen button repurposed as Back button on Android -->
                                         <brls:Box
                                                 id="video/osd/fullscreen"
                                                 hideClickAnimation="true"
@@ -214,14 +239,18 @@
                                                 justifyContent="center"
                                                 height="60"
                                                 width="60">
-                                                <brls:Box
+                                                <SVGImage
                                                         id="video/osd/fullscreen/icon"
                                                         wireframe="false"
                                                         focusable="true"
+                                                        focusUp="video/osd/lock/box"
+                                                        focusDown="video/osd/fullscreen/icon"
+                                                        focusRight="video/osd/fullscreen/icon"
                                                         hideHighlightBackground="true"
                                                         highlightCornerRadius="30"
                                                         height="30"
-                                                        width="30" />
+                                                        width="30"
+                                                        SVG="@res/svg/bpx-svg-sprite-fullscreen-off.svg" />
                                         </brls:Box>
                                 </brls:Box>
                         </brls:Box>
@@ -245,12 +274,7 @@
                 </brls:Box>
         </brls:Box>
 
-        <VideoProfile
-                id="video/profile"
-                positionTop="22"
-                positionLeft="22"
-                positionType="absolute"
-                visibility="invisible" />
+        <!-- VideoProfile disabled on Android -->
 
         <brls:Box
                 width="50"
@@ -260,17 +284,22 @@
                 highlightCornerRadius="10"
                 backgroundColor="#303030A0"
                 focusable="true"
+                focusUp="video/osd/setting/icon"
+                focusDown="video/osd/icon/box"
+                focusRight="video/osd/lock/box"
+                focusLeft="video/osd/lock/box"
                 cornerRadius="8"
                 positionTop="45%"
                 positionRight="20"
                 positionType="absolute"
                 id="video/osd/lock/box">
-                <brls:Box
+                <SVGImage
                         id="video/osd/lock/icon"
                         detachedX="13"
                         detachedY="13"
                         height="24"
-                        width="24" />
+                        width="24"
+                        SVG="@res/svg/player-unlock.svg" />
         </brls:Box>
 
 </brls:Box>

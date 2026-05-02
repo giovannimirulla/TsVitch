@@ -9,6 +9,7 @@
 #include <vector>
 #include <chrono>
 #include <algorithm>
+#include <cctype>
 #include <fmt/format.h>
 
 #include "tsvitch.h"
@@ -28,13 +29,25 @@
 
 #include "core/FavoriteManager.hpp"
 #include "core/DownloadManager.hpp"
+#include "utils/activity_helper.hpp"
 
 using namespace brls::literals;
 
 LiveActivity::LiveActivity(const std::vector<tsvitch::LiveM3u8>& channels, size_t startIndex,
                            std::function<void()> onClose)
     : onCloseCallback(onClose), channelList(channels), currentChannelIndex(startIndex) {
-    this->liveData = channelList[currentChannelIndex];
+    if (channelList.empty()) {
+        brls::Logger::error("LiveActivity: created with empty channel list");
+        this->liveData = {};
+        currentChannelIndex = 0;
+    } else {
+        if (currentChannelIndex >= channelList.size()) {
+            brls::Logger::warning("LiveActivity: start index {} out of bounds (size {}), clamping to 0",
+                                  currentChannelIndex, channelList.size());
+            currentChannelIndex = 0;
+        }
+        this->liveData = channelList[currentChannelIndex];
+    }
     brls::Logger::debug("LiveActivity: create: {}", liveData.title);
     ShaderHelper::instance().clearShader(false);
 }
@@ -45,11 +58,20 @@ void LiveActivity::onContentAvailable() {
     try {
 
     // Ottieni i riferimenti agli elementi UI
+#ifdef __ANDROID__
+    video = static_cast<VideoView*>(this->getView("video"));
+#else
     video = dynamic_cast<VideoView*>(this->getView("video"));
+#endif
+    if (!video) {
+        brls::Logger::error("LiveActivity: VideoView not found in layout");
+        return;
+    }
 
     MPVCore::instance().setAspect(
         ProgramConfig::instance().getSettingItem(SettingItem::PLAYER_ASPECT, std::string{"-1"}));
 
+#ifndef __ANDROID__
     this->video->registerAction("", brls::BUTTON_B, [this](...) {
         if (this->video->isOSDLock()) {
             this->video->toggleOSD();
@@ -134,6 +156,26 @@ void LiveActivity::onContentAvailable() {
         }
         return true;
     });
+#endif // !__ANDROID__
+
+#ifdef __ANDROID__
+    // Back button: exit live player
+    this->video->registerAction("", brls::BUTTON_B, [this](...) {
+        if (this->video->isOSDLock()) {
+            this->video->toggleOSD();
+        } else {
+            brls::Logger::debug("exit live (Android back)");
+            brls::Application::popActivity();
+        }
+        return true;
+    });
+
+    // Settings button (BUTTON_START / menu key)
+    this->video->registerAction("", brls::BUTTON_START, [this](...) {
+        Intent::openSettings(nullptr);
+        return true;
+    });
+#endif // __ANDROID__
 
     this->video->hideSubtitleSetting();
     this->video->hideVideoRelatedSetting();
@@ -141,9 +183,26 @@ void LiveActivity::onContentAvailable() {
     this->video->hideHighlightLineSetting();
     this->video->disableCloseOnEndOfFile();
     this->video->setFullscreenIcon(true);
+#ifdef __ANDROID__
+    // On Android, delay UI updates to next frame to avoid Yoga layout crash
+    // when the VideoView is not yet fully attached to the view tree
+    {
+        std::string title = liveData.title;
+        std::string url = liveData.url;
+        VideoView* vid = this->video;
+        brls::sync([vid, title, url]() {
+            if (vid) {
+                vid->setTitle(title);
+                vid->setFavoriteIcon(FavoriteManager::get()->isFavorite(url));
+                vid->setStatusLabelLeft("");
+            }
+        });
+    }
+#else
     this->video->setTitle(liveData.title);
     this->video->setFavoriteIcon(FavoriteManager::get()->isFavorite(liveData.url));
     this->video->setStatusLabelLeft("");
+#endif
     this->video->setFavoriteCallback([this](bool state) { FavoriteManager::get()->toggle(this->liveData); });
 
     this->getAdUrlFromServer([&](const std::string& adUrl) {
@@ -168,6 +227,10 @@ void LiveActivity::onContentAvailable() {
     }
 }
 void LiveActivity::startAd(std::string adUrl) {
+    if (!this->video || this->destroyed.load()) {
+        brls::Logger::warning("LiveActivity: startAd skipped (video unavailable or activity destroyed)");
+        return;
+    }
     brls::Logger::debug("LiveActivity: adUrl: {}", adUrl);
     this->isAd = true;
     this->video->setAdMode();
@@ -192,7 +255,15 @@ void LiveActivity::startAd(std::string adUrl) {
 }
 
 void LiveActivity::startLive() {
+    if (!this->video || this->destroyed.load()) {
+        brls::Logger::warning("LiveActivity: startLive skipped (video unavailable or activity destroyed)");
+        return;
+    }
     this->isAd = false;
+    if (liveData.url.empty()) {
+        brls::Logger::error("LiveActivity: startLive called with empty URL");
+        return;
+    }
     
     // Rileva il tipo di contenuto PRIMA di caricare l'URL
     // Questo imposta correttamente isLiveMode per eventuali errori di caricamento
@@ -243,13 +314,19 @@ void LiveActivity::startLive() {
 }
 
 void LiveActivity::detectContentType() {
+    if (!this->video || this->destroyed.load()) {
+        brls::Logger::warning("LiveActivity: detectContentType skipped (video unavailable or activity destroyed)");
+        return;
+    }
     // Prima fase: analisi basata su URL e titolo (disponibile sempre)
     std::string url = liveData.url;
     std::string title = liveData.title;
     
     // Converti in lowercase per il confronto
-    std::transform(url.begin(), url.end(), url.begin(), ::tolower);
-    std::transform(title.begin(), title.end(), title.begin(), ::tolower);
+    std::transform(url.begin(), url.end(), url.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    std::transform(title.begin(), title.end(), title.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     
     // Determina il tipo basandosi su URL e titolo
     bool isLiveStream = true; // Default: assume live stream
@@ -452,9 +529,13 @@ void LiveActivity::startDownload() {
 void LiveActivity::onLiveData(std::string url) {
     brls::Logger::debug("Live stream url: {}", url);
     this->getAdUrlFromServer([&](const std::string& adUrl) {
+        if (this->destroyed.load()) {
+            brls::Logger::debug("LiveActivity: onLiveData callback ignored after destroy");
+            return;
+        }
         brls::Logger::debug("LiveActivity: adUrl: {}", adUrl);
         if (!adUrl.empty()) {
-            this->video->setUrl(adUrl);
+            if (this->video) this->video->setUrl(adUrl);
         } else {
             this->startLive();
         }
@@ -464,7 +545,7 @@ void LiveActivity::onLiveData(std::string url) {
 
 void LiveActivity::onError(const std::string& error) {
     brls::Logger::error("ERROR request live data: {}", error);
-    this->video->showOSD(false);
+    if (this->video && !this->destroyed.load()) this->video->showOSD(false);
     this->retryRequestData();
 }
 
@@ -477,7 +558,8 @@ void LiveActivity::retryRequestData() {
 
 void LiveActivity::getAdUrlFromServer(std::function<void(const std::string&)> callback) {
     CLIENT::get_ad(
-        [callback](const std::string& adUrl, int statusCode) {
+        [this, callback](const std::string& adUrl, int statusCode) {
+            if (this->destroyed.load()) return;
             if (statusCode == 200 && !adUrl.empty()) {
                 brls::Logger::debug("LiveActivity: adUrl: {}", adUrl);
                 if (callback) callback(adUrl);
@@ -486,7 +568,8 @@ void LiveActivity::getAdUrlFromServer(std::function<void(const std::string&)> ca
                 if (callback) callback("");
             }
         },
-        [callback](const std::string& error, int statusCode) {
+        [this, callback](const std::string& error, int statusCode) {
+            if (this->destroyed.load()) return;
             brls::Logger::error("LiveActivity: Error getting ad URL: {}, status code: {}", error, statusCode);
             if (callback) callback("");
         });
@@ -511,6 +594,7 @@ std::string LiveActivity::formatFileSize(size_t bytes) {
 
 LiveActivity::~LiveActivity() {
     brls::Logger::debug("LiveActivity: delete");
+    this->destroyed.store(true);
     
     // Salva la posizione di riproduzione prima di uscire (solo per video on-demand)
     if (!tsvitch::isLiveStream(liveData.url, liveData.title)) {
