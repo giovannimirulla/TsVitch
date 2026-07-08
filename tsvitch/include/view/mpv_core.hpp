@@ -52,6 +52,10 @@ struct GLShader {
 #endif
 #endif
 
+// Nintendo Switch Rendering Strategy:
+// - Primary: deko3d (native GPU support) when BOREALIS_USE_DEKO3D is defined
+// - Fallback: OpenGL (available on all platforms, for compatibility)
+
 #include "utils/event_helper.hpp"
 
 #ifdef MPV_BUNDLE_DLL

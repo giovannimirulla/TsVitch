@@ -299,18 +299,6 @@ void RecyclingGrid::addCellAt(size_t index, bool downSide) {
 void RecyclingGrid::setDataSource(RecyclingGridDataSource* source) {
     brls::Logger::info("RecyclingGrid::setDataSource: old={}, new={}", 
                        static_cast<void*>(this->dataSource), static_cast<void*>(source));
-    
-    // Safely delete old dataSource
-    if (this->dataSource) {
-        try {
-            auto* oldSource = this->dataSource;
-            this->dataSource = nullptr; // Set to null first to prevent double deletion
-            delete oldSource;
-            brls::Logger::info("RecyclingGrid::setDataSource: old dataSource deleted");
-        } catch (...) {
-            brls::Logger::error("RecyclingGrid::setDataSource: exception deleting old dataSource");
-        }
-    }
 
     this->requestNextPage = false;
     this->dataSource      = source;

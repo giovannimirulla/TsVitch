@@ -4,20 +4,20 @@
 
 pkgbasename=libmpv
 pkgname=switch-${pkgbasename}
-pkgver=0.36.0
-pkgrel=3
-pkgdesc='Command line video player (library only)'
+pkgver=0.41.0
+pkgrel=1
+pkgdesc='Video player library, heavily modified for Nintendo Switch with deko3d support'
 arch=('any')
 url='https://mpv.io/'
-license=('GPL')
+license=('LGPL2.1' 'LGPL2' 'GPL2' 'GPL3' 'BSD' 'ISC')
 options=(!strip libtool staticlibs)
 source=("${pkgbasename}-${pkgver}.tar.gz::https://github.com/mpv-player/mpv/archive/v${pkgver}.tar.gz" "mpv.patch")
 sha256sums=(
   'SKIP'
   'SKIP'
 )
-makedepends=('switch-pkg-config' 'dkp-toolchain-vars' 'dkp-meson-scripts')
-depends=('switch-ffmpeg' 'switch-mesa' 'switch-liblua51')
+makedepends=('switch-pkg-config' 'dkp-toolchain-vars' 'dkp-meson-scripts' 'deko3d' 'libuam')
+depends=('switch-ffmpeg' 'switch-mesa' 'deko3d' 'libuam')
 groups=('switch-portlibs')
 
 prepare() {
@@ -33,7 +33,7 @@ build() {
 
   source /opt/devkitpro/switchvars.sh
   /opt/devkitpro/meson-cross.sh switch crossfile.txt build\
-        -Dlua=enabled \
+        -Dlua=disabled \
         -Dhos=enabled \
         -Dhos-audio=enabled \
         -Diconv=disabled \
@@ -42,7 +42,9 @@ build() {
         -Dmanpage-build=disabled \
         -Dsdl2=disabled \
         -Dlibmpv=true \
-        -Dcplayer=false
+        -Dcplayer=false \
+        -Ddeko3d=enabled \
+        -Dgl=disabled
   meson compile -C build
 }
 
