@@ -37,9 +37,33 @@
 
 This app turns your Nintendo Switch into a powerful multimedia streaming device. With a user-friendly interface and extensive customization options, you can easily access and enjoy your favorite IPTV channels.
 
-- Access to Your Favorite Content: Supports IPTV playlists in M3U format, enabling streaming of live TV, movies, and on-demand series.
-- Optimized Interface: A clean, intuitive design tailored for Nintendo Switch's touchscreen and Joy-Con controls.
-- Multilanguage Support: Offers subtitles, multiple audio tracks, and language options for a global audience.
+- **Flexible Playlists & Sources**: Supports both standard M3U/M3U8 playlists and full integration with the **Xtream Codes API**, enabling streaming of live TV, movies, and on-demand series.
+- **Optimized Interface**: A clean, intuitive design tailored for Nintendo Switch's touchscreen and Joy-Con controls.
+- **Multilanguage Support**: Offers subtitles, multiple audio tracks, and language options for a global audience.
+
+<br>
+
+## IPTV Configuration Modes
+
+TsVitch supports two IPTV configuration modes, which can be selected and configured under **Settings**:
+
+### 1. M3U / M3U8 Mode
+* **Overview**: Stream from a static or dynamic remote M3U playlist file.
+* **How to set up**:
+  1. Navigate to **Settings** > **IPTV Mode** and select `M3U8`.
+  2. Under **M3U8 URL**, enter the link to your playlist (e.g., `http://example.com/playlist.m3u8`).
+  3. Go back to the main screen to automatically parse and load your channels.
+
+### 2. Xtream Codes API Mode
+* **Overview**: Full integration with your Xtream Codes IPTV provider. This mode dynamically fetches and organizes your content into three dedicated tabs: Live TV, VOD (Movies), and TV Series (with season and episode navigation).
+* **How to set up**:
+  1. Navigate to **Settings** > **IPTV Mode** and select `Xtream`.
+  2. Configure the connection settings:
+     * **Server URL**: The base URL of your provider (e.g., `http://server.com:8080`).
+     * **Username**
+     * **Password**
+  3. *(Optional but recommended)* Click **Test IPTV Connection** to check if your credentials are valid.
+  4. Go back to the main screen; all content categories and streams will load dynamically.
 
 <br>
 
