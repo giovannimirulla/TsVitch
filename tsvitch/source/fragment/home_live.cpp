@@ -13,6 +13,7 @@
 #include "utils/image_helper.hpp"
 #include "utils/activity_helper.hpp"
 #include "view/custom_button.hpp"
+#include "view/selector_cell.hpp"
 
 #include "core/HistoryManager.hpp"
 #include "core/FavoriteManager.hpp"
@@ -219,6 +220,7 @@ HomeLive::HomeLive() {
     
     // Inizializza il flag di validità
     validityFlag = std::make_shared<std::atomic<bool>>(true);
+    this->xtreamContentType = ProgramConfig::instance().getSettingItem(SettingItem::XTREAM_CONTENT_TYPE, 0);
     
     // Sottoscrivi all'evento di uscita per cancellare tutti i task asincroni
     exitEventSubscription = brls::Application::getExitEvent()->subscribe([this]() {
@@ -240,10 +242,11 @@ HomeLive::HomeLive() {
         brls::Threading::sync([this]() {
             recyclingGrid->showSkeleton();
             upRecyclingGrid->setVisibility(brls::Visibility::GONE);
+            contentTypeSelector->setVisibility(brls::Visibility::GONE);
         });
         
         ChannelManager::get()->remove();
-        this->requestLiveList();
+        this->requestLiveList(0);
         //reset index group
         this->selectGroupIndex(0);
     });
@@ -251,14 +254,32 @@ HomeLive::HomeLive() {
     // Sottoscrivi all'evento di cambio modalità IPTV
     OnIPTVModeChanged.subscribe([this]() {
         brls::Logger::debug("OnIPTVModeChanged: showing skeleton and requesting channel list");
-        // Mostra lo skeleton per indicare che stiamo caricando
-        brls::Threading::sync([this]() {
+        int iptvMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0);
+        brls::Threading::sync([this, iptvMode]() {
             recyclingGrid->showSkeleton();
             upRecyclingGrid->setVisibility(brls::Visibility::GONE);
+            if (iptvMode == 0) {
+                contentTypeSelector->setVisibility(brls::Visibility::GONE);
+            } else {
+                contentTypeSelector->setVisibility(brls::Visibility::VISIBLE);
+                std::vector<std::string> options = {"Live TV", "Movies", "Series"};
+                contentTypeSelector->init("Content Type", options, xtreamContentType, [this](int selection) {
+                    if (this->xtreamContentType != selection) {
+                        this->xtreamContentType = selection;
+                        ProgramConfig::instance().setSettingItem(SettingItem::XTREAM_CONTENT_TYPE, selection);
+                        ProgramConfig::instance().setSettingItem(SettingItem::GROUP_SELECTED_INDEX, 0);
+                        brls::Threading::sync([this]() {
+                            recyclingGrid->showSkeleton();
+                            upRecyclingGrid->setVisibility(brls::Visibility::GONE);
+                        });
+                        this->requestLiveList(this->xtreamContentType);
+                    }
+                });
+            }
         });
         
         ChannelManager::get()->remove();
-        this->requestLiveList();
+        this->requestLiveList(iptvMode == 1 ? this->xtreamContentType : 0);
         //reset index group
         this->selectGroupIndex(0);
     });
@@ -271,10 +292,24 @@ HomeLive::HomeLive() {
         brls::Threading::sync([this]() {
             recyclingGrid->showSkeleton();
             upRecyclingGrid->setVisibility(brls::Visibility::GONE);
+            contentTypeSelector->setVisibility(brls::Visibility::VISIBLE);
+            std::vector<std::string> options = {"Live TV", "Movies", "Series"};
+            contentTypeSelector->init("Content Type", options, xtreamContentType, [this](int selection) {
+                if (this->xtreamContentType != selection) {
+                    this->xtreamContentType = selection;
+                    ProgramConfig::instance().setSettingItem(SettingItem::XTREAM_CONTENT_TYPE, selection);
+                    ProgramConfig::instance().setSettingItem(SettingItem::GROUP_SELECTED_INDEX, 0);
+                    brls::Threading::sync([this]() {
+                        recyclingGrid->showSkeleton();
+                        upRecyclingGrid->setVisibility(brls::Visibility::GONE);
+                    });
+                    this->requestLiveList(this->xtreamContentType);
+                }
+            });
         });
         
         ChannelManager::get()->remove();
-        this->requestLiveList();
+        this->requestLiveList(this->xtreamContentType);
         //reset index group
         this->selectGroupIndex(0);
     });
@@ -290,6 +325,30 @@ HomeLive::HomeLive() {
     // Check if we're in Xtream mode and load channels immediately
     int iptvMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0);
     brls::Logger::info("HomeLive constructor: IPTV mode is {}", iptvMode);
+    
+    // Configure content type selector visibility and callback
+    if (iptvMode == 0) {
+        contentTypeSelector->setVisibility(brls::Visibility::GONE);
+    } else {
+        contentTypeSelector->setVisibility(brls::Visibility::VISIBLE);
+        std::vector<std::string> options = {"Live TV", "Movies", "Series"};
+        contentTypeSelector->init("Content Type", options, xtreamContentType, [this](int selection) {
+            if (this->xtreamContentType != selection) {
+                brls::Logger::info("Xtream content type changed: {}", selection);
+                this->xtreamContentType = selection;
+                ProgramConfig::instance().setSettingItem(SettingItem::XTREAM_CONTENT_TYPE, selection);
+                
+                ProgramConfig::instance().setSettingItem(SettingItem::GROUP_SELECTED_INDEX, 0);
+                
+                brls::Threading::sync([this]() {
+                    recyclingGrid->showSkeleton();
+                    upRecyclingGrid->setVisibility(brls::Visibility::GONE);
+                });
+                
+                this->requestLiveList(this->xtreamContentType);
+            }
+        });
+    }
     
     if (iptvMode == 1) {
         brls::Logger::info("HomeLive constructor: Xtream mode detected, using smart cache approach");
@@ -316,7 +375,7 @@ HomeLive::HomeLive() {
                     this->onLiveList(cachedChannels, false);
                 } else {
                     brls::Logger::info("HomeLive: Xtream cache invalid/empty, requesting fresh data");
-                    this->requestLiveList();
+                    this->requestLiveList(this->xtreamContentType);
                 }
                 isInitialLoadInProgress = false; // Reset flag quando completato
             });
@@ -350,7 +409,7 @@ HomeLive::HomeLive() {
                     this->onLiveList(cachedChannels, false);
                 } else {
                     brls::Logger::info("HomeLive constructor: M3U8 cache is invalid or empty, requesting fresh channels");
-                    this->requestLiveList();
+                    this->requestLiveList(0);
                 }
                 isInitialLoadInProgress = false; // Reset flag quando completato
             });
@@ -687,7 +746,7 @@ void HomeLive::onShow() {
                 
                 if (needsRefresh) {
                     brls::Logger::info("HomeLive onShow: Cache expired, refreshing channels (IPTV mode: {})", iptvMode);
-                    this->requestLiveList();
+                    this->requestLiveList(iptvMode == 1 ? this->xtreamContentType : 0);
                 } else {
                     brls::Logger::debug("HomeLive onShow: Cache still valid, no refresh needed");
                     // Solo ricarica i dati delle grid per aggiornare la UI
@@ -712,7 +771,7 @@ void HomeLive::onShow() {
         
         auto cachedChannels = ChannelManager::get()->loadIfValid();
         
-        brls::sync([this, cachedChannels, validityFlag]() {
+        brls::sync([this, cachedChannels, validityFlag, iptvMode]() {
             // Controlla di nuovo la validità prima di aggiornare l'UI
             if (!validityFlag || !validityFlag->load()) {
                 brls::Logger::debug("HomeLive onShow: fallback sync task canceled - app exiting");
@@ -724,7 +783,7 @@ void HomeLive::onShow() {
                 this->onLiveList(cachedChannels, false);
             } else {
                 brls::Logger::info("HomeLive onShow: No valid cache, requesting fresh channels");
-                this->requestLiveList();
+                this->requestLiveList(iptvMode == 1 ? this->xtreamContentType : 0);
             }
         });
     });

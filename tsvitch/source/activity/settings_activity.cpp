@@ -1,5 +1,6 @@
 #include <pystring.h>
 #include <borealis/core/i18n.hpp>
+#include <borealis/core/thread.hpp>
 #include <borealis/core/application.hpp>
 #include <borealis/core/cache_helper.hpp>
 #include <borealis/views/applet_frame.hpp>
@@ -7,6 +8,7 @@
 #include <borealis/views/cells/cell_bool.hpp>
 #include <borealis/views/cells/cell_input.hpp>
 #include <cpr/cpr.h>
+#include <nlohmann/json.hpp>
 
 #include "tsvitch.h"
 #include "activity/settings_activity.hpp"
@@ -578,40 +580,30 @@ void SettingsActivity::onContentAvailable() {
                      });
     // Inizializza i controlli Xtream Codes IPTV
     btnXtreamServer->init("Server URL", conf.getXtreamServerUrl(), 
-        [](const std::string& data) {
+        [this](const std::string& data) {
             ProgramConfig::instance().setXtreamServerUrl(data);
-            // Notifica il cambio dei parametri Xtream
-            XtreamData xtreamData;
-            xtreamData.url = data;
-            xtreamData.username = ProgramConfig::instance().getXtreamUsername();
-            xtreamData.password = ProgramConfig::instance().getXtreamPassword();
-            OnXtreamChanged.fire(xtreamData);
+            this->xtreamParamsChanged = true;
         }, 
         "Enter Xtream Codes server URL", "http://server.com:8080", 255);
     
     btnXtreamUsername->init("Username", conf.getXtreamUsername(), 
-        [](const std::string& data) {
+        [this](const std::string& data) {
             ProgramConfig::instance().setXtreamUsername(data);
-            // Notifica il cambio dei parametri Xtream
-            XtreamData xtreamData;
-            xtreamData.url = ProgramConfig::instance().getXtreamServerUrl();
-            xtreamData.username = data;
-            xtreamData.password = ProgramConfig::instance().getXtreamPassword();
-            OnXtreamChanged.fire(xtreamData);
+            this->xtreamParamsChanged = true;
         }, 
         "Enter your username", "username", 255);
     
     btnXtreamPassword->init("Password", conf.getXtreamPassword(), 
-        [](const std::string& data) {
+        [this](const std::string& data) {
             ProgramConfig::instance().setXtreamPassword(data);
-            // Notifica il cambio dei parametri Xtream
-            XtreamData xtreamData;
-            xtreamData.url = ProgramConfig::instance().getXtreamServerUrl();
-            xtreamData.username = ProgramConfig::instance().getXtreamUsername();
-            xtreamData.password = data;
-            OnXtreamChanged.fire(xtreamData);
+            this->xtreamParamsChanged = true;
         }, 
         "Enter your password", "password", 255);
+
+    btnTestIptv->registerClickAction([this](brls::View* view) -> bool {
+        this->testIptvConnection();
+        return true;
+    });
 
     // Imposta la visibilità iniziale delle sezioni
     this->updateIPTVSectionVisibility();
@@ -642,8 +634,137 @@ void SettingsActivity::updateIPTVSectionVisibility() {
     brls::Logger::debug("IPTV Section Visibility updated: M3U8={}, Xtream={}", showM3U8, showXtream);
 }
 
+void SettingsActivity::testIptvConnection() {
+    auto& conf = ProgramConfig::instance();
+    int currentMode = conf.getIntOption(SettingItem::IPTV_MODE);
+    
+    // Create and open loading dialog
+    auto loadingDialog = new brls::Dialog("tsvitch/setting/tools/test/iptv_testing"_i18n);
+    loadingDialog->open();
+    
+    if (currentMode == 0) { // M3U8 mode
+        std::string m3u8Url = conf.getM3U8Url();
+        if (m3u8Url.empty()) {
+            loadingDialog->close();
+            auto dialog = new brls::Dialog("tsvitch/setting/tools/test/iptv_empty"_i18n);
+            dialog->addButton("hints/ok"_i18n, []() {});
+            dialog->open();
+            return;
+        }
+        
+        auto timeoutMs = conf.getIntOption(SettingItem::M3U8_TIMEOUT);
+        if (timeoutMs < 10000) timeoutMs = 10000;
+        
+        cpr::GetCallback([this, loadingDialog](const cpr::Response& r) {
+            brls::sync([loadingDialog]() {
+                loadingDialog->close();
+            });
+            
+            if (r.status_code == 200) {
+                brls::sync([]() {
+                    auto dialog = new brls::Dialog("tsvitch/setting/tools/test/iptv_success"_i18n);
+                    dialog->addButton("hints/ok"_i18n, []() {});
+                    dialog->open();
+                });
+            } else {
+                int status = r.status_code;
+                brls::sync([status]() {
+                    std::string msg = "tsvitch/setting/tools/test/iptv_failed"_i18n;
+                    if (status > 0) {
+                        msg += " (Status: " + std::to_string(status) + ")";
+                    }
+                    auto dialog = new brls::Dialog(msg);
+                    dialog->addButton("hints/ok"_i18n, []() {});
+                    dialog->open();
+                });
+            }
+        }, cpr::Url{m3u8Url}, cpr::Timeout{timeoutMs});
+        
+    } else { // Xtream Codes mode
+        std::string serverUrl = conf.getXtreamServerUrl();
+        std::string username = conf.getXtreamUsername();
+        std::string password = conf.getXtreamPassword();
+        
+        if (serverUrl.empty()) {
+            loadingDialog->close();
+            auto dialog = new brls::Dialog("tsvitch/setting/tools/test/iptv_empty"_i18n);
+            dialog->addButton("hints/ok"_i18n, []() {});
+            dialog->open();
+            return;
+        }
+        
+        if (serverUrl.back() != '/') serverUrl += "/";
+        std::string authUrl = serverUrl + "player_api.php?username=" + username + "&password=" + password;
+        
+        auto timeoutMs = conf.getIntOption(SettingItem::M3U8_TIMEOUT);
+        if (timeoutMs < 15000) timeoutMs = 15000;
+        
+        cpr::GetCallback([this, loadingDialog](const cpr::Response& r) {
+            brls::sync([loadingDialog]() {
+                loadingDialog->close();
+            });
+            
+            if (r.status_code == 200) {
+                try {
+                    auto jsonResult = nlohmann::json::parse(r.text);
+                    bool success = false;
+                    if (jsonResult.contains("user_info")) {
+                        const auto& userInfo = jsonResult["user_info"];
+                        if (userInfo.contains("auth")) {
+                            auto authVal = userInfo["auth"];
+                            if (authVal.is_number() && authVal.get<int>() == 1) {
+                                success = true;
+                            } else if (authVal.is_string() && authVal.get<std::string>() == "1") {
+                                success = true;
+                            }
+                        }
+                    }
+                    
+                    if (success) {
+                        brls::sync([]() {
+                            auto dialog = new brls::Dialog("tsvitch/setting/tools/test/iptv_success"_i18n);
+                            dialog->addButton("hints/ok"_i18n, []() {});
+                            dialog->open();
+                        });
+                    } else {
+                        brls::sync([]() {
+                            auto dialog = new brls::Dialog("tsvitch/setting/tools/test/iptv_auth_failed"_i18n);
+                            dialog->addButton("hints/ok"_i18n, []() {});
+                            dialog->open();
+                        });
+                    }
+                } catch (...) {
+                    brls::sync([]() {
+                        auto dialog = new brls::Dialog("tsvitch/setting/tools/test/iptv_parse_error"_i18n);
+                        dialog->addButton("hints/ok"_i18n, []() {});
+                        dialog->open();
+                    });
+                }
+            } else {
+                int status = r.status_code;
+                brls::sync([status]() {
+                    std::string msg = "tsvitch/setting/tools/test/iptv_failed"_i18n;
+                    if (status > 0) {
+                        msg += " (Status: " + std::to_string(status) + ")";
+                    }
+                    auto dialog = new brls::Dialog(msg);
+                    dialog->addButton("hints/ok"_i18n, []() {});
+                    dialog->open();
+                });
+            }
+        }, cpr::Url{authUrl}, cpr::Timeout{timeoutMs});
+    }
+}
+
 void SettingsActivity::willDisappear(bool resetState) {
     brls::Logger::debug("SettingsActivity: willDisappear");
+    if (xtreamParamsChanged) {
+        XtreamData xtreamData;
+        xtreamData.url = ProgramConfig::instance().getXtreamServerUrl();
+        xtreamData.username = ProgramConfig::instance().getXtreamUsername();
+        xtreamData.password = ProgramConfig::instance().getXtreamPassword();
+        OnXtreamChanged.fire(xtreamData);
+    }
     if (onCloseCallback) {
         onCloseCallback();
         onCloseCallback = nullptr; // Clear the callback to avoid calling it again

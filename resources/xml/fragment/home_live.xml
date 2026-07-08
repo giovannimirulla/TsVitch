@@ -3,19 +3,33 @@
         width="auto"
         marginTop="10"
         height="auto">
-        <RecyclingGrid
+        <brls:Box
                 width="270"
-                paddingLeft="10"
-                paddingRight="10"
-                marginTop="20"
-                marginBottom="8"
-                itemHeight="50"
-                preFetchLine="2"
-                spanCount="1"
-                wireframe="false"
-                lineColor="@theme/color/line"
-                lineRight="1"
-                id="dynamic/up/recyclingGrid" />
+                axis="column"
+                id="home/live/sidebar_box">
+                <SelectorCell
+                        id="home/live/content_type_selector"
+                        title="Content Type"
+                        height="50"
+                        marginTop="20"
+                        paddingLeft="10"
+                        paddingRight="10"
+                        wireframe="false" />
+                <RecyclingGrid
+                        width="270"
+                        paddingLeft="10"
+                        paddingRight="10"
+                        marginTop="10"
+                        marginBottom="8"
+                        grow="1.0"
+                        itemHeight="50"
+                        preFetchLine="2"
+                        spanCount="1"
+                        wireframe="false"
+                        lineColor="@theme/color/line"
+                        lineRight="1"
+                        id="dynamic/up/recyclingGrid" />
+        </brls:Box>
         <RecyclingGrid
                 paddingLeft="20"
                 paddingRight="20"

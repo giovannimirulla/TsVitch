@@ -27,7 +27,7 @@ HomeLiveRequest::~HomeLiveRequest() {
     }
 }
 
-void HomeLiveRequest::requestLiveList() {
+void HomeLiveRequest::requestLiveList(int contentType) {
     // Prevent duplicate requests
     if (isRequestInProgress.exchange(true)) {
         brls::Logger::debug("HomeLiveRequest::requestLiveList: Request already in progress, skipping duplicate");
@@ -39,7 +39,7 @@ void HomeLiveRequest::requestLiveList() {
     validityFlag = isValidFlag;
     
     // Use the new unified function that handles both M3U8 and Xtream modes
-    brls::Logger::info("HomeLiveRequest: Requesting live channels...");
+    brls::Logger::info("HomeLiveRequest: Requesting live channels with contentType {}...", contentType);
     CLIENT::get_live_channels(
         [this, isValidFlag](const auto& result) {
             // Check if this object is still valid before accessing it
@@ -77,6 +77,7 @@ void HomeLiveRequest::requestLiveList() {
                 brls::Logger::error("HomeLiveRequest::requestLiveList: Exception during error callback");
                 isRequestInProgress = false; // Reset the flag on exception
             }
-        }
+        },
+        contentType
     );
 }

@@ -15,6 +15,7 @@ class Label;
 };
 class RecyclingGrid;
 class CustomButton;
+class TsVitchSelectorCell;
 
 class HomeLive : public AttachedView, public HomeLiveRequest {
 public:
@@ -56,7 +57,9 @@ private:
     std::shared_ptr<std::atomic<bool>> validityFlag;
     brls::Event<>::Subscription exitEventSubscription;
     bool hasExitSubscription = false;
+    int xtreamContentType  = 0;
     BRLS_BIND(RecyclingGrid, recyclingGrid, "home/live/recyclingGrid");
     BRLS_BIND(RecyclingGrid, upRecyclingGrid, "dynamic/up/recyclingGrid");
     BRLS_BIND(CustomButton, searchField, "home/search");
+    BRLS_BIND(TsVitchSelectorCell, contentTypeSelector, "home/live/content_type_selector");
 };
