@@ -208,6 +208,11 @@
 
                                                         </brls:Box>
 
+                                                        <brls:RadioCell
+                                                                id="setting/iptv/test_button"
+                                                                title="@i18n/tsvitch/setting/tools/test/iptv"
+                                                                marginTop="20px" />
+
                                                 </brls:Box>
 
                                         </brls:Box>

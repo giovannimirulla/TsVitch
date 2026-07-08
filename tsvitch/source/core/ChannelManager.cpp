@@ -16,8 +16,27 @@ ChannelManager::ChannelManager(const std::filesystem::path& dataDir) :
 
 ChannelManager* ChannelManager::get() {
     const std::string path = ProgramConfig::instance().getConfigDir();
-    static ChannelManager instance(path);
-    return &instance;
+    int iptvMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0);
+    int contentType = 0;
+    if (iptvMode == 1) {
+        contentType = ProgramConfig::instance().getSettingItem(SettingItem::XTREAM_CONTENT_TYPE, 0);
+    }
+    
+    if (iptvMode == 0) {
+        static ChannelManager m3u8Instance(std::filesystem::path(path) / "m3u8");
+        return &m3u8Instance;
+    } else {
+        if (contentType == 0) {
+            static ChannelManager liveInstance(std::filesystem::path(path) / "xtream_live");
+            return &liveInstance;
+        } else if (contentType == 1) {
+            static ChannelManager movieInstance(std::filesystem::path(path) / "xtream_movies");
+            return &movieInstance;
+        } else {
+            static ChannelManager seriesInstance(std::filesystem::path(path) / "xtream_series");
+            return &seriesInstance;
+        }
+    }
 }
 
 void ChannelManager::save(const tsvitch::LiveM3u8ListResult& channels) const {

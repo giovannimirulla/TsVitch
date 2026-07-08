@@ -125,7 +125,14 @@
         "proxy_success": "✓ Proxy funziona correttamente",
         "proxy_failed": "✗ Proxy fallito - Codice",
         "proxy_error": "✗ Errore test proxy",
-        "vibration": "Test Vibrazione"
+        "vibration": "Test Vibrazione",
+        "iptv": "Testa IPTV",
+        "iptv_testing": "Verifica connessione...",
+        "iptv_success": "✓ Connessione riuscita!",
+        "iptv_failed": "✗ Connessione fallita",
+        "iptv_auth_failed": "✗ Autenticazione fallita (credenziali non valide)",
+        "iptv_parse_error": "✗ Impossibile analizzare la risposta del server",
+        "iptv_empty": "L'URL è vuoto"
       },
       "others": {
         "header": "Altri",

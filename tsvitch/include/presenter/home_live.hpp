@@ -16,7 +16,7 @@ public:
 
     virtual void onError(const std::string& error) = 0;
 
-    void requestLiveList();
+    void requestLiveList(int contentType = 0);
     
     virtual ~HomeLiveRequest();
 

@@ -26,8 +26,10 @@ public:
 
 private:
     std::function<void()> onCloseCallback;
+    bool xtreamParamsChanged = false;
     
     void updateIPTVSectionVisibility();
+    void testIptvConnection();
     
     BRLS_BIND(brls::RadioCell, btnTutorialOpenApp, "tools/tutorial_open");
     BRLS_BIND(brls::RadioCell, btnTutorialError, "tools/tutorial_error");
@@ -55,6 +57,7 @@ private:
     BRLS_BIND(brls::InputCell, btnXtreamServer, "setting/iptv/xtream_server");
     BRLS_BIND(brls::InputCell, btnXtreamUsername, "setting/iptv/xtream_username");
     BRLS_BIND(brls::InputCell, btnXtreamPassword, "setting/iptv/xtream_password");
+    BRLS_BIND(brls::RadioCell, btnTestIptv, "setting/iptv/test_button");
     
     BRLS_BIND(TsVitchSelectorCell, selectorLang, "setting/language");
     BRLS_BIND(TsVitchSelectorCell, selectorTheme, "setting/ui/theme");
