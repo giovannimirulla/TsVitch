@@ -3,19 +3,51 @@
         width="auto"
         marginTop="10"
         height="auto">
-        <RecyclingGrid
+        <brls:Box
+                id="xtream/left/column"
+                axis="column"
                 width="270"
-                paddingLeft="10"
-                paddingRight="10"
-                marginTop="20"
-                marginBottom="8"
-                itemHeight="50"
-                preFetchLine="2"
-                spanCount="1"
-                wireframe="false"
-                lineColor="@theme/color/line"
-                lineRight="1"
-                id="dynamic/up/recyclingGrid" />
+                height="auto">
+                <CustomButton
+                        id="xtream/content/back"
+                        focusable="true"
+                        highlightCornerRadius="6"
+                        cornerRadius="6"
+                        width="250"
+                        height="34"
+                        marginTop="20"
+                        marginLeft="10"
+                        marginRight="10"
+                        paddingLeft="12"
+                        paddingRight="12"
+                        visibility="gone"
+                        alignItems="center"
+                        backgroundColor="@theme/color/grey_1">
+                        <brls:Label
+                                fontSize="18"
+                                marginRight="10"
+                                text="←" />
+                        <brls:Label
+                                id="xtream/content/back/label"
+                                fontSize="15"
+                                grow="1"
+                                text="@i18n/tsvitch/xtream/content/live" />
+                </CustomButton>
+                <RecyclingGrid
+                        grow="1"
+                        width="auto"
+                        paddingLeft="10"
+                        paddingRight="10"
+                        marginTop="8"
+                        marginBottom="8"
+                        itemHeight="50"
+                        preFetchLine="2"
+                        spanCount="1"
+                        wireframe="false"
+                        lineColor="@theme/color/line"
+                        lineRight="1"
+                        id="dynamic/up/recyclingGrid" />
+        </brls:Box>
         <RecyclingGrid
                 paddingLeft="20"
                 paddingRight="20"
@@ -57,6 +89,67 @@
                                 fontSize="14"
                                 textColor="#18191c"
                                 text="y" />
+                </CustomButton>
+        </brls:Box>
+
+        <brls:Box
+                id="xtream/hub"
+                positionType="absolute"
+                positionLeft="0"
+                positionTop="0"
+                width="100%"
+                height="100%"
+                axis="row"
+                justifyContent="center"
+                alignItems="center"
+                visibility="gone">
+                <CustomButton
+                        id="xtream/hub/live"
+                        focusable="true"
+                        highlightCornerRadius="10"
+                        cornerRadius="10"
+                        width="220"
+                        height="260"
+                        margin="15"
+                        justifyContent="center"
+                        alignItems="center"
+                        backgroundColor="@theme/color/grey_1">
+                        <brls:Label
+                                fontSize="22"
+                                horizontalAlign="center"
+                                text="@i18n/tsvitch/xtream/content/live" />
+                </CustomButton>
+                <CustomButton
+                        id="xtream/hub/movies"
+                        focusable="true"
+                        highlightCornerRadius="10"
+                        cornerRadius="10"
+                        width="220"
+                        height="260"
+                        margin="15"
+                        justifyContent="center"
+                        alignItems="center"
+                        backgroundColor="@theme/color/grey_1">
+                        <brls:Label
+                                fontSize="22"
+                                horizontalAlign="center"
+                                text="@i18n/tsvitch/xtream/content/movies" />
+                </CustomButton>
+                <CustomButton
+                        id="xtream/hub/series"
+                        focusable="true"
+                        highlightCornerRadius="10"
+                        cornerRadius="10"
+                        width="220"
+                        height="260"
+                        margin="15"
+                        justifyContent="center"
+                        alignItems="center"
+                        backgroundColor="@theme/color/grey_1">
+                        <brls:Label
+                                fontSize="22"
+                                horizontalAlign="center"
+                                text="@i18n/tsvitch/xtream/content/series" />
                 </CustomButton>
         </brls:Box>
 

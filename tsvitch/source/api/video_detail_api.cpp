@@ -403,25 +403,45 @@ void TsVitchClient::get_xtream_channels(const std::function<void(LiveM3u8ListRes
     get_xtream_channels_with_retry(callback, error, 3); // Max 3 retry attempts
 }
 
-// Shared category_id -> category_name map of the Xtream live categories
+// Shared category_id -> category_name map of the Xtream categories
 using XtreamCategoryMap = std::shared_ptr<std::unordered_map<std::string, std::string>>;
 
 /**
- * Fetches the Xtream live categories (action=get_live_categories) and builds a
- * category_id -> category_name map. On error it returns an empty map: the channel
+ * Describes which Xtream content to fetch. Live TV and Movies (VOD) share the exact
+ * same fetch/parse pipeline and only differ in the API actions, the stream URL path
+ * segment and the file extension, so a single implementation is parameterized by this.
+ */
+struct XtreamContentKind {
+    std::string categoriesAction;    // get_live_categories / get_vod_categories
+    std::string streamsAction;       // get_live_streams / get_vod_streams
+    std::string urlSegment;          // "live" / "movie"
+    bool useContainerExtension;      // false -> ".ts"; true -> item.container_extension (fallback mp4)
+    std::string fallbackGroupTitle;  // group name when the category cannot be resolved
+    std::string label;               // used only in logs
+};
+
+static const XtreamContentKind XTREAM_LIVE{
+    "get_live_categories", "get_live_streams", "live", false, "Live TV", "live"};
+static const XtreamContentKind XTREAM_MOVIES{
+    "get_vod_categories", "get_vod_streams", "movie", true, "Movies", "vod"};
+
+/**
+ * Fetches the Xtream categories for the given content kind and builds a
+ * category_id -> category_name map. On error it returns an empty map: the stream
  * fetch still proceeds using a fallback grouping.
  */
 static void fetchXtreamCategories(const std::string& serverUrl, const std::string& username,
                                   const std::string& password, long timeoutMs,
+                                  const XtreamContentKind& kind,
                                   const std::function<void(XtreamCategoryMap)>& done) {
     std::string url = serverUrl;
     if (url.back() != '/') url += "/";
-    url += "player_api.php?username=" + username + "&password=" + password + "&action=get_live_categories";
+    url += "player_api.php?username=" + username + "&password=" + password + "&action=" + kind.categoriesAction;
 
-    brls::Logger::debug("Fetching Xtream categories from: {}", url);
+    brls::Logger::debug("Fetching Xtream {} categories from: {}", kind.label, url);
 
     cpr::GetCallback(
-        [done](const cpr::Response& r) {
+        [done, label = kind.label](const cpr::Response& r) {
             auto categories = std::make_shared<std::unordered_map<std::string, std::string>>();
             try {
                 if (!r.error && r.status_code == 200 && !r.text.empty()) {
@@ -437,13 +457,13 @@ static void fetchXtreamCategories(const std::string& serverUrl, const std::strin
                         }
                     }
                 } else {
-                    brls::Logger::warning("Xtream categories fetch failed (status={}), continuing without category names",
-                                          r.status_code);
+                    brls::Logger::warning("Xtream {} categories fetch failed (status={}), continuing without category names",
+                                          label, r.status_code);
                 }
             } catch (const std::exception& e) {
                 brls::Logger::warning("Xtream categories parse error: {}, continuing without category names", e.what());
             }
-            brls::Logger::info("Xtream: loaded {} live categories", categories->size());
+            brls::Logger::info("Xtream: loaded {} {} categories", categories->size(), label);
             brls::sync([done, categories]() { done(categories); });
         },
         cpr::Url{url},
@@ -455,23 +475,24 @@ static void fetchXtreamCategories(const std::string& serverUrl, const std::strin
         HTTP::VERIFY);
 }
 
-// Forward declaration of the channel fetch with an already-resolved category map
+// Forward declaration of the stream fetch with an already-resolved category map
 static void xtreamFetchStreamsWithRetry(const std::function<void(tsvitch::LiveM3u8ListResult)>& callback,
                                         const ErrorCallback& error, int maxRetries,
-                                        XtreamCategoryMap categories);
+                                        XtreamCategoryMap categories, XtreamContentKind kind);
 
 /**
- * Fetches live streams from Xtream Codes API with automatic retry logic.
+ * Fetches Xtream content (Live TV or Movies) with automatic retry logic.
  * Timeout: 45+ seconds (Xtream servers typically slower than M3U8 sources)
  * Retries: 3 attempts with exponential backoff (1s network, 3s server errors)
  * Error Handling: Network errors retry, server errors 502/503 retry, 4xx no retry
  *
- * Before the channels it fetches the live categories in order to resolve
- * category_id -> category_name (get_live_streams only exposes category_id),
+ * Before the streams it fetches the categories in order to resolve
+ * category_id -> category_name (get_*_streams only exposes category_id),
  * enabling per-category grouping in the UI.
  */
-void TsVitchClient::get_xtream_channels_with_retry(const std::function<void(LiveM3u8ListResult)>& callback,
-                                                  const ErrorCallback& error, int maxRetries) {
+static void xtreamFetchContentWithRetry(const std::function<void(tsvitch::LiveM3u8ListResult)>& callback,
+                                        const ErrorCallback& error, int maxRetries,
+                                        const XtreamContentKind& kind) {
     auto serverUrl = ProgramConfig::instance().getXtreamServerUrl();
     auto username = ProgramConfig::instance().getXtreamUsername();
     auto password = ProgramConfig::instance().getXtreamPassword();
@@ -486,32 +507,42 @@ void TsVitchClient::get_xtream_channels_with_retry(const std::function<void(Live
     auto timeoutMs = ProgramConfig::instance().getIntOption(SettingItem::M3U8_TIMEOUT);
     if (timeoutMs < 45000) timeoutMs = 45000;
 
-    // Categories first, then channels (fetched once, reused across all retries)
-    fetchXtreamCategories(serverUrl, username, password, timeoutMs,
-                          [callback, error, maxRetries](XtreamCategoryMap categories) {
-        xtreamFetchStreamsWithRetry(callback, error, maxRetries, categories);
+    // Categories first, then streams (fetched once, reused across all retries)
+    fetchXtreamCategories(serverUrl, username, password, timeoutMs, kind,
+                          [callback, error, maxRetries, kind](XtreamCategoryMap categories) {
+        xtreamFetchStreamsWithRetry(callback, error, maxRetries, categories, kind);
     });
 }
 
+void TsVitchClient::get_xtream_channels_with_retry(const std::function<void(LiveM3u8ListResult)>& callback,
+                                                  const ErrorCallback& error, int maxRetries) {
+    xtreamFetchContentWithRetry(callback, error, maxRetries, XTREAM_LIVE);
+}
+
+void TsVitchClient::get_xtream_vod(const std::function<void(LiveM3u8ListResult)>& callback,
+                                   const ErrorCallback& error) {
+    xtreamFetchContentWithRetry(callback, error, 3, XTREAM_MOVIES);
+}
+
 /**
- * Actual live channel fetch. Receives the already-resolved category map;
+ * Actual stream fetch. Receives the already-resolved category map and content kind;
  * retries call this function again without re-downloading the categories.
  */
 static void xtreamFetchStreamsWithRetry(const std::function<void(tsvitch::LiveM3u8ListResult)>& callback,
                                         const ErrorCallback& error, int maxRetries,
-                                        XtreamCategoryMap categories) {
+                                        XtreamCategoryMap categories, XtreamContentKind kind) {
     auto serverUrl = ProgramConfig::instance().getXtreamServerUrl();
     auto username = ProgramConfig::instance().getXtreamUsername();
     auto password = ProgramConfig::instance().getXtreamPassword();
 
-    // Construct Xtream API URL for getting all live streams
+    // Construct Xtream API URL for getting all streams of this content kind
     std::string xtreamUrl = serverUrl;
     if (xtreamUrl.back() != '/') {
         xtreamUrl += "/";
     }
-    xtreamUrl += "player_api.php?username=" + username + "&password=" + password + "&action=get_live_streams";
+    xtreamUrl += "player_api.php?username=" + username + "&password=" + password + "&action=" + kind.streamsAction;
 
-    brls::Logger::debug("Fetching Xtream channels from: {} (retries left: {})", xtreamUrl, maxRetries);
+    brls::Logger::debug("Fetching Xtream {} from: {} (retries left: {})", kind.label, xtreamUrl, maxRetries);
 
     auto timeoutMs = ProgramConfig::instance().getIntOption(SettingItem::M3U8_TIMEOUT);
     // Use longer timeout for Xtream API (typically slower than M3U8 sources)
@@ -519,7 +550,7 @@ static void xtreamFetchStreamsWithRetry(const std::function<void(tsvitch::LiveM3
 
     // Use cpr::GetCallback per migliori prestazioni asincrono
     cpr::GetCallback(
-        [callback, error, maxRetries, xtreamUrl, timeoutMs, serverUrl, username, password, categories](const cpr::Response& r) {
+        [callback, error, maxRetries, xtreamUrl, timeoutMs, serverUrl, username, password, categories, kind](const cpr::Response& r) {
             try {
                 brls::Logger::info("Xtream response: status={}, size={}KB", r.status_code, r.text.length()/1024);
                 
@@ -528,9 +559,9 @@ static void xtreamFetchStreamsWithRetry(const std::function<void(tsvitch::LiveM3
                     brls::Logger::error("Xtream network error: {}", r.error.message);
                     if (maxRetries > 0) {
                         brls::Logger::info("Retrying Xtream request due to network error (retries left: {})", maxRetries - 1);
-                        brls::Threading::async([callback, error, maxRetries, categories]() {
+                        brls::Threading::async([callback, error, maxRetries, categories, kind]() {
                             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-                            xtreamFetchStreamsWithRetry(callback, error, maxRetries - 1, categories);
+                            xtreamFetchStreamsWithRetry(callback, error, maxRetries - 1, categories, kind);
                         });
                         return;
                     }
@@ -543,9 +574,9 @@ static void xtreamFetchStreamsWithRetry(const std::function<void(tsvitch::LiveM3
                 // Handle HTTP errors with retry for 503 and 502
                 if ((r.status_code == 503 || r.status_code == 502) && maxRetries > 0) {
                     brls::Logger::warning("Xtream server returned {} - server temporarily unavailable, retrying in 3 seconds (retries left: {})", r.status_code, maxRetries - 1);
-                    brls::Threading::async([callback, error, maxRetries, categories]() {
+                    brls::Threading::async([callback, error, maxRetries, categories, kind]() {
                         std::this_thread::sleep_for(std::chrono::milliseconds(3000)); // Wait 3 seconds for server errors
-                        xtreamFetchStreamsWithRetry(callback, error, maxRetries - 1, categories);
+                        xtreamFetchStreamsWithRetry(callback, error, maxRetries - 1, categories, kind);
                     });
                     return;
                 }
@@ -567,7 +598,7 @@ static void xtreamFetchStreamsWithRetry(const std::function<void(tsvitch::LiveM3
                 }
                 
                 // Sposta il parsing JSON in un thread asincrono per non bloccare la UI
-                brls::Threading::async([callback, error, responseText = std::move(r.text), serverUrl, username, password, categories]() {
+                brls::Threading::async([callback, error, responseText = std::move(r.text), serverUrl, username, password, categories, kind]() {
                     try {
                         auto parse_start = std::chrono::high_resolution_clock::now();
                         
@@ -624,8 +655,8 @@ static void xtreamFetchStreamsWithRetry(const std::function<void(tsvitch::LiveM3
                                 live.title = sanitizeText(safeGetString(item, "name"));
                                 live.logo = safeGetString(item, "stream_icon");
                                 
-                                // get_live_streams only exposes category_id: resolve the name from the
-                                // category map; fall back to category_name (if present) and then "Live TV".
+                                // get_*_streams only exposes category_id: resolve the name from the
+                                // category map; fall back to category_name (if present) and then the kind default.
                                 std::string categoryName = safeGetString(item, "category_name");
                                 if (categoryName.empty() && categories) {
                                     std::string categoryId = safeGetIdString(item, "category_id");
@@ -636,15 +667,23 @@ static void xtreamFetchStreamsWithRetry(const std::function<void(tsvitch::LiveM3
                                         }
                                     }
                                 }
-                                live.groupTitle = sanitizeText(categoryName.empty() ? "Live TV" : categoryName);
-                                
-                                // Construct the stream URL for Xtream
+                                live.groupTitle = sanitizeText(categoryName.empty() ? kind.fallbackGroupTitle : categoryName);
+
+                                // Construct the stream URL for Xtream.
+                                // Live -> live/.../id.ts ; Movies (VOD) -> movie/.../id.<container_extension>
                                 if (!live.id.empty()) {
                                     std::string streamUrl = serverUrl;
                                     if (streamUrl.back() != '/') {
                                         streamUrl += "/";
                                     }
-                                    streamUrl += "live/" + username + "/" + password + "/" + live.id + ".ts";
+                                    std::string ext;
+                                    if (kind.useContainerExtension) {
+                                        ext = safeGetString(item, "container_extension");
+                                        if (ext.empty()) ext = "mp4";
+                                    } else {
+                                        ext = "ts";
+                                    }
+                                    streamUrl += kind.urlSegment + "/" + username + "/" + password + "/" + live.id + "." + ext;
                                     live.url = streamUrl;
                                 }
                                 
@@ -707,9 +746,15 @@ void TsVitchClient::get_live_channels(const std::function<void(LiveM3u8ListResul
         brls::Logger::debug("Using M3U8 mode for live channels");
         get_file_m3u8(callback, error);
     } else if (iptvMode == 1) {
-        // Xtream Codes Mode
-        brls::Logger::debug("Using Xtream mode for live channels");
-        get_xtream_channels(callback, error);
+        // Xtream Codes Mode: choose between Live TV and Movies (VOD)
+        int contentType = ProgramConfig::instance().getXtreamContentType();
+        if (contentType == 1) {
+            brls::Logger::debug("Using Xtream mode for movies (VOD)");
+            get_xtream_vod(callback, error);
+        } else {
+            brls::Logger::debug("Using Xtream mode for live channels");
+            get_xtream_channels(callback, error);
+        }
     } else {
         // Unknown mode
         brls::Logger::error("Unknown IPTV mode: {}", iptvMode);

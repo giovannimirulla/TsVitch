@@ -87,6 +87,9 @@ enum class SettingItem {
     XTREAM_PASSWORD,
     XTREAM_ENABLED,
 
+    // Xtream content type: 0 = Live TV, 1 = Movies (VOD)
+    XTREAM_CONTENT_TYPE,
+
     GROUP_SELECTED_INDEX,
 };
 
@@ -224,6 +227,9 @@ public:
     void setXtreamPassword(const std::string& password);
     bool getXtreamEnabled();
     void setXtreamEnabled(bool enabled);
+    // Xtream content type: 0 = Live TV, 1 = Movies (VOD)
+    int getXtreamContentType();
+    void setXtreamContentType(int contentType);
 
     std::string getProxyUrl();
 

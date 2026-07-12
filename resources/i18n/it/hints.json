@@ -20,5 +20,6 @@
   "live_error": "Errore: la live non è disponibile",
   "video_error": "Errore: il video non è disponibile",
   "loading": "Caricamento",
-  "network_error": "Errore di rete"
+  "network_error": "Errore di rete",
+  "coming_soon": "Prossimamente"
 }

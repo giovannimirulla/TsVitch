@@ -27,6 +27,9 @@ public:
                                               const ErrorCallback& error                               = nullptr,
                                               int maxRetries                                           = 3);
 
+    static void get_xtream_vod(const std::function<void(LiveM3u8ListResult)>& callback = nullptr,
+                               const ErrorCallback& error                              = nullptr);
+
     static void get_live_channels(const std::function<void(LiveM3u8ListResult)>& callback = nullptr,
                                  const ErrorCallback& error                               = nullptr);
 

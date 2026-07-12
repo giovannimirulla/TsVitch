@@ -189,6 +189,7 @@ std::unordered_map<SettingItem, ProgramOption> ProgramConfig::SETTING_MAP = {
     {SettingItem::XTREAM_USERNAME, {"xtream_username", {}, {}, 0}},
     {SettingItem::XTREAM_PASSWORD, {"xtream_password", {}, {}, 0}},
     {SettingItem::XTREAM_ENABLED, {"xtream_enabled", {}, {}, 0}}, // 0 = disabled, 1 = enabled
+    {SettingItem::XTREAM_CONTENT_TYPE, {"xtream_content_type", {}, {}, 0}}, // 0 = Live TV, 1 = Movies (VOD)
 };
 
 ProgramConfig::ProgramConfig() = default;
@@ -840,6 +841,15 @@ bool ProgramConfig::getXtreamEnabled() {
 void ProgramConfig::setXtreamEnabled(bool enabled) {
     setSettingItem(SettingItem::XTREAM_ENABLED, enabled ? 1 : 0);
     brls::Logger::info("setXtreamEnabled: {}", enabled);
+}
+
+int ProgramConfig::getXtreamContentType() {
+    return getSettingItem(SettingItem::XTREAM_CONTENT_TYPE, 0);
+}
+
+void ProgramConfig::setXtreamContentType(int contentType) {
+    setSettingItem(SettingItem::XTREAM_CONTENT_TYPE, contentType);
+    brls::Logger::info("setXtreamContentType: {}", contentType);
 }
 
 void ProgramConfig::toggleFullscreen() {

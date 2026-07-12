@@ -472,5 +472,12 @@
   "dialog": {
     "not_supported": "Non supportato",
     "quit_hint": "Uscita dall'app..."
+  },
+  "xtream": {
+    "content": {
+      "live": "Live TV",
+      "movies": "Film",
+      "series": "Serie"
+    }
   }
 }

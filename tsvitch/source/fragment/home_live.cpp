@@ -23,6 +23,10 @@
 
 #include "utils/config_helper.hpp"
 
+#include <borealis/core/box.hpp>
+#include <borealis/core/i18n.hpp>
+#include <borealis/views/label.hpp>
+
 using namespace brls::literals;
 
 class DynamicGroupChannels : public RecyclingGridItem {
@@ -233,129 +237,116 @@ HomeLive::HomeLive() {
 
     upRecyclingGrid->registerCell("Cell", []() { return DynamicGroupChannels::create(); });
 
-    // Sottoscrivi all'evento di cambio M3U8
-    OnM3U8UrlChanged.subscribe([this]() {
-        brls::Logger::debug("OnM3U8UrlChanged: showing skeleton and requesting channel list");
-        // Mostra lo skeleton per indicare che stiamo caricando
-        brls::Threading::sync([this]() {
-            recyclingGrid->showSkeleton();
-            upRecyclingGrid->setVisibility(brls::Visibility::GONE);
-        });
-        
-        ChannelManager::get()->remove();
-        this->requestLiveList();
-        //reset index group
-        this->selectGroupIndex(0);
-    });
+    isXtreamMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0) == 1;
 
-    // Sottoscrivi all'evento di cambio modalità IPTV
-    OnIPTVModeChanged.subscribe([this]() {
-        brls::Logger::debug("OnIPTVModeChanged: showing skeleton and requesting channel list");
-        // Mostra lo skeleton per indicare che stiamo caricando
-        brls::Threading::sync([this]() {
-            recyclingGrid->showSkeleton();
-            upRecyclingGrid->setVisibility(brls::Visibility::GONE);
-        });
-        
-        ChannelManager::get()->remove();
-        this->requestLiveList();
-        //reset index group
-        this->selectGroupIndex(0);
-    });
+    // Hub cards (TV ao Vivo / Filmes / Séries) e botão de voltar — só no modo Xtream
+    hubLive->registerClickAction([this](brls::View*) { this->enterContentType(0); return true; });
+    hubMovies->registerClickAction([this](brls::View*) { this->enterContentType(1); return true; });
+    hubSeries->registerClickAction([this](brls::View*) { this->enterContentType(2); return true; });
+    backButton->registerClickAction([this](brls::View*) { this->showContentHub(); return true; });
 
-    // Sottoscrivi all'evento di cambio Xtream
-    OnXtreamChanged.subscribe([this](const XtreamData& xtreamData) {
-        brls::Logger::debug("OnXtreamChanged: url={}, username={}, showing skeleton and requesting channel list", 
-                           xtreamData.url, xtreamData.username);
-        // Mostra lo skeleton per indicare che stiamo caricando
-        brls::Threading::sync([this]() {
-            recyclingGrid->showSkeleton();
-            upRecyclingGrid->setVisibility(brls::Visibility::GONE);
-        });
-        
+    // Ricarica sorgente: in Xtream torna all'hub, in M3U8 ricarica direttamente
+    auto reloadOnSourceChange = [this]() {
+        isXtreamMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0) == 1;
         ChannelManager::get()->remove();
-        this->requestLiveList();
-        //reset index group
-        this->selectGroupIndex(0);
-    });
-    
-    // Mostra sempre lo skeleton all'inizio per UI non-bloccante
-    brls::Logger::debug("HomeLive constructor: Showing skeleton for non-blocking UI");
-    recyclingGrid->showSkeleton();
-    upRecyclingGrid->setVisibility(brls::Visibility::GONE);
-    
-    // Imposta il flag per indicare che il caricamento è in corso
-    isInitialLoadInProgress = true;
-    
-    // Check if we're in Xtream mode and load channels immediately
-    int iptvMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0);
-    brls::Logger::info("HomeLive constructor: IPTV mode is {}", iptvMode);
-    
-    if (iptvMode == 1) {
-        brls::Logger::info("HomeLive constructor: Xtream mode detected, using smart cache approach");
-        
-        // Prova prima la cache intelligente anche per Xtream
-        brls::Threading::async([this, validityFlag = this->validityFlag] {
-            // Controlla se l'app è ancora valida prima di procedere
-            if (!validityFlag || !validityFlag->load()) {
-                brls::Logger::debug("HomeLive: Xtream async task canceled - app exiting");
-                return;
-            }
-            
-            auto cachedChannels = ChannelManager::get()->loadIfValid(); 
-            
-            brls::sync([this, cachedChannels, validityFlag]() {
-                // Controlla di nuovo la validità prima di aggiornare l'UI
-                if (!validityFlag || !validityFlag->load()) {
-                    brls::Logger::debug("HomeLive: Xtream sync task canceled - app exiting");
-                    return;
-                }
-                
-                if (!cachedChannels.empty()) {
-                    brls::Logger::info("HomeLive: Using valid Xtream cache with {} channels", cachedChannels.size());
-                    this->onLiveList(cachedChannels, false);
-                } else {
-                    brls::Logger::info("HomeLive: Xtream cache invalid/empty, requesting fresh data");
-                    this->requestLiveList();
-                }
-                isInitialLoadInProgress = false; // Reset flag quando completato
+        if (isXtreamMode) {
+            this->showContentHub();
+        } else {
+            brls::Threading::sync([this]() {
+                recyclingGrid->showSkeleton();
+                upRecyclingGrid->setVisibility(brls::Visibility::GONE);
             });
-        });
+            this->requestLiveList();
+            this->selectGroupIndex(0);
+        }
+    };
+    OnM3U8UrlChanged.subscribe(reloadOnSourceChange);
+    OnIPTVModeChanged.subscribe(reloadOnSourceChange);
+    OnXtreamChanged.subscribe([reloadOnSourceChange](const XtreamData&) { reloadOnSourceChange(); });
+
+    if (isXtreamMode) {
+        // No modo Xtream, entrada mostra o hub dos 3 cards (não carrega nada até escolher)
+        brls::Logger::info("HomeLive constructor: Xtream mode -> showing content hub");
+        this->showContentHub();
+        isInitialLoadInProgress = false;
     } else {
-        brls::Logger::debug("HomeLive constructor: M3U8 mode detected, will use intelligent caching");
-        
-        // Per M3U8 mode, usa cache intelligente con timeout più lungo
+        // M3U8: skeleton + cache inteligente (comportamento original)
+        brls::Logger::debug("HomeLive constructor: M3U8 mode, using intelligent caching");
+        recyclingGrid->showSkeleton();
+        upRecyclingGrid->setVisibility(brls::Visibility::GONE);
+        isInitialLoadInProgress = true;
+
         brls::Threading::async([this, validityFlag = this->validityFlag] {
-            // Controlla se l'app è ancora valida prima di procedere
-            if (!validityFlag || !validityFlag->load()) {
-                brls::Logger::debug("HomeLive: M3U8 async task canceled - app exiting");
-                return;
-            }
-            
-            brls::Logger::debug("HomeLive: Starting smart cache check in background thread");
-            
-            // Cache più lunga per M3U8 (1 mese) perché cambia meno frequentemente
+            if (!validityFlag || !validityFlag->load()) return;
+
             auto cachedChannels = ChannelManager::get()->loadIfValid();
             brls::Logger::info("HomeLive: Smart cache check completed, found {} channels", cachedChannels.size());
-            
+
             brls::sync([this, cachedChannels, validityFlag]() {
-                // Controlla di nuovo la validità prima di aggiornare l'UI
-                if (!validityFlag || !validityFlag->load()) {
-                    brls::Logger::debug("HomeLive: M3U8 sync task canceled - app exiting");
-                    return;
-                }
-                
+                if (!validityFlag || !validityFlag->load()) return;
+
                 if (!cachedChannels.empty()) {
-                    brls::Logger::info("HomeLive constructor: Using valid M3U8 cache ({} channels found)", cachedChannels.size());
                     this->onLiveList(cachedChannels, false);
                 } else {
-                    brls::Logger::info("HomeLive constructor: M3U8 cache is invalid or empty, requesting fresh channels");
                     this->requestLiveList();
                 }
-                isInitialLoadInProgress = false; // Reset flag quando completato
+                isInitialLoadInProgress = false;
             });
         });
     }
+}
+
+void HomeLive::showContentHub() {
+    if (!isXtreamMode) return;
+    inHubMode      = true;
+    isSearchActive = false;
+
+    leftColumn->setVisibility(brls::Visibility::GONE);
+    recyclingGrid->setVisibility(brls::Visibility::GONE);
+    searchField->setVisibility(brls::Visibility::GONE);
+    backButton->setVisibility(brls::Visibility::GONE);
+    contentHub->setVisibility(brls::Visibility::VISIBLE);
+
+    brls::Application::giveFocus(hubLive);
+}
+
+void HomeLive::enterContentType(int contentType) {
+    // Séries ainda não implementado — placeholder até a próxima etapa
+    if (contentType == 2) {
+        brls::Application::notify("tsvitch/xtream/content/series"_i18n + std::string(": ") +
+                                 "hints/coming_soon"_i18n);
+        return;
+    }
+
+    brls::Logger::info("HomeLive: entering Xtream content type {}", contentType);
+    inHubMode = false;
+    ProgramConfig::instance().setXtreamContentType(contentType);
+
+    std::string labelKey = contentType == 1 ? "tsvitch/xtream/content/movies" : "tsvitch/xtream/content/live";
+    backLabel->setText(brls::getStr(labelKey));
+
+    contentHub->setVisibility(brls::Visibility::GONE);
+    leftColumn->setVisibility(brls::Visibility::VISIBLE);
+    recyclingGrid->setVisibility(brls::Visibility::VISIBLE);
+    searchField->setVisibility(brls::Visibility::VISIBLE);
+    backButton->setVisibility(brls::Visibility::VISIBLE);
+
+    // Reset gruppo/cache e carica il tipo selezionato
+    ProgramConfig::instance().setSettingItem(SettingItem::GROUP_SELECTED_INDEX, 0);
+    {
+        std::lock_guard<std::mutex> lock(groupCacheMutex);
+        groupCache.clear();
+    }
+    channelsList.clear();
+    isSearchActive     = false;
+    selectedGroupIndex = 0;
+
+    recyclingGrid->showSkeleton();
+    upRecyclingGrid->setVisibility(brls::Visibility::GONE);
+
+    ChannelManager::get()->remove();
+    this->requestLiveList();
+    brls::Application::giveFocus(recyclingGrid);
 }
 
 void HomeLive::onError(const std::string& error) {
@@ -382,6 +373,9 @@ void HomeLive::onLiveList(tsvitch::LiveM3u8ListResult result, bool firstLoad) {
     this->registerAction("hints/back"_i18n, brls::BUTTON_B, [this](...) {
         if (isSearchActive) {
             this->cancelSearch();
+        } else if (isXtreamMode && !inHubMode) {
+            // No Xtream, voltar retorna ao hub dos 3 cards em vez de sair do app
+            this->showContentHub();
         } else {
             auto dialog = new brls::Dialog("hints/exit_hint"_i18n);
             dialog->addButton("hints/cancel"_i18n, []() {});
@@ -654,7 +648,13 @@ void HomeLive::filter(const std::string& key) {
 
 void HomeLive::onShow() {
     brls::Logger::info("Fragment HomeLive: onShow called");
-    
+
+    // Se o hub dos 3 cards está visível, não carrega nada até o usuário escolher
+    if (inHubMode) {
+        brls::Logger::debug("HomeLive onShow: hub visible, skipping load");
+        return;
+    }
+
     // Se il caricamento iniziale è ancora in corso, non fare nulla
     if (isInitialLoadInProgress) {
         brls::Logger::debug("HomeLive onShow: Initial load still in progress, skipping");
