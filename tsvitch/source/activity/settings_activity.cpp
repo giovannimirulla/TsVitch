@@ -17,6 +17,7 @@
 #include "fragment/setting_network.hpp"
 #include "fragment/test_rumble.hpp"
 #include "utils/config_helper.hpp"
+#include "core/HistoryManager.hpp"
 #include "utils/vibration_helper.hpp"
 #include "utils/dialog_helper.hpp"
 #include "utils/activity_helper.hpp"
@@ -618,33 +619,71 @@ void SettingsActivity::onContentAvailable() {
         "Enter your password", "password", 255);
 
     // ===== Controle parental =====
-    btnParentalEnabled->init("tsvitch/parental/enabled"_i18n, conf.isParentalEnabled(),
-                             [](bool value) { ProgramConfig::instance().setParentalEnabled(value); });
-
-    // Trocar PIN: pede o PIN atual e depois o novo
-    btnParentalPin->registerClickAction([](brls::View*) -> bool {
+    // Pede o PIN atual e executa onOk apenas se conferir.
+    auto promptCurrentPin = [](std::function<void()> onOk) {
         auto* ime = brls::Application::getImeManager();
         ime->openForText(
-            [ime](const std::string& current) {
+            [onOk = std::move(onOk)](const std::string& current) {
                 if (current != ProgramConfig::instance().getParentalPin()) {
                     brls::Application::notify("tsvitch/parental/wrong_pin"_i18n);
                     return;
                 }
+                onOk();
+            },
+            "tsvitch/parental/current_pin"_i18n, "", 8, "", 0);
+    };
+
+    // Toggle do bloqueio:
+    //  - Ligar  -> pede um NOVO PIN (sem exigir o anterior) e ativa.
+    //  - Desligar -> exige o PIN atual; se errar/cancelar, reverte o toggle.
+    btnParentalEnabled->init(
+        "tsvitch/parental/enabled"_i18n, conf.isParentalEnabled(),
+        [this](bool value) {
+            brls::BooleanCell* parentalCell = this->btnParentalEnabled;
+            auto* ime                       = brls::Application::getImeManager();
+            if (value) {
                 ime->openForText(
-                    [](const std::string& newPin) {
-                        if (newPin.empty()) return;
+                    [parentalCell](const std::string& newPin) {
+                        if (newPin.empty()) {
+                            parentalCell->setOn(false, false);  // cancelou -> não ativa
+                            return;
+                        }
                         ProgramConfig::instance().setParentalPin(newPin);
+                        ProgramConfig::instance().setParentalEnabled(true);
                         brls::Application::notify("tsvitch/parental/pin_changed"_i18n);
                     },
                     "tsvitch/parental/new_pin"_i18n, "", 8, "", 0);
-            },
-            "tsvitch/parental/current_pin"_i18n, "", 8, "", 0);
+            } else {
+                ime->openForText(
+                    [parentalCell](const std::string& current) {
+                        if (current != ProgramConfig::instance().getParentalPin()) {
+                            brls::Application::notify("tsvitch/parental/wrong_pin"_i18n);
+                            parentalCell->setOn(true, false);  // PIN errado -> mantém ligado
+                            return;
+                        }
+                        ProgramConfig::instance().setParentalEnabled(false);
+                    },
+                    "tsvitch/parental/current_pin"_i18n, "", 8, "", 0);
+            }
+        });
+
+    // Trocar PIN: pede o PIN atual e depois o novo
+    btnParentalPin->registerClickAction([promptCurrentPin](brls::View*) -> bool {
+        promptCurrentPin([]() {
+            brls::Application::getImeManager()->openForText(
+                [](const std::string& newPin) {
+                    if (newPin.empty()) return;
+                    ProgramConfig::instance().setParentalPin(newPin);
+                    brls::Application::notify("tsvitch/parental/pin_changed"_i18n);
+                },
+                "tsvitch/parental/new_pin"_i18n, "", 8, "", 0);
+        });
         return true;
     });
 
     // Categorias bloqueadas: escolhe o tipo (Live/Filmes/Séries), busca as categorias
     // daquele tipo no servidor e mostra a lista com as bloqueadas no topo.
-    btnParentalCategories->registerClickAction([](brls::View*) -> bool {
+    btnParentalCategories->registerClickAction([promptCurrentPin](brls::View*) -> bool {
         // Abre a lista de toggles para um conjunto de categorias (bloqueadas primeiro)
         auto showList = [](std::vector<std::string> names) {
             if (names.empty()) {
@@ -656,16 +695,30 @@ void SettingsActivity::onContentAvailable() {
                 bool lb = ProgramConfig::instance().isCategoryLocked(b);
                 return la != lb ? la : a < b;  // bloqueadas no topo, depois alfabético
             });
-            auto* box = new brls::Box(brls::Axis::COLUMN);
-            box->setWidthPercentage(100);
+            // Preenche toda a largura do popup (AppletFrame do Dialog) com 100%,
+            // esticando as células (alignItems=stretch) e truncando nomes longos.
+            // Assim a barra de rolagem encosta na borda direita do popup.
+            // A AppletFrame do Dialog tem largura fixa 720 e injeta o conteúdo sem
+            // esticar. Fixamos a lista nessa mesma largura para preencher todo o
+            // popup; as células esticam (stretch) e nomes longos são truncados.
+            const float popupWidth = 720;
+            auto* box              = new brls::Box(brls::Axis::COLUMN);
+            box->setWidth(popupWidth);
+            box->setAlignItems(brls::AlignItems::STRETCH);
             for (const auto& cat : names) {
                 auto* cell = new brls::BooleanCell();
                 cell->init(cat, ProgramConfig::instance().isCategoryLocked(cat),
                            [cat](bool v) { ProgramConfig::instance().setCategoryLocked(cat, v); });
+                // Deixa o título encolher em vez de forçar a largura (min-content):
+                // sem isso, nomes longos estouram a célula além do box e a barra de
+                // rolagem fica inboard.
+                cell->title->setSingleLine(true);
+                cell->title->setShrink(1);
+                cell->title->setMinWidth(0);
                 box->addView(cell);
             }
             auto* scroll = new brls::ScrollingFrame();
-            scroll->setWidth(600);
+            scroll->setWidth(popupWidth);
             scroll->setHeight(440);
             scroll->setContentView(box);
             auto* dialog = new brls::Dialog((brls::Box*)scroll);
@@ -681,11 +734,48 @@ void SettingsActivity::onContentAvailable() {
                 [](const std::string& e, int) { brls::Application::notify(e); });
         };
 
-        auto* pick = new brls::Dialog("tsvitch/parental/choose_type"_i18n);
-        pick->addButton("tsvitch/xtream/content/live"_i18n, [openType]() { openType(0); });
-        pick->addButton("tsvitch/xtream/content/movies"_i18n, [openType]() { openType(1); });
-        pick->addButton("tsvitch/xtream/content/series"_i18n, [openType]() { openType(2); });
-        pick->open();
+        // Exige o PIN atual antes de expor/alterar a lista de categorias bloqueadas.
+        promptCurrentPin([openType]() {
+            auto* pick = new brls::Dialog("tsvitch/parental/choose_type"_i18n);
+            pick->addButton("tsvitch/xtream/content/live"_i18n, [openType]() { openType(0); });
+            pick->addButton("tsvitch/xtream/content/movies"_i18n, [openType]() { openType(1); });
+            pick->addButton("tsvitch/xtream/content/series"_i18n, [openType]() { openType(2); });
+            pick->open();
+        });
+        return true;
+    });
+
+    // Limpar histórico por tipo (TV ao vivo / Filmes / Séries / Tudo).
+    // Dialog aceita no máx. 3 botões, então usamos uma lista de opções.
+    btnClearHistory->registerClickAction([](brls::View*) -> bool {
+        struct Opcao {
+            std::string label;
+            int type;  // -1 = tudo
+        };
+        std::vector<Opcao> opcoes = {
+            {"tsvitch/xtream/content/live"_i18n, 0},
+            {"tsvitch/xtream/content/movies"_i18n, 1},
+            {"tsvitch/xtream/content/series"_i18n, 2},
+            {"tsvitch/parental/clear_history_all"_i18n, -1},
+        };
+        auto* box = new brls::Box(brls::Axis::COLUMN);
+        box->setWidthPercentage(100);
+        auto* dialog = new brls::Dialog(box);
+        for (const auto& op : opcoes) {
+            auto* cell = new brls::RadioCell();
+            cell->title->setText(op.label);
+            cell->registerClickAction([type = op.type, dialog](brls::View*) -> bool {
+                if (type < 0)
+                    HistoryManager::get()->clearAll();
+                else
+                    HistoryManager::get()->clearByType(type);
+                brls::Application::notify("tsvitch/parental/history_cleared"_i18n);
+                dialog->close();
+                return true;
+            });
+            box->addView(cell);
+        }
+        dialog->open();
         return true;
     });
 

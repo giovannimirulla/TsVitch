@@ -18,6 +18,11 @@ public:
     void save() const;
     void load();
 
+    // Remove do histórico as entradas do tipo informado (0=live, 1=filme, 2=série)
+    void clearByType(int type);
+    // Remove todo o histórico
+    void clearAll();
+
     //get istantance
      static HistoryManager* get();
 

@@ -528,6 +528,9 @@
     "reset_confirm": "Questo cancellerà TUTTE le impostazioni, il PIN e le credenziali Xtream/M3U8. Continuare?",
     "no_categories": "Apri prima una lista per caricare le categorie",
     "choose_type": "Quale tipo?",
-    "loading": "Caricamento..."
+    "loading": "Caricamento...",
+    "clear_history": "Cancella cronologia",
+    "clear_history_all": "Tutto",
+    "history_cleared": "Cronologia cancellata"
   }
 }

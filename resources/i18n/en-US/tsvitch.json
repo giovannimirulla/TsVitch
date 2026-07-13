@@ -516,6 +516,9 @@
     "reset_confirm": "This will erase ALL settings, PIN and Xtream/M3U8 credentials. Continue?",
     "no_categories": "Open a list first so the categories are loaded",
     "choose_type": "Which type?",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "clear_history": "Clear history",
+    "clear_history_all": "All",
+    "history_cleared": "History cleared"
   }
 }

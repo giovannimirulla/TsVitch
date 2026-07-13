@@ -419,17 +419,18 @@ struct XtreamContentKind {
     std::string fallbackGroupTitle;  // group name when the category cannot be resolved
     std::string label;               // used only in logs
     bool isSeriesList;               // true -> series list (id=series_id, no player url)
+    int contentType;                 // 0 = live, 1 = movie, 2 = series (gravado no histórico)
 };
 
 // URL scheme used as a sentinel for series items in the list (clicking opens the episodes)
 static const std::string XTREAM_SERIES_SCHEME = "xtream-series://";
 
 static const XtreamContentKind XTREAM_LIVE{
-    "get_live_categories", "get_live_streams", "live", false, "Live TV", "live", false};
+    "get_live_categories", "get_live_streams", "live", false, "Live TV", "live", false, 0};
 static const XtreamContentKind XTREAM_MOVIES{
-    "get_vod_categories", "get_vod_streams", "movie", true, "Movies", "vod", false};
+    "get_vod_categories", "get_vod_streams", "movie", true, "Movies", "vod", false, 1};
 static const XtreamContentKind XTREAM_SERIES{
-    "get_series_categories", "get_series", "series", true, "Series", "series", true};
+    "get_series_categories", "get_series", "series", true, "Series", "series", true, 2};
 
 /**
  * Fetches the Xtream categories for the given content kind and builds a
@@ -806,6 +807,7 @@ static void xtreamFetchStreamsWithRetry(const std::function<void(tsvitch::LiveM3
                                     }
                                 }
                                 live.groupTitle = sanitizeText(categoryName.empty() ? kind.fallbackGroupTitle : categoryName);
+                                live.type       = kind.contentType;
 
                                 // Item URL.
                                 // Series: sentinel xtream-series://<id> (clicking opens the episodes).

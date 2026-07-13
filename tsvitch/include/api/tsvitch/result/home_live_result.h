@@ -113,8 +113,9 @@ public:
     std::string logo;
     std::string groupTitle;
     std::string url;
+    int type = 0;  // 0 = live TV, 1 = movie, 2 = series (para histórico por tipo)
 };
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LiveM3u8, id, chno, title, logo, groupTitle, url)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(LiveM3u8, id, chno, title, logo, groupTitle, url, type)
 
 typedef std::vector<LiveM3u8> LiveM3u8ListResult;
 

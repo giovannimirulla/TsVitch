@@ -31,6 +31,18 @@ std::deque<tsvitch::LiveM3u8> HistoryManager::recent(std::size_t limit) const {
     return {ring_.begin(), ring_.begin() + std::min(limit, ring_.size())};
 }
 
+void HistoryManager::clearByType(int type) {
+    ring_.erase(std::remove_if(ring_.begin(), ring_.end(),
+                               [type](const tsvitch::LiveM3u8& c) { return c.type == type; }),
+                ring_.end());
+    save();
+}
+
+void HistoryManager::clearAll() {
+    ring_.clear();
+    save();
+}
+
 void HistoryManager::save() const {
     json j = ring_;
     std::ofstream(file_) << j.dump(2);
