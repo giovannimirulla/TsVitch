@@ -412,18 +412,24 @@ using XtreamCategoryMap = std::shared_ptr<std::unordered_map<std::string, std::s
  * segment and the file extension, so a single implementation is parameterized by this.
  */
 struct XtreamContentKind {
-    std::string categoriesAction;    // get_live_categories / get_vod_categories
-    std::string streamsAction;       // get_live_streams / get_vod_streams
-    std::string urlSegment;          // "live" / "movie"
+    std::string categoriesAction;    // get_live_categories / get_vod_categories / get_series_categories
+    std::string streamsAction;       // get_live_streams / get_vod_streams / get_series
+    std::string urlSegment;          // "live" / "movie" (não usado para séries)
     bool useContainerExtension;      // false -> ".ts"; true -> item.container_extension (fallback mp4)
     std::string fallbackGroupTitle;  // group name when the category cannot be resolved
     std::string label;               // used only in logs
+    bool isSeriesList;               // true -> lista de séries (id=series_id, sem url de player)
 };
 
+// Esquema de URL usado como sentinela para itens de série na lista (o clique abre os episódios)
+static const std::string XTREAM_SERIES_SCHEME = "xtream-series://";
+
 static const XtreamContentKind XTREAM_LIVE{
-    "get_live_categories", "get_live_streams", "live", false, "Live TV", "live"};
+    "get_live_categories", "get_live_streams", "live", false, "Live TV", "live", false};
 static const XtreamContentKind XTREAM_MOVIES{
-    "get_vod_categories", "get_vod_streams", "movie", true, "Movies", "vod"};
+    "get_vod_categories", "get_vod_streams", "movie", true, "Movies", "vod", false};
+static const XtreamContentKind XTREAM_SERIES{
+    "get_series_categories", "get_series", "series", true, "Series", "series", true};
 
 /**
  * Fetches the Xtream categories for the given content kind and builds a
@@ -522,6 +528,110 @@ void TsVitchClient::get_xtream_channels_with_retry(const std::function<void(Live
 void TsVitchClient::get_xtream_vod(const std::function<void(LiveM3u8ListResult)>& callback,
                                    const ErrorCallback& error) {
     xtreamFetchContentWithRetry(callback, error, 3, XTREAM_MOVIES);
+}
+
+void TsVitchClient::get_xtream_series(const std::function<void(LiveM3u8ListResult)>& callback,
+                                      const ErrorCallback& error) {
+    xtreamFetchContentWithRetry(callback, error, 3, XTREAM_SERIES);
+}
+
+/**
+ * Busca os episódios de uma série (action=get_series_info). A resposta é um objeto
+ * { seasons, info, episodes: { "<season>": [ {id, title, container_extension, ...} ] } }.
+ * Converte em LiveM3u8ListResult onde cada episódio é reproduzível
+ * (url = series/<user>/<pass>/<id>.<ext>) e agrupado por temporada.
+ */
+void TsVitchClient::get_xtream_series_info(const std::string& seriesId,
+                                           const std::function<void(LiveM3u8ListResult)>& callback,
+                                           const ErrorCallback& error) {
+    auto serverUrl = ProgramConfig::instance().getXtreamServerUrl();
+    auto username  = ProgramConfig::instance().getXtreamUsername();
+    auto password  = ProgramConfig::instance().getXtreamPassword();
+
+    if (serverUrl.empty() || username.empty() || password.empty() || seriesId.empty()) {
+        if (error) error("Xtream Codes credentials not configured properly", -1);
+        return;
+    }
+
+    std::string url = serverUrl;
+    if (url.back() != '/') url += "/";
+    url += "player_api.php?username=" + username + "&password=" + password +
+           "&action=get_series_info&series_id=" + seriesId;
+
+    auto timeoutMs = ProgramConfig::instance().getIntOption(SettingItem::M3U8_TIMEOUT);
+    if (timeoutMs < 45000) timeoutMs = 45000;
+
+    brls::Logger::debug("Fetching Xtream series info: {}", url);
+
+    cpr::GetCallback(
+        [callback, error, serverUrl, username, password](const cpr::Response& r) {
+            if (r.error || r.status_code != 200 || r.text.empty()) {
+                brls::Logger::error("Xtream series_info error: status={}", r.status_code);
+                if (error) error("Failed to fetch series episodes", r.status_code);
+                return;
+            }
+            brls::Threading::async([callback, error, responseText = std::move(r.text), serverUrl, username, password]() {
+                try {
+                    auto d = nlohmann::json::parse(responseText, nullptr, false);
+                    if (d.is_discarded() || !d.is_object() || !d.contains("episodes") || !d["episodes"].is_object()) {
+                        brls::sync([error]() { if (error) error("Invalid series episodes response", -1); });
+                        return;
+                    }
+
+                    // Nomes das temporadas (season_number -> name), se disponíveis
+                    std::unordered_map<std::string, std::string> seasonNames;
+                    if (d.contains("seasons") && d["seasons"].is_array()) {
+                        for (const auto& s : d["seasons"]) {
+                            if (!s.is_object()) continue;
+                            std::string num  = safeGetIdString(s, "season_number");
+                            std::string name = sanitizeText(safeGetString(s, "name"));
+                            if (!num.empty() && !name.empty()) seasonNames[num] = name;
+                        }
+                    }
+
+                    std::string base = serverUrl;
+                    if (base.back() != '/') base += "/";
+
+                    LiveM3u8ListResult episodes;
+                    const auto& eps = d["episodes"];
+                    for (auto it = eps.begin(); it != eps.end(); ++it) {
+                        const std::string& seasonKey = it.key();
+                        if (!it.value().is_array()) continue;
+                        std::string seasonLabel = seasonNames.count(seasonKey) ? seasonNames[seasonKey]
+                                                                              : ("Temporada " + seasonKey);
+                        for (const auto& ep : it.value()) {
+                            if (!ep.is_object()) continue;
+                            std::string id  = safeGetIdString(ep, "id");
+                            if (id.empty()) continue;
+                            std::string ext = safeGetString(ep, "container_extension");
+                            if (ext.empty()) ext = "mp4";
+
+                            LiveM3u8 e;
+                            e.id         = id;
+                            e.title      = sanitizeText(safeGetString(ep, "title"));
+                            if (e.title.empty()) e.title = seasonLabel + " - " + safeGetIdString(ep, "episode_num");
+                            e.groupTitle = sanitizeText(seasonLabel);
+                            e.url        = base + "series/" + username + "/" + password + "/" + id + "." + ext;
+                            episodes.push_back(std::move(e));
+                        }
+                    }
+
+                    brls::Logger::info("Xtream: parsed {} episodes", episodes.size());
+                    brls::sync([callback, episodes = std::move(episodes)]() {
+                        if (callback) callback(episodes);
+                    });
+                } catch (const std::exception& e) {
+                    brls::sync([error, e]() { if (error) error(std::string("Series parse error: ") + e.what(), -1); });
+                }
+            });
+        },
+        cpr::Url{url},
+        cpr::HttpVersion{cpr::HttpVersionCode::VERSION_2_0_TLS},
+        cpr::Timeout{timeoutMs},
+        HTTP::HEADERS,
+        HTTP::COOKIES,
+        HTTP::PROXIES,
+        HTTP::VERIFY);
 }
 
 /**
@@ -634,16 +744,16 @@ static void xtreamFetchStreamsWithRetry(const std::function<void(tsvitch::LiveM3
                             
                             try {
                                 LiveM3u8 live;
-                                
-                                // Map Xtream fields con controlli ottimizzati
-                                if (item.contains("stream_id") && !item["stream_id"].is_null()) {
-                                    if (item["stream_id"].is_string()) {
-                                        live.id = item["stream_id"].get<std::string>();
-                                    } else if (item["stream_id"].is_number()) {
-                                        live.id = std::to_string(item["stream_id"].get<int>());
-                                    }
+
+                                // Séries usam series_id + cover; Live/Filmes usam stream_id + stream_icon
+                                if (kind.isSeriesList) {
+                                    live.id   = safeGetIdString(item, "series_id");
+                                    live.logo = safeGetString(item, "cover");
+                                } else {
+                                    live.id = safeGetIdString(item, "stream_id");
+                                    live.logo = safeGetString(item, "stream_icon");
                                 }
-                                
+
                                 if (item.contains("num") && !item["num"].is_null()) {
                                     if (item["num"].is_string()) {
                                         live.chno = item["num"].get<std::string>();
@@ -651,9 +761,8 @@ static void xtreamFetchStreamsWithRetry(const std::function<void(tsvitch::LiveM3
                                         live.chno = std::to_string(item["num"].get<int>());
                                     }
                                 }
-                                
+
                                 live.title = sanitizeText(safeGetString(item, "name"));
-                                live.logo = safeGetString(item, "stream_icon");
                                 
                                 // get_*_streams only exposes category_id: resolve the name from the
                                 // category map; fall back to category_name (if present) and then the kind default.
@@ -669,22 +778,27 @@ static void xtreamFetchStreamsWithRetry(const std::function<void(tsvitch::LiveM3
                                 }
                                 live.groupTitle = sanitizeText(categoryName.empty() ? kind.fallbackGroupTitle : categoryName);
 
-                                // Construct the stream URL for Xtream.
-                                // Live -> live/.../id.ts ; Movies (VOD) -> movie/.../id.<container_extension>
+                                // URL do item.
+                                // Séries: sentinela xtream-series://<id> (o clique abre os episódios).
+                                // Live -> live/.../id.ts ; Filmes (VOD) -> movie/.../id.<container_extension>
                                 if (!live.id.empty()) {
-                                    std::string streamUrl = serverUrl;
-                                    if (streamUrl.back() != '/') {
-                                        streamUrl += "/";
-                                    }
-                                    std::string ext;
-                                    if (kind.useContainerExtension) {
-                                        ext = safeGetString(item, "container_extension");
-                                        if (ext.empty()) ext = "mp4";
+                                    if (kind.isSeriesList) {
+                                        live.url = XTREAM_SERIES_SCHEME + live.id;
                                     } else {
-                                        ext = "ts";
+                                        std::string streamUrl = serverUrl;
+                                        if (streamUrl.back() != '/') {
+                                            streamUrl += "/";
+                                        }
+                                        std::string ext;
+                                        if (kind.useContainerExtension) {
+                                            ext = safeGetString(item, "container_extension");
+                                            if (ext.empty()) ext = "mp4";
+                                        } else {
+                                            ext = "ts";
+                                        }
+                                        streamUrl += kind.urlSegment + "/" + username + "/" + password + "/" + live.id + "." + ext;
+                                        live.url = streamUrl;
                                     }
-                                    streamUrl += kind.urlSegment + "/" + username + "/" + password + "/" + live.id + "." + ext;
-                                    live.url = streamUrl;
                                 }
                                 
                                 // Only add channels that have required fields
@@ -751,6 +865,9 @@ void TsVitchClient::get_live_channels(const std::function<void(LiveM3u8ListResul
         if (contentType == 1) {
             brls::Logger::debug("Using Xtream mode for movies (VOD)");
             get_xtream_vod(callback, error);
+        } else if (contentType == 2) {
+            brls::Logger::debug("Using Xtream mode for series");
+            get_xtream_series(callback, error);
         } else {
             brls::Logger::debug("Using Xtream mode for live channels");
             get_xtream_channels(callback, error);

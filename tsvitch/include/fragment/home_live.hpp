@@ -48,6 +48,9 @@ public:
     // esconde o hub, mostra a barra de categorias + a grade e carrega o conteúdo
     void enterContentType(int contentType);
 
+    // Abre os episódios de uma série (temporadas na lateral, episódios na grade)
+    void openSeriesEpisodes(const tsvitch::LiveM3u8& series);
+
     void filter(const std::string &key);
 
     void setSearchCallback(UpdateSearchEvent *event);
@@ -60,6 +63,7 @@ private:
     bool isInitialLoadInProgress = false;
     bool isXtreamMode      = false;  // true quando IPTV_MODE == Xtream
     bool inHubMode         = false;  // true quando o hub de 3 cards está visível
+    bool inSeriesEpisodes  = false;  // true quando exibindo episódios de uma série
     tsvitch::LiveM3u8ListResult channelsList;
     std::map<std::string, tsvitch::LiveM3u8ListResult> groupCache;
     std::mutex groupCacheMutex;

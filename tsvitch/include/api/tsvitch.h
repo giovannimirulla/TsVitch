@@ -30,6 +30,13 @@ public:
     static void get_xtream_vod(const std::function<void(LiveM3u8ListResult)>& callback = nullptr,
                                const ErrorCallback& error                              = nullptr);
 
+    static void get_xtream_series(const std::function<void(LiveM3u8ListResult)>& callback = nullptr,
+                                  const ErrorCallback& error                              = nullptr);
+
+    static void get_xtream_series_info(const std::string& seriesId,
+                                       const std::function<void(LiveM3u8ListResult)>& callback = nullptr,
+                                       const ErrorCallback& error                              = nullptr);
+
     static void get_live_channels(const std::function<void(LiveM3u8ListResult)>& callback = nullptr,
                                  const ErrorCallback& error                               = nullptr);
 
