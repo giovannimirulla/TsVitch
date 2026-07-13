@@ -466,6 +466,15 @@
       "live": "Live TV",
       "movies": "Movies",
       "series": "Series"
+    },
+    "action": {
+      "search": "Search",
+      "refresh": "Refresh"
+    },
+    "noun": {
+      "live": "channels",
+      "movies": "movies",
+      "series": "series"
     }
   }
 }

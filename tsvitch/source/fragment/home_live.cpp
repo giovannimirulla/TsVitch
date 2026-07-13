@@ -30,10 +30,10 @@
 
 using namespace brls::literals;
 
-// Esquema sentinela dos itens de série (deve casar com o usado na API)
+// Sentinel scheme for series items (must match the one used in the API)
 static const std::string XTREAM_SERIES_SCHEME = "xtream-series://";
-// Handler chamado ao selecionar uma série na lista (abre os episódios).
-// Ativo apenas enquanto a lista de séries está visível; nulo nos demais modos.
+// Handler invoked when a series is selected in the list (opens its episodes).
+// Active only while the series list is visible; null in every other mode.
 static std::function<void(const tsvitch::LiveM3u8&)> g_xtreamSeriesHandler = nullptr;
 
 class DynamicGroupChannels : public RecyclingGridItem {
@@ -211,7 +211,7 @@ public:
 
     void onItemSelected(RecyclingGrid* recycler, size_t index) override {
         const tsvitch::LiveM3u8& item = videoList[index];
-        // Itens de série (url sentinela) abrem os episódios em vez de reproduzir
+        // Series items (sentinel url) open the episodes instead of playing
         if (g_xtreamSeriesHandler && item.url.rfind(XTREAM_SERIES_SCHEME, 0) == 0) {
             g_xtreamSeriesHandler(item);
             return;
@@ -252,19 +252,23 @@ HomeLive::HomeLive() {
 
     isXtreamMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0) == 1;
 
-    // Hub cards (TV ao Vivo / Filmes / Séries) e botão de voltar — só no modo Xtream
+    // Hub cards (Live TV / Movies / Series) and back button — Xtream mode only
     hubLive->registerClickAction([this](brls::View*) { this->enterContentType(0); return true; });
     hubMovies->registerClickAction([this](brls::View*) { this->enterContentType(1); return true; });
     hubSeries->registerClickAction([this](brls::View*) { this->enterContentType(2); return true; });
     backButton->registerClickAction([this](brls::View*) { this->showContentHub(); return true; });
 
-    // Abilita il touch/tap sui card e sul pulsante indietro (il click gamepad non basta)
+    // Enable touch/tap on the cards and the back button (gamepad click alone is not enough)
     hubLive->addGestureRecognizer(new brls::TapGestureRecognizer(hubLive));
     hubMovies->addGestureRecognizer(new brls::TapGestureRecognizer(hubMovies));
     hubSeries->addGestureRecognizer(new brls::TapGestureRecognizer(hubSeries));
     backButton->addGestureRecognizer(new brls::TapGestureRecognizer(backButton));
 
-    // Ricarica sorgente: in Xtream torna all'hub, in M3U8 ricarica direttamente
+    // Botão de atualizar (limpa o cache do modo atual e recarrega do servidor)
+    refreshButton->registerClickAction([this](brls::View*) { this->refreshCurrent(); return true; });
+    refreshButton->addGestureRecognizer(new brls::TapGestureRecognizer(refreshButton));
+
+    // Source reload: in Xtream go back to the hub, in M3U8 reload directly
     auto reloadOnSourceChange = [this]() {
         isXtreamMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0) == 1;
         ChannelManager::get()->remove();
@@ -284,12 +288,12 @@ HomeLive::HomeLive() {
     OnXtreamChanged.subscribe([reloadOnSourceChange](const XtreamData&) { reloadOnSourceChange(); });
 
     if (isXtreamMode) {
-        // No modo Xtream, entrada mostra o hub dos 3 cards (não carrega nada até escolher)
+        // In Xtream mode, entry shows the 3-card hub (nothing loads until a choice is made)
         brls::Logger::info("HomeLive constructor: Xtream mode -> showing content hub");
         this->showContentHub();
         isInitialLoadInProgress = false;
     } else {
-        // M3U8: skeleton + cache inteligente (comportamento original)
+        // M3U8: skeleton + smart cache (original behavior)
         brls::Logger::debug("HomeLive constructor: M3U8 mode, using intelligent caching");
         recyclingGrid->showSkeleton();
         upRecyclingGrid->setVisibility(brls::Visibility::GONE);
@@ -323,6 +327,7 @@ void HomeLive::showContentHub() {
     leftColumn->setVisibility(brls::Visibility::GONE);
     recyclingGrid->setVisibility(brls::Visibility::GONE);
     searchField->setVisibility(brls::Visibility::GONE);
+    refreshButton->setVisibility(brls::Visibility::GONE);
     backButton->setVisibility(brls::Visibility::GONE);
     contentHub->setVisibility(brls::Visibility::VISIBLE);
 
@@ -335,25 +340,28 @@ void HomeLive::enterContentType(int contentType) {
     inSeriesEpisodes = false;
     ProgramConfig::instance().setXtreamContentType(contentType);
 
-    // O handler de séries só fica ativo enquanto a lista de séries está visível
+    // The series handler is only active while the series list is visible
     if (contentType == 2) {
         g_xtreamSeriesHandler = [this](const tsvitch::LiveM3u8& series) { this->openSeriesEpisodes(series); };
     } else {
         g_xtreamSeriesHandler = nullptr;
     }
 
+    currentLoadType = contentType;
+
     std::string labelKey = contentType == 2   ? "tsvitch/xtream/content/series"
                            : contentType == 1 ? "tsvitch/xtream/content/movies"
                                               : "tsvitch/xtream/content/live";
     backLabel->setText(brls::getStr(labelKey));
+    updateActionLabels();
 
     contentHub->setVisibility(brls::Visibility::GONE);
     leftColumn->setVisibility(brls::Visibility::VISIBLE);
     recyclingGrid->setVisibility(brls::Visibility::VISIBLE);
     searchField->setVisibility(brls::Visibility::VISIBLE);
+    refreshButton->setVisibility(brls::Visibility::VISIBLE);
     backButton->setVisibility(brls::Visibility::VISIBLE);
 
-    // Reset gruppo/cache e carica il tipo selezionato
     ProgramConfig::instance().setSettingItem(SettingItem::GROUP_SELECTED_INDEX, 0);
     {
         std::lock_guard<std::mutex> lock(groupCacheMutex);
@@ -363,25 +371,81 @@ void HomeLive::enterContentType(int contentType) {
     isSearchActive     = false;
     selectedGroupIndex = 0;
 
+    // Cache hit: renderiza sem refazer o fetch
+    auto cached = contentCache.find(contentType);
+    if (cached != contentCache.end() && !cached->second.empty()) {
+        brls::Logger::info("HomeLive: content type {} served from cache ({} items)", contentType, cached->second.size());
+        this->onLiveList(cached->second, false);
+        brls::Application::giveFocus(recyclingGrid);
+        return;
+    }
+
+    recyclingGrid->showSkeleton();
+    upRecyclingGrid->setVisibility(brls::Visibility::GONE);
+    this->requestLiveList();
+    brls::Application::giveFocus(recyclingGrid);
+}
+
+void HomeLive::updateActionLabels() {
+    if (!isXtreamMode) return;
+    const char* nounKey = currentLoadType == 2   ? "tsvitch/xtream/noun/series"
+                          : currentLoadType == 1 ? "tsvitch/xtream/noun/movies"
+                                                 : "tsvitch/xtream/noun/live";
+    std::string noun = brls::getStr(nounKey);
+    searchLabel->setText(brls::getStr("tsvitch/xtream/action/search") + " " + noun);
+    refreshLabel->setText(brls::getStr("tsvitch/xtream/action/refresh") + " " + noun);
+}
+
+void HomeLive::refreshCurrent() {
+    brls::Logger::info("HomeLive: refresh requested (episodes={}, type={})", inSeriesEpisodes, currentLoadType);
+    isSearchActive = false;
+    {
+        std::lock_guard<std::mutex> lock(groupCacheMutex);
+        groupCache.clear();
+    }
     recyclingGrid->showSkeleton();
     upRecyclingGrid->setVisibility(brls::Visibility::GONE);
 
+    if (inSeriesEpisodes) {
+        // Recarrega os episódios da série atual
+        episodesCache.erase(currentSeriesId);
+        tsvitch::LiveM3u8 series;
+        series.id    = currentSeriesId;
+        series.title = currentSeriesTitle;
+        this->openSeriesEpisodes(series);
+        return;
+    }
+
+    if (isXtreamMode) contentCache.erase(currentLoadType);
+    channelsList.clear();
     ChannelManager::get()->remove();
     this->requestLiveList();
-    brls::Application::giveFocus(recyclingGrid);
 }
 
 void HomeLive::openSeriesEpisodes(const tsvitch::LiveM3u8& series) {
     brls::Logger::info("HomeLive: opening episodes for series '{}' (id={})", series.title, series.id);
 
-    // Nos episódios os itens são reproduzíveis: desativa o handler de série
+    // In the episodes view items are playable: disable the series handler
     g_xtreamSeriesHandler = nullptr;
     isSearchActive        = false;
     selectedGroupIndex    = 0;
+    currentSeriesId       = series.id;
+    currentSeriesTitle    = series.title;
     {
         std::lock_guard<std::mutex> lock(groupCacheMutex);
         groupCache.clear();
     }
+
+    // Cache hit: episódios já carregados desta série
+    auto cachedEps = episodesCache.find(series.id);
+    if (cachedEps != episodesCache.end() && !cachedEps->second.empty()) {
+        brls::Logger::info("HomeLive: episodes for series {} served from cache ({} items)", series.id, cachedEps->second.size());
+        inSeriesEpisodes = true;
+        backLabel->setText(series.title);
+        this->onLiveList(cachedEps->second, false);
+        return;
+    }
+
     recyclingGrid->showSkeleton();
     upRecyclingGrid->setVisibility(brls::Visibility::GONE);
 
@@ -398,7 +462,7 @@ void HomeLive::openSeriesEpisodes(const tsvitch::LiveM3u8& series) {
                 upRecyclingGrid->setVisibility(brls::Visibility::GONE);
                 return;
             }
-            // Reusa o pipeline de grupos: temporadas viram os grupos da lateral
+            // Reuse the group pipeline: seasons become the sidebar groups
             this->onLiveList(std::move(episodes), false);
         },
         [this, isValid](const std::string& error, int) {
@@ -432,10 +496,10 @@ void HomeLive::onLiveList(tsvitch::LiveM3u8ListResult result, bool firstLoad) {
         if (isSearchActive) {
             this->cancelSearch();
         } else if (inSeriesEpisodes) {
-            // Dos episódios, voltar retorna à lista de séries
+            // From the episodes, back returns to the series list
             this->enterContentType(2);
         } else if (isXtreamMode && !inHubMode) {
-            // No Xtream, voltar retorna ao hub dos 3 cards em vez de sair do app
+            // In Xtream, back returns to the 3-card hub instead of quitting the app
             this->showContentHub();
         } else {
             auto dialog = new brls::Dialog("hints/exit_hint"_i18n);
@@ -463,7 +527,16 @@ void HomeLive::onLiveList(tsvitch::LiveM3u8ListResult result, bool firstLoad) {
 
     // Salva channelsList SUBITO per accesso thread-safe
     this->channelsList = std::move(result); // Move invece di copy!
-    
+
+    // Guarda em cache (em memória) para não refazer o fetch ao voltar (só no Xtream)
+    if (isXtreamMode) {
+        if (inSeriesEpisodes && !currentSeriesId.empty()) {
+            episodesCache[currentSeriesId] = this->channelsList;
+        } else if (!inSeriesEpisodes) {
+            contentCache[currentLoadType] = this->channelsList;
+        }
+    }
+
     // Fai il grouping e UI update SUL MAIN THREAD per evitare il delay di 36s del brls::sync()
     // Meglio bloccare 600ms che aspettare 36 secondi!
     auto isValidFlag = validityFlag;
@@ -710,7 +783,7 @@ void HomeLive::filter(const std::string& key) {
 void HomeLive::onShow() {
     brls::Logger::info("Fragment HomeLive: onShow called");
 
-    // Se o hub dos 3 cards está visível, não carrega nada até o usuário escolher
+    // If the 3-card hub is visible, load nothing until the user chooses
     if (inHubMode) {
         brls::Logger::debug("HomeLive onShow: hub visible, skipping load");
         return;

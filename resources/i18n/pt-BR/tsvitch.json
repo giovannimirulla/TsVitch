@@ -465,6 +465,15 @@
       "live": "TV ao Vivo",
       "movies": "Filmes",
       "series": "Séries"
+    },
+    "action": {
+      "search": "Buscar",
+      "refresh": "Atualizar"
+    },
+    "noun": {
+      "live": "canais",
+      "movies": "filmes",
+      "series": "séries"
     }
   }
 }

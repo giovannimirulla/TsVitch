@@ -478,6 +478,15 @@
       "live": "Live TV",
       "movies": "Film",
       "series": "Serie"
+    },
+    "action": {
+      "search": "Cerca",
+      "refresh": "Aggiorna"
+    },
+    "noun": {
+      "live": "canali",
+      "movies": "film",
+      "series": "serie"
     }
   }
 }

@@ -73,10 +73,29 @@
                 positionType="absolute"
                 positionRight="0"
                 positionTop="0"
-                width="340"
+                width="520"
                 height="70"
+                axis="row"
+                justifyContent="flexEnd"
                 alignItems="center"
                 wireframe="false">
+                <CustomButton
+                        id="home/refresh"
+                        focusable="true"
+                        highlightCornerRadius="6"
+                        width="180"
+                        height="35"
+                        marginRight="10"
+                        backgroundColor="#E3E5E7"
+                        paddingLeft="15"
+                        cornerRadius="6"
+                        alignItems="center">
+                        <brls:Label
+                                id="home/refresh/label"
+                                fontSize="14"
+                                textColor="#18191c"
+                                text="@i18n/tsvitch/xtream/action/refresh" />
+                </CustomButton>
                 <CustomButton
                         id="home/search"
                         focusable="true"
@@ -88,6 +107,7 @@
                         paddingLeft="15"
                         cornerRadius="6">
                         <brls:Label
+                                id="home/search/label"
                                 fontSize="14"
                                 textColor="#18191c"
                                 text="@i18n/tsvitch/home/common/search" />

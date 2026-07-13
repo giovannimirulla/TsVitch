@@ -41,15 +41,21 @@ public:
 
     void selectGroupIndex(size_t index);
 
-    // Mostra o hub inicial com os 3 cards (TV ao Vivo / Filmes / Séries)
+    // Shows the initial hub with the 3 cards (Live TV / Movies / Series)
     void showContentHub();
 
-    // Entra num tipo de conteúdo Xtream (0 = Live TV, 1 = Filmes/VOD, 2 = Séries),
-    // esconde o hub, mostra a barra de categorias + a grade e carrega o conteúdo
+    // Enters an Xtream content type (0 = Live TV, 1 = Movies/VOD, 2 = Series),
+    // hides the hub, shows the category sidebar + grid and loads the content
     void enterContentType(int contentType);
 
-    // Abre os episódios de uma série (temporadas na lateral, episódios na grade)
+    // Opens the episodes of a series (seasons in the sidebar, episodes in the grid)
     void openSeriesEpisodes(const tsvitch::LiveM3u8& series);
+
+    // Updates the search/refresh button labels according to the active content type
+    void updateActionLabels();
+
+    // Clears the cache of the current view and reloads it from the server
+    void refreshCurrent();
 
     void filter(const std::string &key);
 
@@ -61,9 +67,16 @@ private:
     int selectedGroupIndex = 0;
     bool isSearchActive    = false;
     bool isInitialLoadInProgress = false;
-    bool isXtreamMode      = false;  // true quando IPTV_MODE == Xtream
-    bool inHubMode         = false;  // true quando o hub de 3 cards está visível
-    bool inSeriesEpisodes  = false;  // true quando exibindo episódios de uma série
+    bool isXtreamMode      = false;  // true when IPTV_MODE == Xtream
+    bool inHubMode         = false;  // true when the 3-card hub is visible
+    bool inSeriesEpisodes  = false;  // true when showing a series' episodes
+    int  currentLoadType   = 0;      // content type being shown (0=Live, 1=Movies, 2=Series)
+    std::string currentSeriesId;     // series_id of the episodes currently shown (for the cache)
+    std::string currentSeriesTitle;  // title of the series currently shown
+
+    // In-memory caches so going back does not refetch from the server
+    std::map<int, tsvitch::LiveM3u8ListResult> contentCache;          // per content type
+    std::map<std::string, tsvitch::LiveM3u8ListResult> episodesCache; // per series_id
     tsvitch::LiveM3u8ListResult channelsList;
     std::map<std::string, tsvitch::LiveM3u8ListResult> groupCache;
     std::mutex groupCacheMutex;
@@ -73,6 +86,9 @@ private:
     BRLS_BIND(RecyclingGrid, recyclingGrid, "home/live/recyclingGrid");
     BRLS_BIND(RecyclingGrid, upRecyclingGrid, "dynamic/up/recyclingGrid");
     BRLS_BIND(CustomButton, searchField, "home/search");
+    BRLS_BIND(brls::Label, searchLabel, "home/search/label");
+    BRLS_BIND(CustomButton, refreshButton, "home/refresh");
+    BRLS_BIND(brls::Label, refreshLabel, "home/refresh/label");
     BRLS_BIND(brls::Box, leftColumn, "xtream/left/column");
     BRLS_BIND(brls::Box, contentHub, "xtream/hub");
     BRLS_BIND(CustomButton, hubLive, "xtream/hub/live");
