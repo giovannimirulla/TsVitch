@@ -90,7 +90,7 @@ enum class SettingItem {
     // Xtream content type: 0 = Live TV, 1 = Movies (VOD)
     XTREAM_CONTENT_TYPE,
 
-    // Última versão cujo changelog/update já foi exibido (evita repetir o popup)
+    // Last version whose changelog/update was already shown (avoids repeating the popup)
     LAST_UPDATE_VERSION_SEEN,
 
     GROUP_SELECTED_INDEX,

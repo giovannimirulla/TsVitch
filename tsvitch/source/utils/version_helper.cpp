@@ -113,8 +113,8 @@ void APPVersion::checkUpdate(int delay, bool showUpToDateDialog) {
                         }
                         return;
                     }
-                    // No fluxo automático (startup), mostra o changelog apenas uma vez por
-                    // versão: se esta versão já foi exibida antes, não repete o popup.
+                    // In the automatic flow (startup), show the changelog only once per
+                    // version: if this version was already shown before, don't repeat the popup.
                     if (!showUpToDateDialog) {
                         std::string lastSeen = ProgramConfig::instance().getSettingItem(
                             SettingItem::LAST_UPDATE_VERSION_SEEN, std::string{""});

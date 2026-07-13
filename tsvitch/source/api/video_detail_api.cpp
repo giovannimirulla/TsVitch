@@ -414,14 +414,14 @@ using XtreamCategoryMap = std::shared_ptr<std::unordered_map<std::string, std::s
 struct XtreamContentKind {
     std::string categoriesAction;    // get_live_categories / get_vod_categories / get_series_categories
     std::string streamsAction;       // get_live_streams / get_vod_streams / get_series
-    std::string urlSegment;          // "live" / "movie" (não usado para séries)
+    std::string urlSegment;          // "live" / "movie" (unused for series)
     bool useContainerExtension;      // false -> ".ts"; true -> item.container_extension (fallback mp4)
     std::string fallbackGroupTitle;  // group name when the category cannot be resolved
     std::string label;               // used only in logs
-    bool isSeriesList;               // true -> lista de séries (id=series_id, sem url de player)
+    bool isSeriesList;               // true -> series list (id=series_id, no player url)
 };
 
-// Esquema de URL usado como sentinela para itens de série na lista (o clique abre os episódios)
+// URL scheme used as a sentinel for series items in the list (clicking opens the episodes)
 static const std::string XTREAM_SERIES_SCHEME = "xtream-series://";
 
 static const XtreamContentKind XTREAM_LIVE{
@@ -536,10 +536,10 @@ void TsVitchClient::get_xtream_series(const std::function<void(LiveM3u8ListResul
 }
 
 /**
- * Busca os episódios de uma série (action=get_series_info). A resposta é um objeto
+ * Fetches the episodes of a series (action=get_series_info). The response is an object
  * { seasons, info, episodes: { "<season>": [ {id, title, container_extension, ...} ] } }.
- * Converte em LiveM3u8ListResult onde cada episódio é reproduzível
- * (url = series/<user>/<pass>/<id>.<ext>) e agrupado por temporada.
+ * Converts it into a LiveM3u8ListResult where each episode is playable
+ * (url = series/<user>/<pass>/<id>.<ext>) and grouped by season.
  */
 void TsVitchClient::get_xtream_series_info(const std::string& seriesId,
                                            const std::function<void(LiveM3u8ListResult)>& callback,
@@ -578,7 +578,7 @@ void TsVitchClient::get_xtream_series_info(const std::string& seriesId,
                         return;
                     }
 
-                    // Nomes das temporadas (season_number -> name), se disponíveis
+                    // Season names (season_number -> name), when available
                     std::unordered_map<std::string, std::string> seasonNames;
                     if (d.contains("seasons") && d["seasons"].is_array()) {
                         for (const auto& s : d["seasons"]) {
@@ -745,7 +745,7 @@ static void xtreamFetchStreamsWithRetry(const std::function<void(tsvitch::LiveM3
                             try {
                                 LiveM3u8 live;
 
-                                // Séries usam series_id + cover; Live/Filmes usam stream_id + stream_icon
+                                // Series use series_id + cover; Live/Movies use stream_id + stream_icon
                                 if (kind.isSeriesList) {
                                     live.id   = safeGetIdString(item, "series_id");
                                     live.logo = safeGetString(item, "cover");
@@ -778,9 +778,9 @@ static void xtreamFetchStreamsWithRetry(const std::function<void(tsvitch::LiveM3
                                 }
                                 live.groupTitle = sanitizeText(categoryName.empty() ? kind.fallbackGroupTitle : categoryName);
 
-                                // URL do item.
-                                // Séries: sentinela xtream-series://<id> (o clique abre os episódios).
-                                // Live -> live/.../id.ts ; Filmes (VOD) -> movie/.../id.<container_extension>
+                                // Item URL.
+                                // Series: sentinel xtream-series://<id> (clicking opens the episodes).
+                                // Live -> live/.../id.ts ; Movies (VOD) -> movie/.../id.<container_extension>
                                 if (!live.id.empty()) {
                                     if (kind.isSeriesList) {
                                         live.url = XTREAM_SERIES_SCHEME + live.id;
