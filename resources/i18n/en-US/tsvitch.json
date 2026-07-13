@@ -476,5 +476,21 @@
       "movies": "movies",
       "series": "series"
     }
+  },
+  "download": {
+    "started": "Download started",
+    "completed": "Download completed!",
+    "already": "File already downloaded!",
+    "error": "Download error",
+    "start_error": "Failed to start the download",
+    "action": "Download video",
+    "live_error": "Cannot download a live stream.\nDownload is only available for on-demand content.",
+    "error_title": "Error",
+    "in_progress": "Downloading...",
+    "pause": "Pause",
+    "resume": "Resume",
+    "play": "Play",
+    "delete": "Delete",
+    "exit_warning": "A download is in progress. If you exit it will be cancelled. Exit anyway?"
   }
 }

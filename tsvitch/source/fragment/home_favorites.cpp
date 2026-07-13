@@ -63,7 +63,7 @@ HomeFavorites::HomeFavorites() {
         return true;
     });
 
-    this->registerAction("Scarica video", brls::BUTTON_RT, [this](...) {
+    this->registerAction("tsvitch/download/action"_i18n, brls::BUTTON_RT, [this](...) {
         this->downloadVideo();
         return true;
     });
@@ -154,7 +154,7 @@ void HomeFavorites::downloadVideo() {
     // Se è una live stream, mostra errore e blocca il download
     if (isLiveStream) {
         brls::Logger::warning("HomeFavorites: Cannot download live streams");
-        brls::Dialog* dialog = new brls::Dialog("Impossibile scaricare una diretta in corso.\nIl download è disponibile solo per i contenuti on-demand.");
+        brls::Dialog* dialog = new brls::Dialog("tsvitch/download/live_error"_i18n);
         dialog->addButton("OK", []() {});
         dialog->open();
         return;
@@ -173,23 +173,23 @@ void HomeFavorites::downloadVideo() {
             // Callback di completamento
             brls::Logger::info("Download {} completed: {}", id, filePath);
             brls::sync([]() {
-                brls::Application::notify("Download completato!");
+                brls::Application::notify("tsvitch/download/completed"_i18n);
             });
         },
         [](const std::string& id, const std::string& error) {
             // Callback di errore
             brls::Logger::error("Download {} failed: {}", id, error);
             brls::sync([error]() {
-                brls::Application::notify("Errore download: " + error);
+                brls::Application::notify("tsvitch/download/error"_i18n + std::string(": ") + error);
             });
         }
     );
     
     if (!downloadId.empty()) {
-        brls::Application::notify("Download avviato: " + channel.title);
+        brls::Application::notify("tsvitch/download/started"_i18n + std::string(": ") + channel.title);
         brls::Logger::info("HomeFavorites: Started download {} for {}", downloadId, channel.title);
     } else {
-        brls::Application::notify("Errore nell'avvio del download");
+        brls::Application::notify("tsvitch/download/start_error"_i18n);
         brls::Logger::error("HomeFavorites: Failed to start download for {}", channel.title);
     }
 }

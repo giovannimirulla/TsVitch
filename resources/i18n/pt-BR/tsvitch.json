@@ -475,5 +475,21 @@
       "movies": "filmes",
       "series": "séries"
     }
+  },
+  "download": {
+    "started": "Download iniciado",
+    "completed": "Download concluído!",
+    "already": "Arquivo já baixado!",
+    "error": "Erro no download",
+    "start_error": "Erro ao iniciar o download",
+    "action": "Baixar vídeo",
+    "live_error": "Não é possível baixar uma transmissão ao vivo.\nO download está disponível apenas para conteúdo on-demand.",
+    "error_title": "Erro",
+    "in_progress": "Baixando...",
+    "pause": "Pausar",
+    "resume": "Retomar",
+    "play": "Reproduzir",
+    "delete": "Excluir",
+    "exit_warning": "Há um download em andamento. Se sair, ele será cancelado. Deseja sair?"
   }
 }

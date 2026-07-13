@@ -488,5 +488,21 @@
       "movies": "film",
       "series": "serie"
     }
+  },
+  "download": {
+    "started": "Download avviato",
+    "completed": "Download completato!",
+    "already": "File già scaricato!",
+    "error": "Errore download",
+    "start_error": "Errore nell'avvio del download",
+    "action": "Scarica video",
+    "live_error": "Impossibile scaricare una diretta in corso.\nIl download è disponibile solo per i contenuti on-demand.",
+    "error_title": "Errore",
+    "in_progress": "Download in corso...",
+    "pause": "Pausa",
+    "resume": "Riprendi",
+    "play": "Riproduci",
+    "delete": "Elimina",
+    "exit_warning": "Un download è in corso. Se esci verrà annullato. Uscire comunque?"
   }
 }

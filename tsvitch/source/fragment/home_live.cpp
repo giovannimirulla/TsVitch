@@ -431,6 +431,9 @@ void HomeLive::openSeriesEpisodes(const tsvitch::LiveM3u8& series) {
     selectedGroupIndex    = 0;
     currentSeriesId       = series.id;
     currentSeriesTitle    = series.title;
+    // Marca já como "em episódios" para que Voltar durante o carregamento
+    // retorne à lista de séries (e não ao hub)
+    inSeriesEpisodes      = true;
     {
         std::lock_guard<std::mutex> lock(groupCacheMutex);
         groupCache.clear();
@@ -450,12 +453,14 @@ void HomeLive::openSeriesEpisodes(const tsvitch::LiveM3u8& series) {
     upRecyclingGrid->setVisibility(brls::Visibility::GONE);
 
     std::string seriesTitle = series.title;
+    std::string seriesId    = series.id;
     auto isValid            = validityFlag;
     CLIENT::get_xtream_series_info(
-        series.id,
-        [this, seriesTitle, isValid](tsvitch::LiveM3u8ListResult episodes) {
+        seriesId,
+        [this, seriesTitle, seriesId, isValid](tsvitch::LiveM3u8ListResult episodes) {
             if (!isValid || !isValid->load()) return;
-            inSeriesEpisodes = true;
+            // Se o usuário já voltou/trocou de série, ignora este resultado tardio
+            if (!inSeriesEpisodes || currentSeriesId != seriesId) return;
             backLabel->setText(seriesTitle);
             if (episodes.empty()) {
                 recyclingGrid->setEmpty();
@@ -465,8 +470,9 @@ void HomeLive::openSeriesEpisodes(const tsvitch::LiveM3u8& series) {
             // Reuse the group pipeline: seasons become the sidebar groups
             this->onLiveList(std::move(episodes), false);
         },
-        [this, isValid](const std::string& error, int) {
+        [this, seriesId, isValid](const std::string& error, int) {
             if (!isValid || !isValid->load()) return;
+            if (!inSeriesEpisodes || currentSeriesId != seriesId) return;
             this->onError(error);
         });
 }
@@ -502,10 +508,36 @@ void HomeLive::onLiveList(tsvitch::LiveM3u8ListResult result, bool firstLoad) {
             // In Xtream, back returns to the 3-card hub instead of quitting the app
             this->showContentHub();
         } else {
-            auto dialog = new brls::Dialog("hints/exit_hint"_i18n);
-            dialog->addButton("hints/cancel"_i18n, []() {});
-            dialog->addButton("hints/ok"_i18n, []() { brls::Application::quit(); });
-            dialog->open();
+            // Se houver download em andamento, avisa que sair irá cancelá-lo
+            auto downloads = DownloadManager::instance().getAllDownloads();
+            bool hasActive = false;
+            for (const auto& d : downloads) {
+                if (d.status == DownloadStatus::DOWNLOADING || d.status == DownloadStatus::PENDING ||
+                    d.status == DownloadStatus::PAUSED) {
+                    hasActive = true;
+                    break;
+                }
+            }
+
+            if (hasActive) {
+                auto dialog = new brls::Dialog("tsvitch/download/exit_warning"_i18n);
+                dialog->addButton("hints/cancel"_i18n, []() {});
+                dialog->addButton("hints/ok"_i18n, [downloads]() {
+                    // Cancela os downloads ativos antes de sair (evita travar/erro no fechamento)
+                    for (const auto& d : downloads) {
+                        if (d.status != DownloadStatus::COMPLETED) {
+                            DownloadManager::instance().cancelDownload(d.id);
+                        }
+                    }
+                    brls::Application::quit();
+                });
+                dialog->open();
+            } else {
+                auto dialog = new brls::Dialog("hints/exit_hint"_i18n);
+                dialog->addButton("hints/cancel"_i18n, []() {});
+                dialog->addButton("hints/ok"_i18n, []() { brls::Application::quit(); });
+                dialog->open();
+            }
         }
         return true;
     });
@@ -520,7 +552,7 @@ void HomeLive::onLiveList(tsvitch::LiveM3u8ListResult result, bool firstLoad) {
         return true;
     });
 
-    this->registerAction("Scarica video", brls::BUTTON_RT, [this](...) {
+    this->registerAction("tsvitch/download/action"_i18n, brls::BUTTON_RT, [this](...) {
         this->downloadVideo();
         return true;
     });
@@ -958,9 +990,9 @@ void HomeLive::downloadVideo() {
                 
                 // Non mostrare notifica se è un download già completato (duplicato)
                 if (filePath != "Already completed") {
-                    brls::Application::notify("Download completato!");
+                    brls::Application::notify("tsvitch/download/completed"_i18n);
                 } else {
-                    brls::Application::notify("File già scaricato!");
+                    brls::Application::notify("tsvitch/download/already"_i18n);
                 }
             });
         },
@@ -970,7 +1002,7 @@ void HomeLive::downloadVideo() {
             brls::sync([id, error]() {
                 // Nascondi l'overlay
                 tsvitch::DownloadProgressManager::getInstance()->hideDownloadProgress(id);
-                brls::Application::notify("Errore download: " + error);
+                brls::Application::notify("tsvitch/download/error"_i18n + std::string(": ") + error);
             });
         }
     );
@@ -988,11 +1020,11 @@ void HomeLive::downloadVideo() {
                 downloadId, channel.title, channel.url
             );
             
-            brls::Application::notify("Download avviato: " + channel.title);
+            brls::Application::notify("tsvitch/download/started"_i18n + std::string(": ") + channel.title);
             brls::Logger::info("HomeLive: Started download {} for {}", downloadId, channel.title);
         }
     } else {
-        brls::Application::notify("Errore nell'avvio del download");
+        brls::Application::notify("tsvitch/download/start_error"_i18n);
         brls::Logger::error("HomeLive: Failed to start download for {}", channel.title);
     }
 }

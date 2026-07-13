@@ -745,19 +745,19 @@ void HomeDownloads::onDownloadItemSelected(const DownloadItem& item) {
     brls::Dialog* dialog = new brls::Dialog(item.title);
     
     if (item.status == DownloadStatus::DOWNLOADING) {
-        dialog->addButton("Pausa", [this, item]() {
+        dialog->addButton("tsvitch/download/pause"_i18n, [this, item]() {
             DownloadManager::instance().pauseDownload(item.id);
             this->refresh();
         });
     } else if (item.status == DownloadStatus::PAUSED) {
-        dialog->addButton("Riprendi", [this, item]() {
+        dialog->addButton("tsvitch/download/resume"_i18n, [this, item]() {
             DownloadManager::instance().resumeDownload(item.id);
             this->refresh();
         });
     }
     
     if (item.status != DownloadStatus::COMPLETED) {
-        dialog->addButton("Annulla", [this, item]() {
+        dialog->addButton("hints/cancel"_i18n, [this, item]() {
             DownloadManager::instance().cancelDownload(item.id);
             this->refresh();
         });
@@ -765,7 +765,7 @@ void HomeDownloads::onDownloadItemSelected(const DownloadItem& item) {
     
     
     if (item.status == DownloadStatus::COMPLETED) {
-        dialog->addButton("Riproduci", [this, item]() {
+        dialog->addButton("tsvitch/download/play"_i18n, [this, item]() {
             // Verifica che il file esista usando std::ifstream invece di std::filesystem
             std::ifstream file(item.localPath);
             if (file.good()) {
@@ -786,7 +786,7 @@ void HomeDownloads::onDownloadItemSelected(const DownloadItem& item) {
                 
                 brls::Logger::info("Playing local file: {}", item.localPath);
             } else {
-                brls::Dialog* errorDialog = new brls::Dialog("Errore");
+                brls::Dialog* errorDialog = new brls::Dialog("tsvitch/download/error_title"_i18n);
                 errorDialog->addButton("OK", []() {});
                 errorDialog->open();
                 brls::Logger::error("File not found: {}", item.localPath);
@@ -794,7 +794,7 @@ void HomeDownloads::onDownloadItemSelected(const DownloadItem& item) {
         });
     }
     
-        dialog->addButton("Elimina", [this, item]() {
+        dialog->addButton("tsvitch/download/delete"_i18n, [this, item]() {
         DownloadManager::instance().deleteDownload(item.id);
         this->refresh();
     });

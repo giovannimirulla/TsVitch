@@ -58,7 +58,7 @@ HomeHistory::HomeHistory() {
         return true;
     });
     
-    this->registerAction("Scarica video", brls::BUTTON_RT, [this](...) {
+    this->registerAction("tsvitch/download/action"_i18n, brls::BUTTON_RT, [this](...) {
         this->downloadVideo();
         return true;
     });
@@ -130,23 +130,23 @@ void HomeHistory::downloadVideo() {
             // Callback di completamento
             brls::Logger::info("Download {} completed: {}", id, filePath);
             brls::sync([]() {
-                brls::Application::notify("Download completato!");
+                brls::Application::notify("tsvitch/download/completed"_i18n);
             });
         },
         [](const std::string& id, const std::string& error) {
             // Callback di errore
             brls::Logger::error("Download {} failed: {}", id, error);
             brls::sync([error]() {
-                brls::Application::notify("Errore download: " + error);
+                brls::Application::notify("tsvitch/download/error"_i18n + std::string(": ") + error);
             });
         }
     );
     
     if (!downloadId.empty()) {
-        brls::Application::notify("Download avviato: " + channel.title);
+        brls::Application::notify("tsvitch/download/started"_i18n + std::string(": ") + channel.title);
         brls::Logger::info("HomeHistory: Started download {} for {}", downloadId, channel.title);
     } else {
-        brls::Application::notify("Errore nell'avvio del download");
+        brls::Application::notify("tsvitch/download/start_error"_i18n);
         brls::Logger::error("HomeHistory: Failed to start download for {}", channel.title);
     }
 }

@@ -592,14 +592,19 @@ void TsVitchClient::get_xtream_series_info(const std::string& seriesId,
                     std::string base = serverUrl;
                     if (base.back() != '/') base += "/";
 
+                    // Safety cap: guard against pathological/corrupt responses that could
+                    // explode memory usage (out-of-memory) while building the episode list.
+                    constexpr size_t MAX_EPISODES = 20000;
+
                     LiveM3u8ListResult episodes;
                     const auto& eps = d["episodes"];
-                    for (auto it = eps.begin(); it != eps.end(); ++it) {
+                    for (auto it = eps.begin(); it != eps.end() && episodes.size() < MAX_EPISODES; ++it) {
                         const std::string& seasonKey = it.key();
                         if (!it.value().is_array()) continue;
                         std::string seasonLabel = seasonNames.count(seasonKey) ? seasonNames[seasonKey]
                                                                               : ("Temporada " + seasonKey);
                         for (const auto& ep : it.value()) {
+                            if (episodes.size() >= MAX_EPISODES) break;
                             if (!ep.is_object()) continue;
                             std::string id  = safeGetIdString(ep, "id");
                             if (id.empty()) continue;

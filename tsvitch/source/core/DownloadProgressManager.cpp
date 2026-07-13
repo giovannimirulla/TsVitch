@@ -3,6 +3,7 @@
 #include <borealis/core/application.hpp>
 #include <borealis/core/logger.hpp>
 #include <borealis/core/thread.hpp>
+#include <borealis/core/i18n.hpp>
 #include <fmt/format.h>
 
 namespace tsvitch {
@@ -54,7 +55,7 @@ DownloadProgressOverlay::DownloadProgressOverlay() {
     downloadTitleLabel->setFontSize(18);
     downloadTitleLabel->setTextColor(nvgRGB(255, 255, 255));
     downloadTitleLabel->setHorizontalAlign(brls::HorizontalAlign::CENTER);
-    downloadTitleLabel->setText("Download in corso...");
+    downloadTitleLabel->setText(brls::getStr("tsvitch/download/in_progress"));
     this->addView(downloadTitleLabel);
     
     // Status label
@@ -100,7 +101,7 @@ void DownloadProgressOverlay::updateProgress(float progress, const std::string& 
     
     // Aggiorna il titolo con la percentuale
     if (downloadTitleLabel) {
-        std::string title = fmt::format("Download in corso... {}", progressText);
+        std::string title = fmt::format("{} {}", brls::getStr("tsvitch/download/in_progress"), progressText);
         downloadTitleLabel->setText(title);
     }
     
