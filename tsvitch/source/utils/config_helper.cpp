@@ -190,6 +190,7 @@ std::unordered_map<SettingItem, ProgramOption> ProgramConfig::SETTING_MAP = {
     {SettingItem::XTREAM_PASSWORD, {"xtream_password", {}, {}, 0}},
     {SettingItem::XTREAM_ENABLED, {"xtream_enabled", {}, {}, 0}}, // 0 = disabled, 1 = enabled
     {SettingItem::XTREAM_CONTENT_TYPE, {"xtream_content_type", {}, {}, 0}}, // 0 = Live TV, 1 = Movies (VOD)
+    {SettingItem::LAST_UPDATE_VERSION_SEEN, {"last_update_version_seen", {}, {}, 0}},
 };
 
 ProgramConfig::ProgramConfig() = default;

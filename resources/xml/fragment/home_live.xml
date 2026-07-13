@@ -14,7 +14,7 @@
                         highlightCornerRadius="6"
                         cornerRadius="6"
                         width="250"
-                        height="34"
+                        height="36"
                         marginTop="20"
                         marginLeft="10"
                         marginRight="10"
@@ -22,16 +22,25 @@
                         paddingRight="12"
                         visibility="gone"
                         alignItems="center"
+                        justifyContent="spaceBetween"
                         backgroundColor="@theme/color/grey_1">
                         <brls:Label
-                                fontSize="18"
-                                marginRight="10"
-                                text="←" />
-                        <brls:Label
                                 id="xtream/content/back/label"
-                                fontSize="15"
-                                grow="1"
+                                fontSize="16"
                                 text="@i18n/tsvitch/xtream/content/live" />
+                        <brls:Box
+                                axis="row"
+                                width="auto"
+                                height="auto"
+                                alignItems="center">
+                                <brls:Label
+                                        fontSize="16"
+                                        marginRight="6"
+                                        text="←" />
+                                <brls:Label
+                                        fontSize="16"
+                                        text="@i18n/hints/back" />
+                        </brls:Box>
                 </CustomButton>
                 <RecyclingGrid
                         grow="1"

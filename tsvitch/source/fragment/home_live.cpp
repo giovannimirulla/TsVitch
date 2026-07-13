@@ -245,6 +245,12 @@ HomeLive::HomeLive() {
     hubSeries->registerClickAction([this](brls::View*) { this->enterContentType(2); return true; });
     backButton->registerClickAction([this](brls::View*) { this->showContentHub(); return true; });
 
+    // Abilita il touch/tap sui card e sul pulsante indietro (il click gamepad non basta)
+    hubLive->addGestureRecognizer(new brls::TapGestureRecognizer(hubLive));
+    hubMovies->addGestureRecognizer(new brls::TapGestureRecognizer(hubMovies));
+    hubSeries->addGestureRecognizer(new brls::TapGestureRecognizer(hubSeries));
+    backButton->addGestureRecognizer(new brls::TapGestureRecognizer(backButton));
+
     // Ricarica sorgente: in Xtream torna all'hub, in M3U8 ricarica direttamente
     auto reloadOnSourceChange = [this]() {
         isXtreamMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0) == 1;

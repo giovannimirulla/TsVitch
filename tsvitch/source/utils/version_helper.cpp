@@ -113,6 +113,17 @@ void APPVersion::checkUpdate(int delay, bool showUpToDateDialog) {
                         }
                         return;
                     }
+                    // No fluxo automático (startup), mostra o changelog apenas uma vez por
+                    // versão: se esta versão já foi exibida antes, não repete o popup.
+                    if (!showUpToDateDialog) {
+                        std::string lastSeen = ProgramConfig::instance().getSettingItem(
+                            SettingItem::LAST_UPDATE_VERSION_SEEN, std::string{""});
+                        if (lastSeen == info.tag_name) {
+                            brls::Logger::info("Update {} already shown, skipping changelog popup", info.tag_name);
+                            return;
+                        }
+                        ProgramConfig::instance().setSettingItem(SettingItem::LAST_UPDATE_VERSION_SEEN, info.tag_name);
+                    }
                     brls::sync([info]() {
                         auto container = new LatestUpdate(info);
                         auto dialog    = new brls::Dialog((brls::Box*)container);
