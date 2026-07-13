@@ -535,6 +535,30 @@ void TsVitchClient::get_xtream_series(const std::function<void(LiveM3u8ListResul
     xtreamFetchContentWithRetry(callback, error, 3, XTREAM_SERIES);
 }
 
+void TsVitchClient::get_xtream_category_names(int contentType,
+                                              const std::function<void(std::vector<std::string>)>& callback,
+                                              const ErrorCallback& error) {
+    const XtreamContentKind& kind = contentType == 2 ? XTREAM_SERIES : contentType == 1 ? XTREAM_MOVIES : XTREAM_LIVE;
+    auto serverUrl = ProgramConfig::instance().getXtreamServerUrl();
+    auto username  = ProgramConfig::instance().getXtreamUsername();
+    auto password  = ProgramConfig::instance().getXtreamPassword();
+    if (serverUrl.empty() || username.empty() || password.empty()) {
+        if (error) error("Xtream Codes credentials not configured properly", -1);
+        return;
+    }
+    auto timeoutMs = ProgramConfig::instance().getIntOption(SettingItem::M3U8_TIMEOUT);
+    if (timeoutMs < 45000) timeoutMs = 45000;
+
+    fetchXtreamCategories(serverUrl, username, password, timeoutMs, kind, [callback](XtreamCategoryMap map) {
+        std::vector<std::string> names;
+        if (map) {
+            for (const auto& kv : *map) names.push_back(kv.second);
+            std::sort(names.begin(), names.end());
+        }
+        if (callback) callback(names);
+    });
+}
+
 /**
  * Fetches the episodes of a series (action=get_series_info). The response is an object
  * { seasons, info, episodes: { "<season>": [ {id, title, container_extension, ...} ] } }.

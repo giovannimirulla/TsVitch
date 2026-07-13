@@ -642,30 +642,50 @@ void SettingsActivity::onContentAvailable() {
         return true;
     });
 
-    // Categorias bloqueadas: lista as categorias conhecidas com um toggle cada
+    // Categorias bloqueadas: escolhe o tipo (Live/Filmes/Séries), busca as categorias
+    // daquele tipo no servidor e mostra a lista com as bloqueadas no topo.
     btnParentalCategories->registerClickAction([](brls::View*) -> bool {
-        auto known = ProgramConfig::instance().getKnownCategories();
-        if (known.empty()) {
-            brls::Application::notify("tsvitch/parental/no_categories"_i18n);
-            return true;
-        }
-        std::sort(known.begin(), known.end());
-        auto* box = new brls::Box(brls::Axis::COLUMN);
-        box->setWidthPercentage(100);
-        box->setHeight(420);
-        for (const auto& cat : known) {
-            auto* cell = new brls::BooleanCell();
-            cell->init(cat, ProgramConfig::instance().isCategoryLocked(cat),
-                       [cat](bool v) { ProgramConfig::instance().setCategoryLocked(cat, v); });
-            box->addView(cell);
-        }
-        auto* scroll = new brls::ScrollingFrame();
-        scroll->setWidth(500);
-        scroll->setHeight(420);
-        scroll->setContentView(box);
-        auto* dialog = new brls::Dialog((brls::Box*)scroll);
-        dialog->addButton("hints/ok"_i18n, []() {});
-        dialog->open();
+        // Abre a lista de toggles para um conjunto de categorias (bloqueadas primeiro)
+        auto showList = [](std::vector<std::string> names) {
+            if (names.empty()) {
+                brls::Application::notify("tsvitch/parental/no_categories"_i18n);
+                return;
+            }
+            std::stable_sort(names.begin(), names.end(), [](const std::string& a, const std::string& b) {
+                bool la = ProgramConfig::instance().isCategoryLocked(a);
+                bool lb = ProgramConfig::instance().isCategoryLocked(b);
+                return la != lb ? la : a < b;  // bloqueadas no topo, depois alfabético
+            });
+            auto* box = new brls::Box(brls::Axis::COLUMN);
+            box->setWidthPercentage(100);
+            for (const auto& cat : names) {
+                auto* cell = new brls::BooleanCell();
+                cell->init(cat, ProgramConfig::instance().isCategoryLocked(cat),
+                           [cat](bool v) { ProgramConfig::instance().setCategoryLocked(cat, v); });
+                box->addView(cell);
+            }
+            auto* scroll = new brls::ScrollingFrame();
+            scroll->setWidth(600);
+            scroll->setHeight(440);
+            scroll->setContentView(box);
+            auto* dialog = new brls::Dialog((brls::Box*)scroll);
+            dialog->addButton("hints/ok"_i18n, []() {});
+            dialog->open();
+        };
+
+        // Busca as categorias de um tipo e abre a lista
+        auto openType = [showList](int type) {
+            brls::Application::notify("tsvitch/parental/loading"_i18n);
+            CLIENT::get_xtream_category_names(
+                type, [showList](std::vector<std::string> names) { showList(names); },
+                [](const std::string& e, int) { brls::Application::notify(e); });
+        };
+
+        auto* pick = new brls::Dialog("tsvitch/parental/choose_type"_i18n);
+        pick->addButton("tsvitch/xtream/content/live"_i18n, [openType]() { openType(0); });
+        pick->addButton("tsvitch/xtream/content/movies"_i18n, [openType]() { openType(1); });
+        pick->addButton("tsvitch/xtream/content/series"_i18n, [openType]() { openType(2); });
+        pick->open();
         return true;
     });
 

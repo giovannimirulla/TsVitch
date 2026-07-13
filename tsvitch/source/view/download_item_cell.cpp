@@ -200,21 +200,21 @@ std::string DownloadItemCell::formatFileSize(size_t bytes) {
 std::string DownloadItemCell::getStatusText(DownloadStatus status) {
     switch (status) {
         case DownloadStatus::PENDING:
-            return "In coda...";
+            return brls::getStr("tsvitch/download/status/queued");
         case DownloadStatus::DOWNLOADING:
-            return "Download in corso...";
+            return brls::getStr("tsvitch/download/status/downloading");
         case DownloadStatus::PAUSED:
-            return "In pausa";
+            return brls::getStr("tsvitch/download/status/paused");
         case DownloadStatus::COMPLETED:
-            return "Completato";
+            return brls::getStr("tsvitch/download/status/completed");
         case DownloadStatus::FAILED:
             if (!currentItem.error.empty()) {
-                return fmt::format("Errore: {}", currentItem.error);
+                return fmt::format("{}: {}", brls::getStr("tsvitch/download/status/error"), currentItem.error);
             }
-            return "Download fallito";
+            return brls::getStr("tsvitch/download/status/failed");
         case DownloadStatus::CANCELLED:
-            return "Annullato";
+            return brls::getStr("tsvitch/download/status/cancelled");
         default:
-            return "Sconosciuto";
+            return brls::getStr("tsvitch/download/status/unknown");
     }
 }

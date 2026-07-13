@@ -33,6 +33,11 @@ public:
     static void get_xtream_series(const std::function<void(LiveM3u8ListResult)>& callback = nullptr,
                                   const ErrorCallback& error                              = nullptr);
 
+    // Lista os nomes das categorias de um tipo (0=Live, 1=Movies, 2=Series)
+    static void get_xtream_category_names(int contentType,
+                                          const std::function<void(std::vector<std::string>)>& callback = nullptr,
+                                          const ErrorCallback& error                                     = nullptr);
+
     static void get_xtream_series_info(const std::string& seriesId,
                                        const std::function<void(LiveM3u8ListResult)>& callback = nullptr,
                                        const ErrorCallback& error                              = nullptr);

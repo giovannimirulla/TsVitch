@@ -491,7 +491,17 @@
     "resume": "Resume",
     "play": "Play",
     "delete": "Delete",
-    "exit_warning": "A download is in progress. If you exit it will be cancelled. Exit anyway?"
+    "exit_warning": "A download is in progress. If you exit it will be cancelled. Exit anyway?",
+    "status": {
+      "queued": "Queued...",
+      "downloading": "Downloading...",
+      "paused": "Paused",
+      "completed": "Completed",
+      "failed": "Download failed",
+      "cancelled": "Cancelled",
+      "unknown": "Unknown",
+      "error": "Error"
+    }
   },
   "parental": {
     "enter_pin": "Enter PIN",
@@ -504,6 +514,8 @@
     "new_pin": "New PIN",
     "pin_changed": "PIN changed",
     "reset_confirm": "This will erase ALL settings, PIN and Xtream/M3U8 credentials. Continue?",
-    "no_categories": "Open a list first so the categories are loaded"
+    "no_categories": "Open a list first so the categories are loaded",
+    "choose_type": "Which type?",
+    "loading": "Loading..."
   }
 }

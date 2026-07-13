@@ -7,6 +7,7 @@
 #include <fstream>
 #include <cstdio>
 #include <filesystem>
+#include <cpr/filesystem.h>
 #include <random>
 #include <sstream>
 #include <iomanip>
@@ -661,16 +662,26 @@ void DownloadManager::deleteDownload(const std::string& id) {
     std::lock_guard<std::mutex> lock(downloadsMutex);
     auto it = findDownload(id);
     if (it != downloads.end()) {
-        // Rimuovi il file se esiste usando std::ifstream per il controllo
-        std::ifstream testFile(it->localPath);
-        if (testFile.good()) {
-            testFile.close();
-            if (std::remove(it->localPath.c_str()) == 0) {
-                brls::Logger::info("DownloadManager: Removed file {}", it->localPath);
-            } else {
-                brls::Logger::warning("DownloadManager: Failed to remove file {}", it->localPath);
+        // Remove o arquivo final, a imagem e a pasta temporária de chunks (armazenamento limitado)
+        auto tryRemoveFile = [](const std::string& path) {
+            if (path.empty()) return;
+            std::error_code ec;
+            if (cpr::fs::exists(path, ec) && cpr::fs::remove(path, ec)) {
+                brls::Logger::info("DownloadManager: Removed file {}", path);
+            } else if (ec) {
+                brls::Logger::warning("DownloadManager: Failed to remove file {}: {}", path, ec.message());
             }
+        };
+        tryRemoveFile(it->localPath);
+        tryRemoveFile(it->imagePath);
+
+        std::error_code ec;
+        std::string tempDir = getDownloadDirectory() + "/temp_" + it->id;
+        if (cpr::fs::exists(tempDir, ec)) {
+            cpr::fs::remove_all(tempDir, ec);
+            brls::Logger::info("DownloadManager: Removed temp dir {}", tempDir);
         }
+
         downloads.erase(it);
         
         // Clean up retry count

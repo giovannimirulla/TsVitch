@@ -503,7 +503,17 @@
     "resume": "Riprendi",
     "play": "Riproduci",
     "delete": "Elimina",
-    "exit_warning": "Un download è in corso. Se esci verrà annullato. Uscire comunque?"
+    "exit_warning": "Un download è in corso. Se esci verrà annullato. Uscire comunque?",
+    "status": {
+      "queued": "In coda...",
+      "downloading": "Download in corso...",
+      "paused": "In pausa",
+      "completed": "Completato",
+      "failed": "Download fallito",
+      "cancelled": "Annullato",
+      "unknown": "Sconosciuto",
+      "error": "Errore"
+    }
   },
   "parental": {
     "enter_pin": "Inserisci PIN",
@@ -516,6 +526,8 @@
     "new_pin": "Nuovo PIN",
     "pin_changed": "PIN cambiato",
     "reset_confirm": "Questo cancellerà TUTTE le impostazioni, il PIN e le credenziali Xtream/M3U8. Continuare?",
-    "no_categories": "Apri prima una lista per caricare le categorie"
+    "no_categories": "Apri prima una lista per caricare le categorie",
+    "choose_type": "Quale tipo?",
+    "loading": "Caricamento..."
   }
 }
