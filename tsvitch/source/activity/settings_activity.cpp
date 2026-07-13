@@ -6,6 +6,10 @@
 #include <borealis/views/dialog.hpp>
 #include <borealis/views/cells/cell_bool.hpp>
 #include <borealis/views/cells/cell_input.hpp>
+#include <borealis/views/cells/cell_radio.hpp>
+#include <borealis/views/scrolling_frame.hpp>
+#include <borealis/core/box.hpp>
+#include <algorithm>
 #include <cpr/cpr.h>
 
 #include "tsvitch.h"
@@ -612,6 +616,70 @@ void SettingsActivity::onContentAvailable() {
             OnXtreamChanged.fire(xtreamData);
         }, 
         "Enter your password", "password", 255);
+
+    // ===== Controle parental =====
+    btnParentalEnabled->init("tsvitch/parental/enabled"_i18n, conf.isParentalEnabled(),
+                             [](bool value) { ProgramConfig::instance().setParentalEnabled(value); });
+
+    // Trocar PIN: pede o PIN atual e depois o novo
+    btnParentalPin->registerClickAction([](brls::View*) -> bool {
+        auto* ime = brls::Application::getImeManager();
+        ime->openForText(
+            [ime](const std::string& current) {
+                if (current != ProgramConfig::instance().getParentalPin()) {
+                    brls::Application::notify("tsvitch/parental/wrong_pin"_i18n);
+                    return;
+                }
+                ime->openForText(
+                    [](const std::string& newPin) {
+                        if (newPin.empty()) return;
+                        ProgramConfig::instance().setParentalPin(newPin);
+                        brls::Application::notify("tsvitch/parental/pin_changed"_i18n);
+                    },
+                    "tsvitch/parental/new_pin"_i18n, "", 8, "", 0);
+            },
+            "tsvitch/parental/current_pin"_i18n, "", 8, "", 0);
+        return true;
+    });
+
+    // Categorias bloqueadas: lista as categorias conhecidas com um toggle cada
+    btnParentalCategories->registerClickAction([](brls::View*) -> bool {
+        auto known = ProgramConfig::instance().getKnownCategories();
+        if (known.empty()) {
+            brls::Application::notify("tsvitch/parental/no_categories"_i18n);
+            return true;
+        }
+        std::sort(known.begin(), known.end());
+        auto* box = new brls::Box(brls::Axis::COLUMN);
+        box->setWidthPercentage(100);
+        box->setHeight(420);
+        for (const auto& cat : known) {
+            auto* cell = new brls::BooleanCell();
+            cell->init(cat, ProgramConfig::instance().isCategoryLocked(cat),
+                       [cat](bool v) { ProgramConfig::instance().setCategoryLocked(cat, v); });
+            box->addView(cell);
+        }
+        auto* scroll = new brls::ScrollingFrame();
+        scroll->setWidth(500);
+        scroll->setHeight(420);
+        scroll->setContentView(box);
+        auto* dialog = new brls::Dialog((brls::Box*)scroll);
+        dialog->addButton("hints/ok"_i18n, []() {});
+        dialog->open();
+        return true;
+    });
+
+    // Reset geral: apaga tudo e reinicia
+    btnResetApp->registerClickAction([](brls::View*) -> bool {
+        auto* dialog = new brls::Dialog("tsvitch/parental/reset_confirm"_i18n);
+        dialog->addButton("hints/cancel"_i18n, []() {});
+        dialog->addButton("hints/ok"_i18n, []() {
+            ProgramConfig::instance().resetApp();
+            brls::Application::quit();
+        });
+        dialog->open();
+        return true;
+    });
 
     // Imposta la visibilità iniziale delle sezioni
     this->updateIPTVSectionVisibility();

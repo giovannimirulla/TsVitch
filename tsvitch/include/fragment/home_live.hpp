@@ -7,6 +7,7 @@
 
 #include <map>
 #include <mutex>
+#include <set>
 
 typedef brls::Event<std::string> UpdateSearchEvent;
 
@@ -57,6 +58,12 @@ public:
     // Clears the cache of the current view and reloads it from the server
     void refreshCurrent();
 
+    // Shows a category's channels, asking for the parental PIN first if it is locked
+    void selectGroupContent(const std::string& group);
+
+    // Opens the PIN prompt; calls onUnlock on the correct PIN
+    void promptCategoryPin(const std::string& category, std::function<void()> onUnlock);
+
     void filter(const std::string &key);
 
     void setSearchCallback(UpdateSearchEvent *event);
@@ -77,6 +84,7 @@ private:
     // In-memory caches so going back does not refetch from the server
     std::map<int, tsvitch::LiveM3u8ListResult> contentCache;          // per content type
     std::map<std::string, tsvitch::LiveM3u8ListResult> episodesCache; // per series_id
+    std::set<std::string> unlockedCategories;                        // categories unlocked this session
     tsvitch::LiveM3u8ListResult channelsList;
     std::map<std::string, tsvitch::LiveM3u8ListResult> groupCache;
     std::mutex groupCacheMutex;

@@ -216,7 +216,10 @@ public:
             g_xtreamSeriesHandler(item);
             return;
         }
-        HistoryManager::get()->add(item);
+        // Não registra no histórico conteúdo de categoria adulta (privacidade)
+        if (!ProgramConfig::instance().isAdultCategory(item.groupTitle)) {
+            HistoryManager::get()->add(item);
+        }
         Intent::openLive(videoList, index, [recycler]() { recycler->reloadData(); });
     }
 
@@ -602,15 +605,33 @@ void HomeLive::onLiveList(tsvitch::LiveM3u8ListResult result, bool firstLoad) {
         auto grouping_end = std::chrono::high_resolution_clock::now();
         auto grouping_duration = std::chrono::duration_cast<std::chrono::milliseconds>(grouping_end - grouping_start);
         brls::Logger::info("HomeLive: Grouping completed in {}ms - Found {} groups", grouping_duration.count(), groupTitles.size());
-        
+
+        // Memoriza os nomes das categorias (para a tela de controle parental)
+        if (isXtreamMode && !inSeriesEpisodes) {
+            ProgramConfig::instance().addKnownCategories(groupTitles);
+        }
+
         // Leggi lastIndex dal config
         int lastIndex = ProgramConfig::instance().getSettingItem(SettingItem::GROUP_SELECTED_INDEX, 0);
         if (lastIndex >= (int)groupTitles.size()) lastIndex = 0;
+        // Não abrir automaticamente uma categoria bloqueada: escolhe a primeira liberada
+        if (!groupTitles.empty() && ProgramConfig::instance().isCategoryLocked(groupTitles[lastIndex]) &&
+            !unlockedCategories.count(groupTitles[lastIndex])) {
+            for (size_t i = 0; i < groupTitles.size(); ++i) {
+                if (!ProgramConfig::instance().isCategoryLocked(groupTitles[i]) ||
+                    unlockedCategories.count(groupTitles[i])) {
+                    lastIndex = (int)i;
+                    break;
+                }
+            }
+        }
         std::string selectedGroup = groupTitles.empty() ? "" : groupTitles[lastIndex];
         
-        // Prepara il gruppo selezionato
+        // Prepara il gruppo selezionato (não revela se estiver bloqueado)
+        bool selectedLocked = ProgramConfig::instance().isCategoryLocked(selectedGroup) &&
+                              !unlockedCategories.count(selectedGroup);
         tsvitch::LiveM3u8ListResult filtered;
-        if (!selectedGroup.empty() && groupIndices.count(selectedGroup)) {
+        if (!selectedLocked && !selectedGroup.empty() && groupIndices.count(selectedGroup)) {
             const auto& indices = groupIndices[selectedGroup];
             filtered.reserve(indices.size());
             for (size_t idx : indices) {
@@ -638,24 +659,7 @@ void HomeLive::onLiveList(tsvitch::LiveM3u8ListResult result, bool firstLoad) {
         if (groupTitles.size() > 1) {
             upRecyclingGrid->setVisibility(brls::Visibility::VISIBLE);
             auto* upList = new DataSourceUpList(groupTitles, [this](const std::string& group) {
-                tsvitch::LiveM3u8ListResult filtered;
-                {
-                    std::lock_guard<std::mutex> lock(groupCacheMutex);
-                    if (groupCache.count(group)) {
-                        filtered = groupCache[group];
-                        brls::Logger::debug("HomeLive: Using cached group '{}' with {} channels", group, filtered.size());
-                    } else {
-                        brls::Logger::warning("HomeLive: Cache miss for group '{}', filtering on-demand", group);
-                        for (const auto& item : this->channelsList) {
-                            if (item.groupTitle == group) filtered.push_back(item);
-                        }
-                        groupCache[group] = filtered;
-                    }
-                }
-                if (filtered.empty())
-                    recyclingGrid->setEmpty();
-                else
-                    recyclingGrid->setDataSource(new DataSourceLiveVideoList(filtered));
+                this->selectGroupContent(group);
             });
             upRecyclingGrid->setDataSource(upList);
             this->selectGroupIndex(static_cast<size_t>(lastIndex));
@@ -726,28 +730,52 @@ void HomeLive::selectGroupIndex(size_t index) {
     if (!datasource) return;
     if (index >= datasource->getItemCount()) return;
     this->selectedGroupIndex = index;
+    // setSelectedIndex dispara onGroupSelected -> selectGroupContent (que aplica o bloqueio)
     datasource->setSelectedIndex(upRecyclingGrid, index);
     upRecyclingGrid->selectRowAt(index, false);
 
-    std::string selectedGroup = datasource->getGroupNameByIndex(index);
+    brls::Logger::debug("selectGroupIndex: {}", index);
+}
+
+void HomeLive::selectGroupContent(const std::string& group) {
+    // Bloqueio parental: categoria travada e não liberada nesta sessão pede o PIN
+    if (ProgramConfig::instance().isCategoryLocked(group) && !unlockedCategories.count(group)) {
+        recyclingGrid->setEmpty();
+        this->promptCategoryPin(group, [this, group]() {
+            unlockedCategories.insert(group);
+            this->selectGroupContent(group);
+        });
+        return;
+    }
+
     tsvitch::LiveM3u8ListResult filtered;
     {
         std::lock_guard<std::mutex> lock(groupCacheMutex);
-        if (groupCache.count(selectedGroup)) {
-            filtered = groupCache[selectedGroup];
+        if (groupCache.count(group)) {
+            filtered = groupCache[group];
         } else {
             for (const auto& item : this->channelsList) {
-                if (item.groupTitle == selectedGroup) filtered.push_back(item);
+                if (item.groupTitle == group) filtered.push_back(item);
             }
-            groupCache[selectedGroup] = filtered;
+            groupCache[group] = filtered;
         }
     }
     if (filtered.empty())
         recyclingGrid->setEmpty();
     else
         recyclingGrid->setDataSource(new DataSourceLiveVideoList(filtered));
+}
 
-    brls::Logger::debug("selectGroupIndex: {}", index);
+void HomeLive::promptCategoryPin(const std::string& category, std::function<void()> onUnlock) {
+    brls::Application::getImeManager()->openForText(
+        [this, category, onUnlock](const std::string& text) {
+            if (text == ProgramConfig::instance().getParentalPin()) {
+                onUnlock();
+            } else {
+                brls::Application::notify("tsvitch/parental/wrong_pin"_i18n);
+            }
+        },
+        "tsvitch/parental/enter_pin"_i18n, "", 8, "", 0);
 }
 
 void HomeLive::toggleFavorite() {

@@ -492,5 +492,18 @@
     "play": "Play",
     "delete": "Delete",
     "exit_warning": "A download is in progress. If you exit it will be cancelled. Exit anyway?"
+  },
+  "parental": {
+    "enter_pin": "Enter PIN",
+    "wrong_pin": "Wrong PIN",
+    "enabled": "Parental lock",
+    "change_pin": "Change PIN",
+    "categories": "Locked categories",
+    "reset_app": "Reset app (erase everything)",
+    "current_pin": "Current PIN",
+    "new_pin": "New PIN",
+    "pin_changed": "PIN changed",
+    "reset_confirm": "This will erase ALL settings, PIN and Xtream/M3U8 credentials. Continue?",
+    "no_categories": "Open a list first so the categories are loaded"
   }
 }

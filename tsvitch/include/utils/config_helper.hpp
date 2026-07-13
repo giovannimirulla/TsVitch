@@ -93,6 +93,13 @@ enum class SettingItem {
     // Last version whose changelog/update was already shown (avoids repeating the popup)
     LAST_UPDATE_VERSION_SEEN,
 
+    // Parental control (PIN lock for adult categories)
+    PARENTAL_ENABLED,             // 1 = lock enabled (default), 0 = disabled
+    PARENTAL_PIN,                 // PIN string (default "0000")
+    PARENTAL_CONFIGURED,          // 1 = user customized the locked-category list
+    PARENTAL_LOCKED_CATEGORIES,   // JSON array of locked category names (when configured)
+    KNOWN_CATEGORIES,             // JSON array of category names seen (for the settings UI)
+
     GROUP_SELECTED_INDEX,
 };
 
@@ -233,6 +240,19 @@ public:
     // Xtream content type: 0 = Live TV, 1 = Movies (VOD)
     int getXtreamContentType();
     void setXtreamContentType(int contentType);
+
+    // Parental control
+    bool isParentalEnabled();
+    void setParentalEnabled(bool enabled);
+    std::string getParentalPin();
+    void setParentalPin(const std::string& pin);
+    static bool isAdultCategory(const std::string& name);  // keyword heuristic
+    bool isCategoryLocked(const std::string& name);        // considering enabled + overrides
+    void setCategoryLocked(const std::string& name, bool locked);
+    std::vector<std::string> getLockedCategories();
+    std::vector<std::string> getKnownCategories();
+    void addKnownCategories(const std::vector<std::string>& names);
+    void resetApp();  // wipes the whole config (PIN, lists, xtream credentials, settings)
 
     std::string getProxyUrl();
 

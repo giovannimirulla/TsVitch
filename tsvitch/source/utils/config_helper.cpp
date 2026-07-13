@@ -10,6 +10,8 @@
 
 #include <cctype>
 #include <cstdlib>
+#include <algorithm>
+#include <set>
 #include <borealis/core/application.hpp>
 #include <borealis/core/i18n.hpp>
 #include <borealis/core/cache_helper.hpp>
@@ -223,6 +225,13 @@ std::unordered_map<SettingItem, ProgramOption> ProgramConfig::SETTING_MAP = {
     {SettingItem::XTREAM_ENABLED, {"xtream_enabled", {}, {}, 0}}, // 0 = disabled, 1 = enabled
     {SettingItem::XTREAM_CONTENT_TYPE, {"xtream_content_type", {}, {}, 0}}, // 0 = Live TV, 1 = Movies (VOD)
     {SettingItem::LAST_UPDATE_VERSION_SEEN, {"last_update_version_seen", {}, {}, 0}},
+
+    // Parental control
+    {SettingItem::PARENTAL_ENABLED, {"parental_enabled", {}, {}, 1}}, // default enabled
+    {SettingItem::PARENTAL_PIN, {"parental_pin", {}, {}, 0}},
+    {SettingItem::PARENTAL_CONFIGURED, {"parental_configured", {}, {}, 0}},
+    {SettingItem::PARENTAL_LOCKED_CATEGORIES, {"parental_locked_categories", {}, {}, 0}},
+    {SettingItem::KNOWN_CATEGORIES, {"known_categories", {}, {}, 0}},
 };
 
 ProgramConfig::ProgramConfig() = default;
@@ -886,6 +895,117 @@ int ProgramConfig::getXtreamContentType() {
 void ProgramConfig::setXtreamContentType(int contentType) {
     setSettingItem(SettingItem::XTREAM_CONTENT_TYPE, contentType);
     brls::Logger::info("setXtreamContentType: {}", contentType);
+}
+
+// ===== Parental control =====
+
+bool ProgramConfig::isParentalEnabled() {
+    return getSettingItem(SettingItem::PARENTAL_ENABLED, 1) == 1;
+}
+
+void ProgramConfig::setParentalEnabled(bool enabled) {
+    setSettingItem(SettingItem::PARENTAL_ENABLED, enabled ? 1 : 0);
+}
+
+std::string ProgramConfig::getParentalPin() {
+    std::string pin = getSettingItem(SettingItem::PARENTAL_PIN, std::string(""));
+    return pin.empty() ? std::string("0000") : pin;  // default PIN
+}
+
+void ProgramConfig::setParentalPin(const std::string& pin) {
+    setSettingItem(SettingItem::PARENTAL_PIN, pin.empty() ? std::string("0000") : pin);
+}
+
+bool ProgramConfig::isAdultCategory(const std::string& name) {
+    if (name.empty()) return false;
+    std::string lower = name;
+    std::transform(lower.begin(), lower.end(), lower.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    static const char* keywords[] = {"adult", "adulto", "xxx", "+18", "18+", "porn",
+                                     "erotic", "erotico", "erótico", " sex", "sexo", "hot "};
+    for (const char* kw : keywords) {
+        if (lower.find(kw) != std::string::npos) return true;
+    }
+    return false;
+}
+
+std::vector<std::string> ProgramConfig::getLockedCategories() {
+    std::vector<std::string> result;
+    std::string raw = getSettingItem(SettingItem::PARENTAL_LOCKED_CATEGORIES, std::string(""));
+    if (raw.empty()) return result;
+    try {
+        auto arr = nlohmann::json::parse(raw, nullptr, false);
+        if (arr.is_array())
+            for (const auto& v : arr)
+                if (v.is_string()) result.push_back(v.get<std::string>());
+    } catch (...) {
+    }
+    return result;
+}
+
+bool ProgramConfig::isCategoryLocked(const std::string& name) {
+    if (!isParentalEnabled()) return false;
+    // Se o usuário configurou a lista, respeita-a; senão, usa a detecção automática
+    if (getSettingItem(SettingItem::PARENTAL_CONFIGURED, 0) == 1) {
+        auto locked = getLockedCategories();
+        return std::find(locked.begin(), locked.end(), name) != locked.end();
+    }
+    return isAdultCategory(name);
+}
+
+void ProgramConfig::setCategoryLocked(const std::string& name, bool locked) {
+    auto list = getLockedCategories();
+    // Se ainda não configurado, parte do default (categorias adultas conhecidas)
+    if (getSettingItem(SettingItem::PARENTAL_CONFIGURED, 0) != 1) {
+        list.clear();
+        for (const auto& c : getKnownCategories())
+            if (isAdultCategory(c)) list.push_back(c);
+    }
+    auto it = std::find(list.begin(), list.end(), name);
+    if (locked && it == list.end()) {
+        list.push_back(name);
+    } else if (!locked && it != list.end()) {
+        list.erase(it);
+    }
+    nlohmann::json arr = list;
+    setSettingItem(SettingItem::PARENTAL_LOCKED_CATEGORIES, arr.dump());
+    setSettingItem(SettingItem::PARENTAL_CONFIGURED, 1);
+}
+
+std::vector<std::string> ProgramConfig::getKnownCategories() {
+    std::vector<std::string> result;
+    std::string raw = getSettingItem(SettingItem::KNOWN_CATEGORIES, std::string(""));
+    if (raw.empty()) return result;
+    try {
+        auto arr = nlohmann::json::parse(raw, nullptr, false);
+        if (arr.is_array())
+            for (const auto& v : arr)
+                if (v.is_string()) result.push_back(v.get<std::string>());
+    } catch (...) {
+    }
+    return result;
+}
+
+void ProgramConfig::addKnownCategories(const std::vector<std::string>& names) {
+    auto known = getKnownCategories();
+    std::set<std::string> set(known.begin(), known.end());
+    bool changed = false;
+    for (const auto& n : names) {
+        if (!n.empty() && set.insert(n).second) changed = true;
+    }
+    if (!changed) return;
+    nlohmann::json arr = std::vector<std::string>(set.begin(), set.end());
+    setSettingItem(SettingItem::KNOWN_CATEGORIES, arr.dump());
+}
+
+void ProgramConfig::resetApp() {
+    brls::Logger::warning("ProgramConfig::resetApp: wiping all configuration");
+    this->setting = nlohmann::json::object();
+    this->client.clear();
+    this->device.clear();
+    this->m3u8Url.clear();
+    this->proxyUrl.clear();
+    this->save();
 }
 
 void ProgramConfig::toggleFullscreen() {

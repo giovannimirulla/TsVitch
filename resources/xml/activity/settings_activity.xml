@@ -206,6 +206,22 @@
                                                                         id="setting/iptv/xtream_password"
                                                                         title="Password" />
 
+                                                                <brls:BooleanCell
+                                                                        id="setting/iptv/parental_enabled"
+                                                                        title="@i18n/tsvitch/parental/enabled" />
+
+                                                                <brls:RadioCell
+                                                                        id="setting/iptv/parental_pin"
+                                                                        title="@i18n/tsvitch/parental/change_pin" />
+
+                                                                <brls:RadioCell
+                                                                        id="setting/iptv/parental_categories"
+                                                                        title="@i18n/tsvitch/parental/categories" />
+
+                                                                <brls:RadioCell
+                                                                        id="setting/iptv/reset_app"
+                                                                        title="@i18n/tsvitch/parental/reset_app" />
+
                                                         </brls:Box>
 
                                                 </brls:Box>

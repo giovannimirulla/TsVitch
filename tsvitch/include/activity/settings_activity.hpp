@@ -55,7 +55,13 @@ private:
     BRLS_BIND(brls::InputCell, btnXtreamServer, "setting/iptv/xtream_server");
     BRLS_BIND(brls::InputCell, btnXtreamUsername, "setting/iptv/xtream_username");
     BRLS_BIND(brls::InputCell, btnXtreamPassword, "setting/iptv/xtream_password");
-    
+
+    // Parental control
+    BRLS_BIND(brls::BooleanCell, btnParentalEnabled, "setting/iptv/parental_enabled");
+    BRLS_BIND(brls::RadioCell, btnParentalPin, "setting/iptv/parental_pin");
+    BRLS_BIND(brls::RadioCell, btnParentalCategories, "setting/iptv/parental_categories");
+    BRLS_BIND(brls::RadioCell, btnResetApp, "setting/iptv/reset_app");
+
     BRLS_BIND(TsVitchSelectorCell, selectorLang, "setting/language");
     BRLS_BIND(TsVitchSelectorCell, selectorTheme, "setting/ui/theme");
     BRLS_BIND(TsVitchSelectorCell, selectorCustomTheme, "setting/custom/theme");

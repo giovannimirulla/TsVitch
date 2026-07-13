@@ -491,5 +491,18 @@
     "play": "Reproduzir",
     "delete": "Excluir",
     "exit_warning": "Há um download em andamento. Se sair, ele será cancelado. Deseja sair?"
+  },
+  "parental": {
+    "enter_pin": "Digite o PIN",
+    "wrong_pin": "PIN incorreto",
+    "enabled": "Bloqueio parental",
+    "change_pin": "Trocar PIN",
+    "categories": "Categorias bloqueadas",
+    "reset_app": "Resetar app (apagar tudo)",
+    "current_pin": "PIN atual",
+    "new_pin": "Novo PIN",
+    "pin_changed": "PIN alterado",
+    "reset_confirm": "Isso vai apagar TODAS as configurações, o PIN e as credenciais Xtream/M3U8. Continuar?",
+    "no_categories": "Abra uma lista primeiro para carregar as categorias"
   }
 }
