@@ -8,7 +8,10 @@
 #endif
 #endif
 
+#include <cctype>
+#include <cstdlib>
 #include <borealis/core/application.hpp>
+#include <borealis/core/i18n.hpp>
 #include <borealis/core/cache_helper.hpp>
 #include <borealis/core/touch/pan_gesture.hpp>
 #include <borealis/views/edit_text_dialog.hpp>
@@ -51,6 +54,35 @@ extern in_addr_t secondary_dns;
 #endif
 
 using namespace brls::literals;
+
+// Maps the OS locale (LC_ALL/LC_MESSAGES/LANG) to a supported app locale,
+// falling back to English. Used on desktop so the app follows the system language.
+static std::string detectSystemLocale() {
+    const char* env = std::getenv("LC_ALL");
+    if (!env || !*env) env = std::getenv("LC_MESSAGES");
+    if (!env || !*env) env = std::getenv("LANG");
+
+    std::string lower;
+    if (env) {
+        for (char c : std::string(env)) {
+            if (c == '.' || c == '@') break;  // drop encoding/modifier (e.g. ".UTF-8")
+            lower += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        }
+    }
+    auto startsWith = [&](const char* prefix) { return lower.rfind(prefix, 0) == 0; };
+
+    if (startsWith("pt")) return brls::LOCALE_PT_BR;
+    if (startsWith("it")) return brls::LOCALE_IT;
+    if (startsWith("ja")) return brls::LOCALE_JA;
+    if (startsWith("ko")) return brls::LOCALE_Ko;
+    if (startsWith("zh")) {
+        if (lower.find("tw") != std::string::npos || lower.find("hk") != std::string::npos ||
+            lower.find("hant") != std::string::npos)
+            return brls::LOCALE_ZH_HANT;
+        return brls::LOCALE_ZH_HANS;
+    }
+    return brls::LOCALE_EN_US;
+}
 
 std::unordered_map<SettingItem, ProgramOption> ProgramConfig::SETTING_MAP = {
 
@@ -390,8 +422,9 @@ void ProgramConfig::load() {
     brls::PanGestureRecognizer::panFactor = scrollSpeed * 0.01f;
 
     std::set<std::string> i18nData{
-        brls::LOCALE_AUTO,    brls::LOCALE_EN_US,   brls::LOCALE_JA, brls::LOCALE_RYU,
-        brls::LOCALE_ZH_HANS, brls::LOCALE_ZH_HANT, brls::LOCALE_Ko, brls::LOCALE_IT,
+        brls::LOCALE_AUTO,    brls::LOCALE_EN_US,   brls::LOCALE_JA,  brls::LOCALE_RYU,
+        brls::LOCALE_ZH_HANS, brls::LOCALE_ZH_HANT, brls::LOCALE_Ko,  brls::LOCALE_IT,
+        brls::LOCALE_PT_BR,
     };
     std::string langData = getSettingItem(SettingItem::APP_LANG, brls::LOCALE_AUTO);
 
@@ -399,7 +432,9 @@ void ProgramConfig::load() {
         brls::Platform::APP_LOCALE_DEFAULT = langData;
     } else {
 #if !defined(__SWITCH__) && !defined(__PSV__) && !defined(PS4)
-        brls::Platform::APP_LOCALE_DEFAULT = brls::LOCALE_IT;
+        // Follow the system language on desktop (borealis' AUTO only reads BOREALIS_LANG,
+        // so we map the OS locale ourselves, falling back to English).
+        brls::Platform::APP_LOCALE_DEFAULT = detectSystemLocale();
 #endif
     }
 #ifdef IOS
