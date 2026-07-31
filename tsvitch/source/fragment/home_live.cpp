@@ -19,8 +19,12 @@
 #include "core/FavoriteManager.hpp"
 #include "core/ChannelManager.hpp"
 #include "core/DownloadManager.hpp"
+<<<<<<< HEAD
 #include "utils/stream_helper.hpp"
 #include "core/DownloadProgressManager.hpp"
+=======
+#include "core/DownloadManager.hpp"
+>>>>>>> library-updates
 
 #include "utils/config_helper.hpp"
 
@@ -464,6 +468,13 @@ void HomeLive::onLiveList(tsvitch::LiveM3u8ListResult result, bool firstLoad) {
         this->downloadVideo();
         return true;
     });
+<<<<<<< HEAD
+=======
+
+    if (!firstLoad) {
+        brls::Threading::async([result] { ChannelManager::get()->save(result); });
+    }
+>>>>>>> library-updates
 
     // Salva channelsList SUBITO per accesso thread-safe
     this->channelsList = std::move(result); // Move invece di copy!
@@ -837,6 +848,11 @@ brls::View* HomeLive::create() {
     return new HomeLive(); 
 }
 
+<<<<<<< HEAD
+=======
+brls::View* HomeLive::create() { return new HomeLive(); }
+
+>>>>>>> library-updates
 void HomeLive::downloadVideo() {
     // Ottieni l'item attualmente focalizzato
     auto* item = dynamic_cast<RecyclingGridItemLiveVideoCard*>(this->recyclingGrid->getFocusedItem());
@@ -848,6 +864,7 @@ void HomeLive::downloadVideo() {
     // Ottieni il canale
     tsvitch::LiveM3u8 channel = item->getChannel();
     
+<<<<<<< HEAD
     // Controlla se è una live stream in corso
     if (tsvitch::isLiveStream(channel.url, channel.title)) {
         brls::Logger::warning("HomeLive: Cannot download live streams");
@@ -855,12 +872,15 @@ void HomeLive::downloadVideo() {
         return;
     }
     
+=======
+>>>>>>> library-updates
     // Avvia il download
     std::string downloadId = DownloadManager::instance().startDownload(
         channel.title, 
         channel.url, 
         channel.logo,  // URL dell'immagine
         [](const std::string& id, float progress, size_t downloaded, size_t total) {
+<<<<<<< HEAD
             // Callback di progresso - aggiorna il manager globale
             std::string progressText = fmt::format("{:.1f}%", progress);
             std::string statusText = fmt::format("{} / {} bytes", downloaded, total);
@@ -871,11 +891,15 @@ void HomeLive::downloadVideo() {
                 );
             });
             
+=======
+            // Callback di progresso
+>>>>>>> library-updates
             brls::Logger::debug("Download {}: {:.1f}% ({}/{} bytes)", id, progress, downloaded, total);
         },
         [](const std::string& id, const std::string& filePath) {
             // Callback di completamento
             brls::Logger::info("Download {} completed: {}", id, filePath);
+<<<<<<< HEAD
             
             brls::sync([id, filePath]() {
                 // Nascondi l'overlay
@@ -887,20 +911,29 @@ void HomeLive::downloadVideo() {
                 } else {
                     brls::Application::notify("File già scaricato!");
                 }
+=======
+            brls::sync([]() {
+                brls::Application::notify("Download completato!");
+>>>>>>> library-updates
             });
         },
         [](const std::string& id, const std::string& error) {
             // Callback di errore
             brls::Logger::error("Download {} failed: {}", id, error);
+<<<<<<< HEAD
             brls::sync([id, error]() {
                 // Nascondi l'overlay
                 tsvitch::DownloadProgressManager::getInstance()->hideDownloadProgress(id);
+=======
+            brls::sync([error]() {
+>>>>>>> library-updates
                 brls::Application::notify("Errore download: " + error);
             });
         }
     );
     
     if (!downloadId.empty()) {
+<<<<<<< HEAD
         // Controlla lo stato del download per vedere se è già completato
         auto downloadItem = DownloadManager::instance().getDownload(downloadId);
         
@@ -916,6 +949,10 @@ void HomeLive::downloadVideo() {
             brls::Application::notify("Download avviato: " + channel.title);
             brls::Logger::info("HomeLive: Started download {} for {}", downloadId, channel.title);
         }
+=======
+        brls::Application::notify("Download avviato: " + channel.title);
+        brls::Logger::info("HomeLive: Started download {} for {}", downloadId, channel.title);
+>>>>>>> library-updates
     } else {
         brls::Application::notify("Errore nell'avvio del download");
         brls::Logger::error("HomeLive: Failed to start download for {}", channel.title);

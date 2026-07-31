@@ -538,11 +538,16 @@ void SettingsActivity::onContentAvailable() {
             ProgramConfig::instance().setM3U8Url(m3u8Url);
             OnM3U8UrlChanged.fire(); // Notifica tutte le view interessate
         },
+<<<<<<< HEAD
         "Enter M3U8 playlist URL", "http://example.com/playlist.m3u8", 255);
+=======
+        "tsvitch/setting/tools/m3u8/hint"_i18n, "tsvitch/setting/tools/m3u8/hint"_i18n, 255);
+>>>>>>> library-updates
     
     // Soluzione definitiva per l'overflow del testo nell'InputCell
     btnM3U8Input->detail->setMaxWidth(140);      // Riduciamo a 140px per essere sicuri
     btnM3U8Input->detail->setSingleLine(true);   // Forza una sola linea
+<<<<<<< HEAD
 
     auto m3u8TimeoutOption = conf.getOptionData(SettingItem::M3U8_TIMEOUT);
     selectorM3U8Timeout->init("M3U8 Timeout", m3u8TimeoutOption.optionList,
@@ -583,17 +588,41 @@ void SettingsActivity::onContentAvailable() {
         [this](const std::string& data) {
             ProgramConfig::instance().setXtreamServerUrl(data);
             this->xtreamParamsChanged = true;
+=======
+
+    auto m3u8TimeoutOption = conf.getOptionData(SettingItem::M3U8_TIMEOUT);
+    selectorM3U8Timeout->init("tsvitch/setting/tools/m3u8/timeout"_i18n, m3u8TimeoutOption.optionList,
+                              conf.getIntOptionIndex(SettingItem::M3U8_TIMEOUT), [m3u8TimeoutOption](int data) {
+                                  ProgramConfig::instance().setSettingItem(SettingItem::M3U8_TIMEOUT,
+                                                                           m3u8TimeoutOption.rawOptionList[data]);
+                              });
+
+    // Inizializza i controlli Xtream Codes IPTV
+    btnXtreamEnabled->init("Enable Xtream Codes IPTV", conf.getXtreamEnabled(), [](bool value) {
+        ProgramConfig::instance().setXtreamEnabled(value);
+    });
+    
+    btnXtreamServer->init("Server URL", conf.getXtreamServerUrl(), 
+        [](const std::string& data) {
+            ProgramConfig::instance().setXtreamServerUrl(data);
+>>>>>>> library-updates
         }, 
         "Enter Xtream Codes server URL", "http://server.com:8080", 255);
     
     btnXtreamUsername->init("Username", conf.getXtreamUsername(), 
+<<<<<<< HEAD
         [this](const std::string& data) {
             ProgramConfig::instance().setXtreamUsername(data);
             this->xtreamParamsChanged = true;
+=======
+        [](const std::string& data) {
+            ProgramConfig::instance().setXtreamUsername(data);
+>>>>>>> library-updates
         }, 
         "Enter your username", "username", 255);
     
     btnXtreamPassword->init("Password", conf.getXtreamPassword(), 
+<<<<<<< HEAD
         [this](const std::string& data) {
             ProgramConfig::instance().setXtreamPassword(data);
             this->xtreamParamsChanged = true;
@@ -608,12 +637,20 @@ void SettingsActivity::onContentAvailable() {
     // Imposta la visibilità iniziale delle sezioni
     this->updateIPTVSectionVisibility();
 
+=======
+        [](const std::string& data) {
+            ProgramConfig::instance().setXtreamPassword(data);
+        }, 
+        "Enter your password", "password", 255);
+
+>>>>>>> library-updates
     // Inizializza tutti gli altri selettori...
     // (Il resto del codice esistente)
     
     brls::Logger::debug("SettingsActivity: onContentAvailable completed");
 }
 
+<<<<<<< HEAD
 void SettingsActivity::updateIPTVSectionVisibility() {
     auto& conf = ProgramConfig::instance();
     int currentMode = conf.getIntOption(SettingItem::IPTV_MODE);
@@ -775,4 +812,11 @@ void SettingsActivity::willDisappear(bool resetState) {
 SettingsActivity::~SettingsActivity() {
     brls::Logger::debug("SettingsActivity: destroy");
     // Callback moved to willDisappear to avoid calling it during destruction
+=======
+SettingsActivity::~SettingsActivity() {
+    brls::Logger::debug("SettingsActivity: destroy");
+    if (onCloseCallback) {
+        onCloseCallback();
+    }
+>>>>>>> library-updates
 }

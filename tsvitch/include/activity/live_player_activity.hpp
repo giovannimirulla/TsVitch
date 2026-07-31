@@ -45,6 +45,13 @@ public:
 
 protected:
     VideoView* video = nullptr;
+<<<<<<< HEAD
+=======
+    brls::Box* downloadProgressOverlay = nullptr;
+    brls::Label* downloadStatusLabel = nullptr;
+    brls::Label* downloadProgressText = nullptr;
+    brls::Slider* downloadProgressBar = nullptr;
+>>>>>>> library-updates
 
     std::function<void()> onCloseCallback;
 

@@ -4,12 +4,18 @@
 #include "activity/live_player_activity.hpp"
 #include "utils/number_helper.hpp"
 #include "core/DownloadManager.hpp"
+<<<<<<< HEAD
 #include "core/DownloadProgressManager.hpp"
+=======
+>>>>>>> library-updates
 
 #include <vector>
 #include <chrono>
 #include <algorithm>
+<<<<<<< HEAD
 #include <cctype>
+=======
+>>>>>>> library-updates
 #include <fmt/format.h>
 
 #include "tsvitch.h"
@@ -29,7 +35,10 @@
 
 #include "core/FavoriteManager.hpp"
 #include "core/DownloadManager.hpp"
+<<<<<<< HEAD
 #include "utils/activity_helper.hpp"
+=======
+>>>>>>> library-updates
 
 using namespace brls::literals;
 
@@ -55,6 +64,7 @@ LiveActivity::LiveActivity(const std::vector<tsvitch::LiveM3u8>& channels, size_
 void LiveActivity::onContentAvailable() {
     brls::Logger::debug("LiveActivity: onContentAvailable");
 
+<<<<<<< HEAD
     try {
 
     // Ottieni i riferimenti agli elementi UI
@@ -66,6 +76,18 @@ void LiveActivity::onContentAvailable() {
     if (!video) {
         brls::Logger::error("LiveActivity: VideoView not found in layout");
         return;
+=======
+    // Ottieni i riferimenti agli elementi UI
+    video = dynamic_cast<VideoView*>(this->getView("video"));
+    downloadProgressOverlay = dynamic_cast<brls::Box*>(this->getView("download_progress_overlay"));
+    downloadStatusLabel = dynamic_cast<brls::Label*>(this->getView("download_status_label"));
+    downloadProgressText = dynamic_cast<brls::Label*>(this->getView("download_progress_text"));
+    downloadProgressBar = dynamic_cast<brls::Slider*>(this->getView("download_progress_bar"));
+
+    // Configura la progress bar senza cursore
+    if (downloadProgressBar) {
+        downloadProgressBar->setPointerSize(0.0f);
+>>>>>>> library-updates
     }
 
     MPVCore::instance().setAspect(
@@ -260,6 +282,7 @@ void LiveActivity::startLive() {
         return;
     }
     this->isAd = false;
+<<<<<<< HEAD
     if (liveData.url.empty()) {
         brls::Logger::error("LiveActivity: startLive called with empty URL");
         return;
@@ -271,6 +294,8 @@ void LiveActivity::startLive() {
     
     // Riabilita il seek quando non è più un annuncio
     this->video->disableProgressSliderSeek(false);
+=======
+>>>>>>> library-updates
     
     this->video->setCustomToggleAction([this]() {
         if (MPVCore::instance().isStopped()) {
@@ -293,6 +318,7 @@ void LiveActivity::startLive() {
     
     this->video->setUrl(liveData.url);
     
+<<<<<<< HEAD
     // Registra un listener per l'evento MPV_LOADED per ri-verificare il tipo con la durata effettiva
     // e per ripristinare la posizione salvata
     this->tl_event_id = MPVCore::instance().getEvent()->subscribe([this](MpvEventEnum event) {
@@ -308,21 +334,47 @@ void LiveActivity::startLive() {
                     brls::Logger::info("LiveActivity: Restored playback position to {} seconds", savedPosition);
                 }
             }
+=======
+    // Registra un listener per l'evento MPV_LOADED per determinare il tipo di contenuto
+    this->tl_event_id = MPVCore::instance().getEvent()->subscribe([this](MpvEventEnum event) {
+        if (event == MPV_LOADED) {
+            this->detectContentType();
+>>>>>>> library-updates
         }
     });
     mpvEventRegistered = true;
 }
 
 void LiveActivity::detectContentType() {
+<<<<<<< HEAD
     if (!this->video || this->destroyed.load()) {
         brls::Logger::warning("LiveActivity: detectContentType skipped (video unavailable or activity destroyed)");
         return;
     }
     // Prima fase: analisi basata su URL e titolo (disponibile sempre)
+=======
+    // Controlla se il contenuto ha una durata definita
+    double duration = MPVCore::instance().duration;
+    
+    brls::Logger::debug("LiveActivity: detectContentType - duration: {}", duration);
+    
+    // Determina se è un live stream o un video con durata
+    bool isLiveStream = false;
+    
+    // Criteri per identificare un live stream:
+    // 1. Durata è 0 o negativa (sconosciuta)
+    // 2. Il contenuto è in playing ma la durata è ancora 0 dopo un po' di tempo
+    if (duration <= 0) {
+        isLiveStream = true;
+    }
+    
+    // Controllo aggiuntivo basato sull'URL o sul titolo
+>>>>>>> library-updates
     std::string url = liveData.url;
     std::string title = liveData.title;
     
     // Converti in lowercase per il confronto
+<<<<<<< HEAD
     std::transform(url.begin(), url.end(), url.begin(),
                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     std::transform(title.begin(), title.end(), title.begin(),
@@ -332,12 +384,28 @@ void LiveActivity::detectContentType() {
     bool isLiveStream = true; // Default: assume live stream
     
     // Indicatori di video on-demand negli URL
+=======
+    std::transform(url.begin(), url.end(), url.begin(), ::tolower);
+    std::transform(title.begin(), title.end(), title.begin(), ::tolower);
+    
+    // Indicatori tipici di live stream negli URL
+    if (url.find("live") != std::string::npos || 
+        url.find("stream") != std::string::npos ||
+        url.find(".m3u8") != std::string::npos ||
+        title.find("live") != std::string::npos ||
+        title.find("diretta") != std::string::npos) {
+        isLiveStream = true;
+    }
+    
+    // Indicatori tipici di video con durata negli URL
+>>>>>>> library-updates
     if (url.find(".mp4") != std::string::npos ||
         url.find(".mkv") != std::string::npos ||
         url.find(".avi") != std::string::npos ||
         url.find("video") != std::string::npos) {
         isLiveStream = false;
     }
+<<<<<<< HEAD
     // Indicatori di live stream negli URL e titoli
     else if (url.find("live") != std::string::npos || 
              url.find("stream") != std::string::npos ||
@@ -363,6 +431,8 @@ void LiveActivity::detectContentType() {
         brls::Logger::debug("LiveActivity: MPV duration 0 confirms LIVE mode");
     }
     // Altrimenti mantiene la detection basata su URL/titolo fatta prima
+=======
+>>>>>>> library-updates
     
     brls::Logger::debug("LiveActivity: Content detected as: {}", isLiveStream ? "LIVE STREAM" : "VIDEO WITH DURATION");
     
@@ -389,6 +459,7 @@ void LiveActivity::startDownload() {
         return;
     }
     
+<<<<<<< HEAD
     // Controlla se è una live stream in corso
     if (tsvitch::isLiveStream(this->liveData.url, this->liveData.title)) {
         brls::Logger::warning("LiveActivity: Cannot download live streams");
@@ -396,6 +467,8 @@ void LiveActivity::startDownload() {
         return;
     }
     
+=======
+>>>>>>> library-updates
     // Debug: stampa i dati del download
     brls::Logger::debug("LiveActivity: Starting download for title='{}', url='{}'", 
                        this->liveData.title, this->liveData.url);
@@ -406,12 +479,20 @@ void LiveActivity::startDownload() {
         return;
     }
     
+<<<<<<< HEAD
     // Mostra l'overlay del progresso globale
     tsvitch::DownloadProgressManager::getInstance()->showDownloadProgress(
         "live_" + this->liveData.title, 
         this->liveData.title, 
         this->liveData.url
     );
+=======
+    // Mostra l'overlay del progresso
+    downloadProgressOverlay->setVisibility(brls::Visibility::VISIBLE);
+    downloadStatusLabel->setText("Inizializzazione download...");
+    downloadProgressText->setText("0%");
+    downloadProgressBar->setProgress(0.0f);
+>>>>>>> library-updates
     
     // Avvia il download del video corrente con callback
     currentDownloadId = DownloadManager::instance().startDownload(
@@ -419,15 +500,33 @@ void LiveActivity::startDownload() {
         this->liveData.url,
         this->liveData.logo,  // Usa il logo del canale come immagine
         [this](const std::string& downloadId, float progress, size_t downloaded, size_t total) {
+<<<<<<< HEAD
             // Callback di progresso - aggiorna l'overlay globale
+=======
+            // Callback di progresso - aggiorna la UI sul thread principale con controlli di sicurezza
+>>>>>>> library-updates
             if (!hasActiveDownload) {
                 return;  // Download annullato o completato
             }
             
+<<<<<<< HEAD
             try {
                 std::string progressText;
                 std::string statusText = "Download in corso...";
                 
+=======
+            // Verifica che l'attività sia ancora valida
+            if (!downloadProgressBar || !downloadProgressText || !downloadStatusLabel) {
+                brls::Logger::warning("Download progress callback but UI components are null - activity may have been destroyed");
+                hasActiveDownload = false;
+                return;
+            }
+            
+            try {
+                downloadProgressBar->setProgress(progress / 100.0f);
+                
+                std::string progressText;
+>>>>>>> library-updates
                 if (total > 0) {
                     std::string downloadedStr = formatFileSize(downloaded);
                     std::string totalStr = formatFileSize(total);
@@ -435,6 +534,7 @@ void LiveActivity::startDownload() {
                 } else {
                     progressText = fmt::format("{:.1f}%", progress);
                 }
+<<<<<<< HEAD
                 
                 // Aggiorna l'overlay globale
                 tsvitch::DownloadProgressManager::getInstance()->updateProgress(
@@ -444,12 +544,17 @@ void LiveActivity::startDownload() {
                     progressText
                 );
                 
+=======
+                downloadProgressText->setText(progressText);
+                downloadStatusLabel->setText("Download in corso...");
+>>>>>>> library-updates
             } catch (const std::exception& e) {
                 brls::Logger::error("Error in download progress callback: {}", e.what());
                 hasActiveDownload = false;
             }
         },
         [this](const std::string& downloadId, const std::string& filePath) {
+<<<<<<< HEAD
             // Callback di completamento
             brls::Logger::info("Download completed: {}", downloadId);
             
@@ -467,6 +572,30 @@ void LiveActivity::startDownload() {
                 // Nascondi l'overlay dopo 2 secondi
                 brls::delay(2000, [this]() {
                     tsvitch::DownloadProgressManager::getInstance()->hideDownloadProgress("live_" + this->liveData.title);
+=======
+            // Callback di completamento - con controlli di sicurezza
+            brls::Logger::info("Download completed: {}", downloadId);
+            
+            // Verifica che l'attività sia ancora valida
+            if (!downloadProgressOverlay || !downloadStatusLabel || !downloadProgressText || !downloadProgressBar) {
+                brls::Logger::warning("Download completed but UI components are null - activity may have been destroyed");
+                hasActiveDownload = false;
+                return;
+            }
+            
+            hasActiveDownload = false;
+            
+            try {
+                downloadStatusLabel->setText("Download completato!");
+                downloadProgressText->setText("100%");
+                downloadProgressBar->setProgress(1.0f);
+                
+                // Nascondi l'overlay dopo 2 secondi con controllo di validità
+                brls::delay(2000, [this]() {
+                    if (downloadProgressOverlay) {
+                        downloadProgressOverlay->setVisibility(brls::Visibility::GONE);
+                    }
+>>>>>>> library-updates
                 });
                 
                 // Mostra notifica di successo
@@ -481,6 +610,7 @@ void LiveActivity::startDownload() {
             }
         },
         [this](const std::string& downloadId, const std::string& error) {
+<<<<<<< HEAD
             // Callback di errore
             brls::Logger::error("Download failed: {} - {}", downloadId, error);
             
@@ -498,6 +628,29 @@ void LiveActivity::startDownload() {
                 // Nascondi l'overlay dopo 3 secondi
                 brls::delay(3000, [this]() {
                     tsvitch::DownloadProgressManager::getInstance()->hideDownloadProgress("live_" + this->liveData.title);
+=======
+            // Callback di errore - con controlli di sicurezza
+            brls::Logger::error("Download failed: {} - {}", downloadId, error);
+            
+            // Verifica che l'attività sia ancora valida
+            if (!downloadProgressOverlay || !downloadStatusLabel || !downloadProgressText) {
+                brls::Logger::warning("Download failed but UI components are null - activity may have been destroyed");
+                hasActiveDownload = false;
+                return;
+            }
+            
+            hasActiveDownload = false;
+            
+            try {
+                downloadStatusLabel->setText("Errore nel download");
+                downloadProgressText->setText("Fallito");
+                
+                // Nascondi l'overlay dopo 3 secondi con controllo di validità
+                brls::delay(3000, [this]() {
+                    if (downloadProgressOverlay) {
+                        downloadProgressOverlay->setVisibility(brls::Visibility::GONE);
+                    }
+>>>>>>> library-updates
                 });
                 
                 // Mostra notifica di errore
@@ -519,6 +672,10 @@ void LiveActivity::startDownload() {
     } else {
         // Download fallito immediatamente
         hasActiveDownload = false;
+<<<<<<< HEAD
+=======
+        downloadProgressOverlay->setVisibility(brls::Visibility::GONE);
+>>>>>>> library-updates
         
         brls::Dialog* dialog = new brls::Dialog("Impossibile avviare il download");
         dialog->addButton("OK", []() {});
@@ -594,6 +751,7 @@ std::string LiveActivity::formatFileSize(size_t bytes) {
 
 LiveActivity::~LiveActivity() {
     brls::Logger::debug("LiveActivity: delete");
+<<<<<<< HEAD
     this->destroyed.store(true);
     
     // Salva la posizione di riproduzione prima di uscire (solo per video on-demand)
@@ -606,6 +764,8 @@ LiveActivity::~LiveActivity() {
             brls::Logger::info("LiveActivity: Saved playback position {} / {}", currentPosition, totalDuration);
         }
     }
+=======
+>>>>>>> library-updates
     
     // Cancella download attivo se presente
     if (hasActiveDownload && !currentDownloadId.empty()) {

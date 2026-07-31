@@ -190,6 +190,7 @@ void TsVitchClient::get_file_m3u8(const std::function<void(LiveM3u8ListResult)>&
 {
     auto m3u8Url = ProgramConfig::instance().getM3U8Url();
     auto timeoutMs = ProgramConfig::instance().getIntOption(SettingItem::M3U8_TIMEOUT);
+<<<<<<< HEAD
     
     // Timeout più intelligente basato sulla dimensione prevista
     if (timeoutMs < 30000) timeoutMs = 30000; // Minimum 30 secondi per file M3U8 grandi
@@ -200,6 +201,12 @@ void TsVitchClient::get_file_m3u8(const std::function<void(LiveM3u8ListResult)>&
         m3u8Url,
         {},
         timeoutMs,
+=======
+    HTTP::__cpr_get(
+        m3u8Url,
+        {},
+        timeoutMs, // timeout configurabile per file M3U8 grandi
+>>>>>>> library-updates
         [callback, error](const cpr::Response& r) {
             // Log dimensione risposta per debug prestazioni
             brls::Logger::info("M3U8 download completed - Size: {} bytes, Status: {}", r.text.size(), r.status_code);

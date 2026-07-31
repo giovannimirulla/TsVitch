@@ -50,6 +50,7 @@
                                                 <brls:Header
                                                         width="auto"
                                                         height="auto"
+<<<<<<< HEAD
                                                         title="@i18n/tsvitch/setting/tools/proxy/header"
                                                         marginBottom="0px" />
                                                 <brls:Box
@@ -67,6 +68,8 @@
                                                 <brls:Header
                                                         width="auto"
                                                         height="auto"
+=======
+>>>>>>> library-updates
                                                         title="@i18n/tsvitch/setting/tools/tutorial/header"
                                                         marginBottom="0px" />
                                                 <brls:Box
@@ -156,7 +159,11 @@
                                                 <brls:Header
                                                         width="auto"
                                                         height="auto"
+<<<<<<< HEAD
                                                         title="IPTV Configuration"
+=======
+                                                        title="M3U8 Playlist"
+>>>>>>> library-updates
                                                         marginBottom="0px" />
                                                 <brls:Box
                                                         width="100%"
@@ -164,6 +171,7 @@
                                                         axis="column"
                                                         marginBottom="30px">
 
+<<<<<<< HEAD
                                                         <SelectorCell
                                                                 id="setting/iptv/mode_selector"
                                                                 title="IPTV Mode" />
@@ -212,6 +220,44 @@
                                                                 id="setting/iptv/test_button"
                                                                 title="@i18n/tsvitch/setting/tools/test/iptv"
                                                                 marginTop="20px" />
+=======
+                                                        <brls:InputCell
+                                                                id="setting/tools/m3u8/input"
+                                                                title="M3U8 URL"
+                                                        />
+
+                                                        <SelectorCell
+                                                                id="setting/tools/m3u8/timeout" />
+
+                                                </brls:Box>
+
+                                                <brls:Header
+                                                        width="auto"
+                                                        height="auto"
+                                                        title="Xtream Codes API"
+                                                        marginBottom="0px" />
+                                                <brls:Box
+                                                        width="100%"
+                                                        height="auto"
+                                                        axis="column"
+                                                        marginBottom="30px">
+
+                                                        <brls:BooleanCell
+                                                                id="setting/iptv/xtream_enabled"
+                                                                title="Enable Xtream Codes IPTV" />
+
+                                                        <brls:InputCell
+                                                                id="setting/iptv/xtream_server"
+                                                                title="Server URL" />
+
+                                                        <brls:InputCell
+                                                                id="setting/iptv/xtream_username"
+                                                                title="Username" />
+
+                                                        <brls:InputCell
+                                                                id="setting/iptv/xtream_password"
+                                                                title="Password" />
+>>>>>>> library-updates
 
                                                 </brls:Box>
 

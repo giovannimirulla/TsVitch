@@ -25,7 +25,10 @@ public:
     void refresh();
     void forceRefresh(); // Forza un refresh immediato
     void onDownloadItemSelected(const DownloadItem& item);
+<<<<<<< HEAD
     void notifyNewDownloadStarted(); // Notifica il thread di refresh che è iniziato un nuovo download
+=======
+>>>>>>> library-updates
 
     static brls::View* create();
 
@@ -38,8 +41,11 @@ private:
     std::atomic<bool> refreshThreadRunning{false};
     std::mutex refreshMutex;
     std::condition_variable refreshCondition;
+<<<<<<< HEAD
     brls::Event<>::Subscription exitEventSubscription;
     bool hasExitSubscription = false;
+=======
+>>>>>>> library-updates
     
     void setupRecyclingGrid();
     void startAutoRefresh();

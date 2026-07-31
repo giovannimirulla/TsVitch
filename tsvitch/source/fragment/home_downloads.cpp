@@ -2,7 +2,10 @@
 #include "view/recycling_grid.hpp"
 #include "view/download_item_cell.hpp"
 #include "core/DownloadManager.hpp"
+<<<<<<< HEAD
 #include "core/DownloadProgressManager.hpp"
+=======
+>>>>>>> library-updates
 #include "utils/activity_helper.hpp"
 #include <borealis/core/i18n.hpp>
 #include <borealis/core/thread.hpp>
@@ -10,7 +13,10 @@
 #include <borealis/views/label.hpp>
 #include <borealis/views/button.hpp>
 #include <borealis/views/dialog.hpp>
+<<<<<<< HEAD
 #include <fmt/format.h>
+=======
+>>>>>>> library-updates
 #include <fstream>
 #include <thread>
 #include <chrono>
@@ -20,6 +26,7 @@
 
 using namespace brls::literals;
 
+<<<<<<< HEAD
 // Helper function to format bytes into human-readable format
 std::string formatBytes(size_t bytes) {
     const double KB = 1024.0;
@@ -37,6 +44,8 @@ std::string formatBytes(size_t bytes) {
     }
 }
 
+=======
+>>>>>>> library-updates
 // Data source personalizzata per i download
 class DownloadDataSource : public RecyclingGridDataSource {
 private:
@@ -52,10 +61,14 @@ private:
         for (const auto& item : items) {
             hash ^= std::hash<std::string>{}(item.id) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
             hash ^= std::hash<int>{}(static_cast<int>(item.status)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+<<<<<<< HEAD
             // Per i download completati usa 100, per gli altri usa il progresso troncato
             size_t progressHash = (item.status == DownloadStatus::COMPLETED) ? 100 : 
                                  static_cast<size_t>(item.progress);
             hash ^= std::hash<size_t>{}(progressHash) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+=======
+            hash ^= std::hash<size_t>{}(static_cast<size_t>(item.progress * 100)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+>>>>>>> library-updates
         }
         return hash;
     }
@@ -67,6 +80,7 @@ public:
         auto now = std::chrono::steady_clock::now();
         auto timeSinceLastUpdate = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastUpdateTime);
         
+<<<<<<< HEAD
         // Evita aggiornamenti troppo frequenti (meno di 50ms) - MA SOLO se non è il primo aggiornamento
         bool isFirstUpdate = (downloads.empty() && !newDownloads.empty());
         if (!isFirstUpdate && timeSinceLastUpdate.count() < 50) {
@@ -111,6 +125,21 @@ public:
             brls::Logger::info("DownloadDataSource: First update - bypassing hash check");
         }
         
+=======
+        // Evita aggiornamenti troppo frequenti (meno di 50ms) 
+        if (timeSinceLastUpdate.count() < 50) {
+            hasChanges = false;
+            return;
+        }
+        
+        // Controllo rapido con hash per evitare confronti costosi
+        size_t newHash = calculateDownloadsHash(newDownloads);
+        if (newHash == lastUpdateHash && downloads.size() == newDownloads.size()) {
+            hasChanges = false;
+            return;
+        }
+        
+>>>>>>> library-updates
         // Controlla se ci sono effettivamente delle modifiche significative
         hasChanges = false;
         
@@ -153,6 +182,7 @@ public:
             downloads = newDownloads;
             lastUpdateHash = newHash;
             lastUpdateTime = now;
+<<<<<<< HEAD
             brls::Logger::info("DownloadDataSource::updateDownloads() updated {} downloads with changes", downloads.size());
             
             // Log dettagliato dei download per debug
@@ -163,6 +193,9 @@ public:
             }
         } else {
             brls::Logger::debug("DownloadDataSource::updateDownloads() no significant changes detected");
+=======
+            brls::Logger::debug("DownloadDataSource::updateDownloads() updated {} downloads with changes", downloads.size());
+>>>>>>> library-updates
         }
     }
     
@@ -183,7 +216,11 @@ public:
 
     size_t getItemCount() override {
         // Aggiungi logging temporaneo per debug
+<<<<<<< HEAD
        // brls::Logger::debug("DownloadDataSource::getItemCount() called - returning {}", downloads.size());
+=======
+        brls::Logger::debug("DownloadDataSource::getItemCount() called - returning {}", downloads.size());
+>>>>>>> library-updates
         return downloads.size();
     }
 
@@ -239,6 +276,7 @@ public:
 };
 
 HomeDownloads::HomeDownloads() {
+<<<<<<< HEAD
     brls::Logger::error("HomeDownloads: ============ CONSTRUCTOR STARTED ============");
     brls::Logger::error("HomeDownloads: This should appear in logs if constructor is called!");
     
@@ -431,6 +469,92 @@ HomeDownloads::~HomeDownloads() {
     }
     
     brls::Logger::info("HomeDownloads: destructor completed");
+=======
+    this->inflateFromXMLRes("xml/fragment/home_downloads.xml");
+    
+    // Configura la data source
+    dataSource = new DownloadDataSource(this);
+    
+    // Configura la recycling grid
+    setupRecyclingGrid();
+    
+    // Carica i download esistenti
+    brls::Logger::info("HomeDownloads: About to load existing downloads");
+    DownloadManager::instance().loadDownloads();
+    
+    // Controlla quanti download sono stati caricati
+    auto loadedDownloads = DownloadManager::instance().getAllDownloads();
+    brls::Logger::info("HomeDownloads: Loaded {} downloads from storage", loadedDownloads.size());
+    
+    // Aggiungi alcuni download di test se la lista è vuota
+    DownloadManager::instance().addTestDownloads();
+    
+    // Controlla di nuovo quanti download ci sono dopo addTestDownloads
+    auto finalDownloads = DownloadManager::instance().getAllDownloads();
+    brls::Logger::info("HomeDownloads: Final download count: {}", finalDownloads.size());
+    
+    // Registra i callback per gli aggiornamenti dei download
+    DownloadManager::instance().setGlobalProgressCallback(
+        [this](const std::string& id, float progress, size_t downloaded, size_t total) {
+            this->onDownloadProgress(id, progress);
+        }
+    );
+    
+    DownloadManager::instance().setGlobalCompleteCallback(
+        [this](const std::string& id, bool success) {
+            this->onDownloadComplete(id, success);
+        }
+    );
+    
+    brls::Logger::info("HomeDownloads: About to call refresh()");
+    refresh();
+    
+    // Avvia l'aggiornamento automatico
+    startAutoRefresh();
+    
+    // Forza un refresh ritardato per assicurarsi che la UI sia pronta
+    std::thread([this]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(500)); // Aspetta mezzo secondo
+        brls::sync([this]() {
+            brls::Logger::info("HomeDownloads: Executing delayed refresh to show loaded downloads");
+            if (dataSource && recyclingGrid) {
+                auto downloads = DownloadManager::instance().getAllDownloads();
+                brls::Logger::info("HomeDownloads: Delayed refresh found {} downloads", downloads.size());
+                
+                if (!downloads.empty()) {
+                    dataSource->updateDownloads(downloads);
+                    dataSource->forceRefresh(); // Forza il refresh indipendentemente dai cambiamenti
+                    recyclingGrid->reloadData();
+                    brls::Logger::info("HomeDownloads: Delayed refresh completed with {} downloads", downloads.size());
+                } else {
+                    brls::Logger::info("HomeDownloads: No downloads to show in delayed refresh");
+                }
+            } else {
+                brls::Logger::error("HomeDownloads: dataSource or recyclingGrid is null in delayed refresh!");
+            }
+        });
+    }).detach(); // Detach il thread per non dover gestirlo
+    
+    brls::Logger::info("HomeDownloads: Fragment initialized with UI and auto-refresh complete");
+}
+
+HomeDownloads::~HomeDownloads() {
+    brls::Logger::debug("HomeDownloads: Starting destructor");
+    
+    // Ferma il refresh thread prima di tutto
+    stopAutoRefresh();
+    
+    // Assicurati che non ci siano operazioni in corso
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    // Pulisci la data source
+    if (dataSource) {
+        delete dataSource;
+        dataSource = nullptr;
+    }
+    
+    brls::Logger::debug("HomeDownloads: destructor completed");
+>>>>>>> library-updates
 }
 
 void HomeDownloads::draw(NVGcontext* vg, float x, float y, float width, float height, brls::Style style, brls::FrameContext* ctx) {
@@ -438,14 +562,24 @@ void HomeDownloads::draw(NVGcontext* vg, float x, float y, float width, float he
 }
 
 void HomeDownloads::onFocusGained() {
+<<<<<<< HEAD
     brls::Logger::error("HomeDownloads::onFocusGained() ============ CALLED ============");
+=======
+    brls::Logger::info("HomeDownloads::onFocusGained() called");
+>>>>>>> library-updates
     brls::Box::onFocusGained();
     startAutoRefresh();
     
     // Forza un refresh completo quando la vista ottiene il focus
+<<<<<<< HEAD
     brls::Logger::error("HomeDownloads::onFocusGained() - forcing refresh");
     auto downloads = DownloadManager::instance().getAllDownloads();
     brls::Logger::error("HomeDownloads::onFocusGained() - {} downloads available", downloads.size());
+=======
+    brls::Logger::info("HomeDownloads::onFocusGained() - forcing refresh");
+    auto downloads = DownloadManager::instance().getAllDownloads();
+    brls::Logger::info("HomeDownloads::onFocusGained() - {} downloads available", downloads.size());
+>>>>>>> library-updates
     
     if (dataSource && recyclingGrid) {
         dataSource->updateDownloads(downloads);
@@ -486,6 +620,7 @@ void HomeDownloads::stopAutoRefresh() {
         refreshCondition.notify_all();
         
         if (refreshThread.joinable()) {
+<<<<<<< HEAD
             // Prova il join con timeout per evitare hang
             auto startTime = std::chrono::steady_clock::now();
             bool joined = false;
@@ -507,6 +642,9 @@ void HomeDownloads::stopAutoRefresh() {
                 brls::Logger::warning("HomeDownloads: Thread join timeout, detaching");
                 refreshThread.detach();
             }
+=======
+            refreshThread.join();
+>>>>>>> library-updates
         }
         
         brls::Logger::debug("HomeDownloads: Stopped auto-refresh thread");
@@ -516,6 +654,7 @@ void HomeDownloads::stopAutoRefresh() {
 void HomeDownloads::refreshWorker() {
     brls::Logger::info("HomeDownloads: Auto-refresh thread started");
     
+<<<<<<< HEAD
     while (refreshThreadRunning.load() && shouldAutoRefresh.load()) {
         try {
             // Controllo aggiuntivo per uscita veloce
@@ -527,14 +666,24 @@ void HomeDownloads::refreshWorker() {
             auto downloads = DownloadManager::instance().getAllDownloads();
             bool hasActiveDownloads = false;
             bool hasCompletedDownloads = false;
+=======
+    while (refreshThreadRunning.load()) {
+        try {
+            // Controlla se ci sono download attivi
+            auto downloads = DownloadManager::instance().getAllDownloads();
+            bool hasActiveDownloads = false;
+>>>>>>> library-updates
             
             for (const auto& download : downloads) {
                 if (download.status == DownloadStatus::DOWNLOADING || 
                     download.status == DownloadStatus::PENDING) {
                     hasActiveDownloads = true;
                     break; // Non loggare ogni download per performance
+<<<<<<< HEAD
                 } else if (download.status == DownloadStatus::COMPLETED) {
                     hasCompletedDownloads = true;
+=======
+>>>>>>> library-updates
                 }
             }
         
@@ -546,6 +695,7 @@ void HomeDownloads::refreshWorker() {
                     }
                 });
                 
+<<<<<<< HEAD
                 // Aspetta 750ms per download attivi ma controlla più frequentemente se deve uscire
                 std::unique_lock<std::mutex> lock(refreshMutex);
                 refreshCondition.wait_for(lock, std::chrono::milliseconds(750), [this] {
@@ -569,6 +719,18 @@ void HomeDownloads::refreshWorker() {
                 std::unique_lock<std::mutex> lock(refreshMutex);
                 refreshCondition.wait_for(lock, std::chrono::milliseconds(30000), [this] {
                     return !refreshThreadRunning.load() || !shouldAutoRefresh.load();
+=======
+                // Aspetta 750ms per download attivi (aumentato da 500ms per ridurre stress)
+                std::unique_lock<std::mutex> lock(refreshMutex);
+                refreshCondition.wait_for(lock, std::chrono::milliseconds(750), [this] {
+                    return !refreshThreadRunning.load();
+                });
+            } else {
+                // Aspetta 10 secondi se non ci sono download attivi (aumentato da 5s)
+                std::unique_lock<std::mutex> lock(refreshMutex);
+                refreshCondition.wait_for(lock, std::chrono::milliseconds(10000), [this] {
+                    return !refreshThreadRunning.load();
+>>>>>>> library-updates
                 });
             }
         } catch (const std::exception& e) {
@@ -611,6 +773,7 @@ void HomeDownloads::setupRecyclingGrid() {
 }
 
 void HomeDownloads::refresh() {
+<<<<<<< HEAD
     // Implementa throttling aggressivo per evitare chiamate eccessive
     static std::chrono::steady_clock::time_point lastRefreshTime;
     static std::mutex refreshMutex;
@@ -634,6 +797,11 @@ void HomeDownloads::refresh() {
     if (!dataSource || !recyclingGrid) {
         brls::Logger::error("HomeDownloads::refresh() - invalid state! dataSource: {}, recyclingGrid: {}", 
                            (void*)dataSource, (void*)recyclingGrid);
+=======
+    // Controlla se l'oggetto è ancora valido
+    if (!dataSource || !recyclingGrid) {
+        brls::Logger::warning("HomeDownloads::refresh() - invalid state, skipping refresh");
+>>>>>>> library-updates
         return;
     }
     
@@ -680,6 +848,7 @@ void HomeDownloads::forceRefresh() {
 
 void HomeDownloads::onDownloadProgress(const std::string& id, float progress) {
     // Usa sync per eseguire l'aggiornamento sul thread UI principale
+<<<<<<< HEAD
     brls::sync([this, id, progress]() {
         // Controlla che l'oggetto sia ancora valido e non in fase di distruzione
         if (!shouldAutoRefresh.load() || !recyclingGrid) {
@@ -727,6 +896,26 @@ void HomeDownloads::onDownloadProgress(const std::string& id, float progress) {
             brls::Logger::error("HomeDownloads::onDownloadProgress - Exception updating progress for {}: {}", id, e.what());
         } catch (...) {
             brls::Logger::error("HomeDownloads::onDownloadProgress - Unknown exception updating progress for {}", id);
+=======
+    // Fai un refresh throttled per evitare troppi aggiornamenti
+    static std::chrono::steady_clock::time_point lastRefreshTime;
+    static std::mutex refreshMutex;
+    
+    brls::sync([this, id, progress]() {
+        if (shouldAutoRefresh.load()) {
+            std::lock_guard<std::mutex> lock(refreshMutex);
+            auto now = std::chrono::steady_clock::now();
+            auto timeSinceLastRefresh = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastRefreshTime);
+            
+            // Aggiorna più frequentemente (200ms) per vedere i progressi
+            if (timeSinceLastRefresh.count() >= 200) {
+                brls::Logger::debug("HomeDownloads::onDownloadProgress - refreshing for download {} at {:.1f}%", id, progress);
+                refresh();
+                lastRefreshTime = now;
+            } else {
+                brls::Logger::debug("HomeDownloads::onDownloadProgress - skipping refresh for download {} (throttled)", id);
+            }
+>>>>>>> library-updates
         }
     });
 }
@@ -763,6 +952,13 @@ void HomeDownloads::onDownloadItemSelected(const DownloadItem& item) {
         });
     }
     
+<<<<<<< HEAD
+=======
+    dialog->addButton("Elimina", [this, item]() {
+        DownloadManager::instance().deleteDownload(item.id);
+        this->refresh();
+    });
+>>>>>>> library-updates
     
     if (item.status == DownloadStatus::COMPLETED) {
         dialog->addButton("Riproduci", [this, item]() {
@@ -794,6 +990,7 @@ void HomeDownloads::onDownloadItemSelected(const DownloadItem& item) {
         });
     }
     
+<<<<<<< HEAD
         dialog->addButton("Elimina", [this, item]() {
         DownloadManager::instance().deleteDownload(item.id);
         this->refresh();
@@ -810,3 +1007,12 @@ void HomeDownloads::notifyNewDownloadStarted() {
 brls::View* HomeDownloads::create() {
     return new HomeDownloads();
 }
+=======
+    dialog->addButton("Annulla", []() {});
+    dialog->open();
+}
+
+brls::View* HomeDownloads::create() {
+    return new HomeDownloads();
+}
+>>>>>>> library-updates
