@@ -183,6 +183,10 @@ public:
 
     View* getNextFocus(brls::FocusDirection direction, View* currentView) override;
 
+#ifdef __ANDROID__
+    void willAppear(bool resetState = false) override;
+#endif
+
     void registerMpvEvent();
 
     void unRegisterMpvEvent();
@@ -217,6 +221,7 @@ public:
 
 private:
     bool disabledSliderGesture = false;
+    bool androidInitialized    = false;  // true after successful inflateFromXMLRes
 
     bool allowFullscreen  = true;
     bool registerMPVEvent = false;

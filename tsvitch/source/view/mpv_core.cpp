@@ -280,6 +280,15 @@ MPVCore::MPVCore() {
 }
 
 void MPVCore::init() {
+#ifdef __ANDROID__
+    // On Android, skip mpv initialization to avoid heap corruption
+    // mpv's memory allocations conflict with nanovg's heap on Android
+    // TODO: investigate proper mpv initialization for Android
+    brls::Logger::info("Android: skipping mpv initialization");
+    this->mpv = nullptr;
+    this->mpv_context = nullptr;
+    return;
+#endif
     setlocale(LC_NUMERIC, "C");
     this->mpv = mpvCreate();
     if (!mpv) {
@@ -339,7 +348,17 @@ void MPVCore::init() {
         mpvSetOptionString(mpv, "hwdec", "no");
     }
 
-#if defined(__SWITCH__)
+#if defined(__ANDROID__)
+    // On Android, force software decoding to avoid MediaCodec crashes
+    // Hardware decoding via MediaCodec requires additional JNI setup
+    mpvSetOptionString(mpv, "hwdec", "no");
+    mpvSetOptionString(mpv, "vd-lavc-dr", "no");
+    mpvSetOptionString(mpv, "vd-lavc-threads", "4");
+    brls::Logger::info("Android: forced software decoding");
+    // Use null video output to avoid mpv render context issues on Android
+    // TODO: implement proper OpenGL ES rendering for Android
+    mpvSetOptionString(mpv, "vo", "null");
+#elif defined(__SWITCH__)
     mpvSetOptionString(mpv, "vd-lavc-dr", "no");
     mpvSetOptionString(mpv, "vd-lavc-threads", "4");
 #elif defined(PS4)
@@ -414,6 +433,13 @@ void MPVCore::init() {
                               {MPV_RENDER_PARAM_INVALID, nullptr}};
 #endif
 
+#ifdef __ANDROID__
+    // On Android, skip mpv render context creation to avoid heap corruption
+    // mpv is used for audio-only playback on Android for now
+    // TODO: implement proper OpenGL ES render context for Android
+    mpv_context = nullptr;
+    brls::Logger::info("Android: skipping mpvRenderContextCreate (audio-only mode)");
+#else
     int render_status = mpvRenderContextCreate(&mpv_context, mpv, params);
     if (render_status < 0) {
         brls::Logger::error("mpvRenderContextCreate failed with error: {}", mpvErrorString(render_status));
@@ -424,9 +450,11 @@ void MPVCore::init() {
         mpvTerminateDestroy(mpv);
         brls::fatal("failed to initialize mpv render context");
     }
+    brls::Logger::info("mpvRenderContextCreate OK, context={}", (void*)mpv_context);
 #ifdef BOREALIS_USE_D3D11
     tsvitch::initCrashDump();
 #endif
+#endif // __ANDROID__
     brls::Logger::info("MPV Version: {}", mpvGetPropertyString(mpv, "mpv-version"));
     brls::Logger::info("FFMPEG Version: {}", mpvGetPropertyString(mpv, "ffmpeg-version"));
     command_async("set", "audio-client-name", APPVersion::getPackageName());
@@ -434,7 +462,9 @@ void MPVCore::init() {
 
     mpvSetWakeupCallback(mpv, on_wakeup, this);
 
+#ifndef __ANDROID__
     mpvRenderContextSetUpdateCallback(mpv_context, on_update, this);
+#endif
 
     focusSubscription = brls::Application::getWindowFocusChangedEvent()->subscribe([this](bool focus) {
         static bool playing = false;
@@ -468,6 +498,7 @@ MPVCore::~MPVCore() = default;
 #endif
 
 void MPVCore::clean() {
+    if (!this->mpv) return;  // Android: mpv not initialized
     check_error(mpvCommandString(this->mpv, "quit"));
 
     brls::Application::getWindowFocusChangedEvent()->unsubscribe(focusSubscription);
@@ -536,7 +567,7 @@ void MPVCore::initializeVideo() {
 #endif
 #endif
 
-#if defined(MPV_NO_FB)
+#if defined(MPV_NO_FB) && !defined(MPV_SW_RENDER)
     mpv_fbo.fbo = default_framebuffer;
     glBindFramebuffer(GL_FRAMEBUFFER, default_framebuffer);
 #elif defined(MPV_USE_FB)
@@ -633,13 +664,14 @@ void MPVCore::setFrameSize(brls::Rect r) {
         mpv_params[3].data = pixels;
     }
 
-    if (nvg_image) nvgDeleteImage(brls::Application::getNVGContext(), nvg_image);
-    nvg_image = nvgCreateImageRGBA(brls::Application::getNVGContext(), drawWidth, drawHeight, mpvImageFlags,
-                                   (const unsigned char *)pixels);
-
+    // Update sw_size BEFORE rendering to ensure mpv uses correct dimensions
     sw_size[0] = drawWidth;
     sw_size[1] = drawHeight;
     pitch      = PIXCEL_SIZE * drawWidth;
+
+    if (nvg_image) nvgDeleteImage(brls::Application::getNVGContext(), nvg_image);
+    nvg_image = nvgCreateImageRGBA(brls::Application::getNVGContext(), drawWidth, drawHeight, mpvImageFlags,
+                                   (const unsigned char *)pixels);
 
     mpvRenderContextRender(mpv_context, mpv_params);
     mpvRenderContextReportSwap(mpv_context);
@@ -796,6 +828,7 @@ std::string MPVCore::getCacheSpeed() const {
 }
 
 void MPVCore::eventMainLoop() {
+    if (!this->mpv) return;  // Android: mpv not initialized
     while (true) {
         auto event = mpvWaitEvent(this->mpv, 0);
         switch (event->event_id) {
@@ -1052,6 +1085,7 @@ void MPVCore::reset() {
 }
 
 void MPVCore::setUrl(const std::string &url, const std::string &extra, const std::string &method) {
+    if (!this->mpv) return;  // Android: mpv not initialized
     brls::Logger::debug("{} Url: {}, extra: {}", method, url, extra);
     if (extra.empty()) {
         command_async("loadfile", url, method);
@@ -1171,6 +1205,7 @@ int MPVCore::getGamma() const { return video_gamma; }
 int MPVCore::getHue() const { return video_hue; }
 
 std::string MPVCore::getString(const std::string &key) {
+    if (!mpv) return "";
     char *value = nullptr;
     mpvGetProperty(mpv, key.c_str(), MPV_FORMAT_STRING, &value);
     if (!value) return "";
@@ -1180,20 +1215,23 @@ std::string MPVCore::getString(const std::string &key) {
 }
 
 double MPVCore::getDouble(const std::string &key) {
+    if (!mpv) return 0;
     double value = 0;
     mpvGetProperty(mpv, key.c_str(), MPV_FORMAT_DOUBLE, &value);
     return value;
 }
 
 int64_t MPVCore::getInt(const std::string &key) {
+    if (!mpv) return 0;
     int64_t value = 0;
     mpvGetProperty(mpv, key.c_str(), MPV_FORMAT_INT64, &value);
     return value;
 }
 
 std::unordered_map<std::string, mpv_node> MPVCore::getNodeMap(const std::string &key) {
-    mpv_node node;
     std::unordered_map<std::string, mpv_node> nodeMap;
+    if (!mpv) return nodeMap;
+    mpv_node node;
     if (mpvGetProperty(mpv, key.c_str(), MPV_FORMAT_NODE, &node) < 0) return nodeMap;
     if (node.format != MPV_FORMAT_NODE_MAP) return nodeMap;
 
@@ -1221,6 +1259,11 @@ void MPVCore::setShader(const std::string &profile, const std::string &shaders,
                         const std::vector<std::vector<std::string>> &settings, bool reset) {
     brls::Logger::info("Set shader [{}]: {}", profile, shaders);
 
+#ifdef __ANDROID__
+    // On Android with SW_RENDER, glsl-shaders are not supported
+    return;
+#endif
+
     if (!currentSetting.empty() && reset) clearShader(false);
 
     currentShaderProfile = profile;
@@ -1239,6 +1282,15 @@ void MPVCore::setShader(const std::string &profile, const std::string &shaders,
 void MPVCore::clearShader(bool showHint) {
     brls::Logger::info("Clear shader");
 
+#ifdef __ANDROID__
+    // On Android with SW_RENDER, glsl-shaders are not supported
+    currentShader.clear();
+    currentShaderProfile.clear();
+    currentSetting.clear();
+    if (showHint) brls::Application::notify("Clear profile");
+    return;
+#endif
+
     bool reset = !currentSetting.empty();
 
     currentShader.clear();
@@ -1255,6 +1307,7 @@ void MPVCore::clearShader(bool showHint) {
 void MPVCore::showOsdText(const std::string &value, int d) { command_async("show-text", value, d); }
 
 void MPVCore::_command_async(const std::vector<std::string> &commands) {
+    if (!mpv) return;  // Android: mpv not initialized
     std::vector<const char *> res;
     res.reserve(commands.size() + 1);
     for (auto &i : commands) {

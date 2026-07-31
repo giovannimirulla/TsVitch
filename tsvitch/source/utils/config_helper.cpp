@@ -1,5 +1,9 @@
 #ifdef IOS
 #include <CoreFoundation/CoreFoundation.h>
+#elif defined(__ANDROID__)
+#include <SDL2/SDL.h>
+#include <unistd.h>
+#include <fstream>
 #elif defined(__APPLE__) || defined(__linux__) || defined(_WIN32)
 #include <unistd.h>
 #include <borealis/platforms/desktop/desktop_platform.hpp>
@@ -301,6 +305,8 @@ void ProgramConfig::load() {
     }
 
 #ifdef IOS
+#elif defined(__ANDROID__)
+    // Android: no desktop platform gamepad DB needed
 #elif defined(__APPLE__) || defined(__linux__) || defined(_WIN32)
     brls::DesktopPlatform::GAMEPAD_DB = getConfigDir() + "/gamecontrollerdb.txt";
 #endif
@@ -610,15 +616,22 @@ void ProgramConfig::init() {
 
     brls::sync([]() { sceSystemServiceHideSplashScreen(); });
 #else
+#ifndef __ANDROID__
     char cwd[PATH_MAX];
     if (getcwd(cwd, sizeof(cwd)) != nullptr) {
         brls::Logger::info("Current working directory: {}", cwd);
     }
 #endif
+#endif
 
     this->loadCustomThemes();
 
     this->load();
+
+#ifdef __ANDROID__
+    // Initialize SSL CA bundle for HTTPS on Android
+    tsvitch::HTTP::initAndroidSSL(getConfigDir());
+#endif
 
     brls::FontLoader::USER_FONT_PATH = getConfigDir() + "/font.ttf";
     brls::FontLoader::USER_ICON_PATH = getConfigDir() + "/icon.ttf";
@@ -675,6 +688,12 @@ std::string ProgramConfig::getConfigDir() {
         return std::string{buffer} + "/Library/Preferences";
     }
     return "../Library/Preferences";
+#elif defined(__ANDROID__)
+    // On Android, use the app's internal storage
+    // SDL_AndroidGetInternalStoragePath() returns /data/data/<package>/files
+    const char* internal = SDL_AndroidGetInternalStoragePath();
+    if (internal) return std::string(internal) + "/tsvitch";
+    return "/data/data/com.giovannimirulla.tsvitch/files/tsvitch";
 #else
 #ifdef _DEBUG
     char currentPathBuffer[PATH_MAX];
@@ -688,7 +707,7 @@ std::string ProgramConfig::getConfigDir() {
 #ifdef __APPLE__
     return std::string(getenv("HOME")) + "/Library/Application Support/tsvitch";
 #endif
-#ifdef __linux__
+#if defined(__linux__) && !defined(__ANDROID__)
     std::string config = "";
     char* config_home  = getenv("XDG_CONFIG_HOME");
     if (config_home) config = std::string(config_home);
@@ -716,6 +735,8 @@ void ProgramConfig::exit(char* argv[]) {
 #ifdef IOS
 #elif defined(PS4)
 #elif __PSV__
+#elif defined(__ANDROID__)
+    // Android: restart not supported, app lifecycle managed by the OS
 #elif defined(__APPLE__) || defined(__linux__) || defined(_WIN32)
     if (!brls::DesktopPlatform::RESTART_APP) return;
 #ifdef __linux__
@@ -738,6 +759,7 @@ void ProgramConfig::exit(char* argv[]) {
 void ProgramConfig::loadCustomThemes() {
     customThemes.clear();
     std::string directoryPath = getConfigDir() + "/theme";
+    try {
     if (!cpr::fs::exists(directoryPath)) return;
 
     for (const auto& entry : cpr::fs::directory_iterator(getConfigDir() + "/theme")) {
@@ -767,6 +789,11 @@ void ProgramConfig::loadCustomThemes() {
                 continue;
             }
         }
+    }
+    } catch (const std::exception& e) {
+        brls::Logger::error("loadCustomThemes: filesystem error: {}", e.what());
+    } catch (...) {
+        brls::Logger::error("loadCustomThemes: unknown error");
     }
 }
 

@@ -9,6 +9,18 @@
 VideoProgressSlider::VideoProgressSlider() {
     input = brls::Application::getPlatform()->getInputManager();
 
+#ifdef __ANDROID__
+    // On Android, skip complex gesture setup to avoid heap corruption
+    // Register attributes as no-ops to avoid "Unknown XML attribute" fatal errors
+    this->registerBoolXMLAttribute("disabledPointerGesture", [this](bool value) {
+        this->disabledPointerGesture = value;
+    });
+    // Make focusable so navigation attributes don't cause "Only focusable views" error
+    this->setFocusable(true);
+    setHeight(40);
+    return;
+#endif
+
     line        = new brls::Rectangle();
     lineEmpty   = new brls::Rectangle();
     pointerIcon = new SVGImage();
@@ -30,6 +42,7 @@ VideoProgressSlider::VideoProgressSlider() {
         brls::Logger::debug("VideoProgressSlider: disabledPointerGesture = {}", value);
 
         this->disabledPointerGesture = value;
+#ifndef __ANDROID__
         if (!value) {
             pointer->addGestureRecognizer(new brls::PanGestureRecognizer(
                 [this](brls::PanGestureStatus status, brls::Sound* soundToPlay) {
@@ -82,6 +95,7 @@ VideoProgressSlider::VideoProgressSlider() {
                     brls::Application::giveFocus(this->getParentActivity()->getContentView());
                 }));
         }
+#endif // __ANDROID__
     });
 
         pointerIcon->setDimensions(44, 44);
@@ -166,6 +180,7 @@ brls::View* VideoProgressSlider::create() { return new VideoProgressSlider(); }
 
 void VideoProgressSlider::onLayout() {
     Box::onLayout();
+    if (!line) return;  // Android: not initialized
     updateUI();
 }
 
@@ -182,6 +197,7 @@ void VideoProgressSlider::setProgress(float progress) {
 }
 
 void VideoProgressSlider::updateUI() {
+    if (!pointer || !line || !lineEmpty) return;  // Android: not initialized
     float paddingWidth   = getWidth() - pointer->getWidth();
     float lineStart      = pointer->getWidth() / 2;
     float lineStartWidth = paddingWidth * progress;
@@ -210,6 +226,7 @@ const std::vector<float>& VideoProgressSlider::getClipPoint() { return clipPoint
 
 void VideoProgressSlider::draw(NVGcontext* vg, float x, float y, float width, float height, brls::Style style,
                                brls::FrameContext* ctx) {
+    if (!pointer) return;  // Android: not initialized
     if (pointerSelected) {
         buttonsProcessing();
     }

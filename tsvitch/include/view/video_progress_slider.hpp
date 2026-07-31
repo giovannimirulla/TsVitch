@@ -17,6 +17,13 @@ public:
 
     static brls::View* create();
 
+#ifdef __ANDROID__
+    // On Android, always keep focusable=true to allow navigation routes from XML
+    void setFocusable(bool focusable) {
+        brls::Box::setFocusable(true);  // Always focusable on Android
+    }
+#endif
+
     void onLayout() override;
 
     brls::View* getDefaultFocus() override;

@@ -148,6 +148,7 @@
                         grow="1"
                         height="130"
                         axis="column">
+                        <!-- VideoProgressSlider: simplified on Android to avoid heap corruption -->
                         <VideoProgressSlider
                                 focusable="false"
                                 disabledPointerGesture="false"

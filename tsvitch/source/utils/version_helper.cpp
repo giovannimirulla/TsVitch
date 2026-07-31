@@ -35,6 +35,8 @@ std::string APPVersion::getPlatform() {
     return "macOS";
 #elif defined(PS4)
     return "PS4";
+#elif defined(__ANDROID__)
+    return "Android";
 #elif defined(__linux__)
     if (brls::isSteamDeck()) return "SteamDeck";
     return "Linux";
@@ -122,6 +124,6 @@ void APPVersion::checkUpdate(int delay, bool showUpToDateDialog) {
                     brls::Logger::error("check update failed: {} {} {}", r.status_code, r.text.c_str(), e.what());
                 }
             },
-            tsvitch::HTTP::VERIFY, tsvitch::HTTP::PROXIES, cpr::Url{url}, cpr::Timeout{10000});
+            CPR_SSL, tsvitch::HTTP::PROXIES, cpr::Url{url}, cpr::Timeout{10000});
     });
 }

@@ -1,0 +1,3 @@
+# libromfs-generator is a host binary, built by scripts/build_android.sh
+# Do not commit it - it must be compiled for each developer's machine
+libromfs-generator

@@ -4,7 +4,7 @@ set(BOREALIS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/library/borealis)
 set(BOREALIS_LIBRARY ${BOREALIS_DIR}/library)
 
 # Include Platform common options
-# TsVitch only support PLATFORM_DESKTOP and PLATFORM_SWITCH
+# TsVitch supports: PLATFORM_DESKTOP, PLATFORM_SWITCH, PLATFORM_ANDROID, PLATFORM_IOS
 # example: cmake -B build -DPLATFORM_DESKTOP=ON
 include(${BOREALIS_LIBRARY}/cmake/commonOption.cmake)
 
@@ -155,6 +155,51 @@ elseif (PLATFORM_DESKTOP)
     if (MINGW)
         set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static" CACHE STRING "" FORCE)
     endif ()
+elseif (PLATFORM_ANDROID)
+    # Android: use precompiled libmpv .so files
+    # Download from: https://github.com/mpv-android/mpv-android/releases
+    # Place in: android-project/app/libs/${ANDROID_ABI}/
+    #
+    # ANDROID_PROJECT_LIBS_DIR and ANDROID_PROJECT_MPV_INCLUDE_DIR are set by the JNI CMakeLists.txt
+    # (android-project/app/jni/CMakeLists.txt) before calling add_subdirectory(tsvitch).
+    # This avoids path resolution issues with CMAKE_SOURCE_DIR when using symlinks.
+    if (DEFINED ANDROID_PROJECT_LIBS_DIR)
+        set(MPV_ANDROID_LIBS_DIR "${ANDROID_PROJECT_LIBS_DIR}/${ANDROID_ABI}")
+        set(MPV_ANDROID_INCLUDE_DIR "${ANDROID_PROJECT_MPV_INCLUDE_DIR}")
+    else ()
+        # Fallback for direct cmake invocation from TsVitch root
+        set(MPV_ANDROID_LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android-project/app/libs/${ANDROID_ABI}")
+        set(MPV_ANDROID_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android-project/app/jni/mpv/include")
+    endif ()
+
+    message(STATUS "Android: using precompiled libmpv from ${MPV_ANDROID_LIBS_DIR}")
+    list(APPEND APP_PLATFORM_INCLUDE ${MPV_ANDROID_INCLUDE_DIR})
+
+    # Link precompiled mpv and ffmpeg shared libraries
+    foreach(mpv_lib mpv avcodec avformat avutil swresample swscale avfilter)
+        list(APPEND APP_PLATFORM_LIB "${MPV_ANDROID_LIBS_DIR}/lib${mpv_lib}.so")
+    endforeach()
+
+    # Android: use OpenGL ES rendering with system framebuffer (MPV_NO_FB)
+    # MPV_SW_RENDER causes heap corruption on Android due to mpv's internal buffer management
+    # MPV_NO_FB tells mpv to render directly to the system framebuffer via OpenGL ES
+    list(APPEND APP_PLATFORM_OPTION -DMPV_NO_FB)
+
+    # Android system libraries
+    list(APPEND APP_PLATFORM_LIB android log)
+
+    # OpenSSL for HTTPS support (compiled via scripts/build_openssl_android.sh)
+    # cpr is built without SSL, but we link OpenSSL directly to TsVitch
+    # and patch curl to use it via CURLOPT_CAINFO at runtime
+    if (DEFINED ANDROID_PROJECT_LIBS_DIR)
+        set(_ANDROID_OPENSSL_INCLUDE "${ANDROID_PROJECT_LIBS_DIR}/../jni/openssl/include")
+        list(APPEND APP_PLATFORM_INCLUDE ${_ANDROID_OPENSSL_INCLUDE})
+        list(APPEND APP_PLATFORM_LIB
+            "${ANDROID_PROJECT_LIBS_DIR}/${ANDROID_ABI}/libssl.so"
+            "${ANDROID_PROJECT_LIBS_DIR}/${ANDROID_ABI}/libcrypto.so"
+        )
+    endif()
+
 elseif (APP_PLATFORM_CUSTOM_LIBS)
     message(STATUS "Using custom libraries for mpv and webp")
     # If you want to manually specify dependencies:

@@ -20,7 +20,15 @@ repo/
 /winrt/AppxManifest.xml
 libromfs-generator
 build-*
-android-project
+# android-project is now tracked (removed from gitignore)
+# Ignore build artifacts and sensitive files within android-project
+android-project/app/build/
+android-project/app/.cxx/
+android-project/app/libs/arm64-v8a/*.so
+android-project/app/libs/armeabi-v7a/*.so
+android-project/app/tsvitch.jks
+android-project/.gradle/
+android-project/gradle.properties
 *.deb
 *.dmp
 *.log
