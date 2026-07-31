@@ -15,6 +15,7 @@
 #include "core/HistoryManager.hpp"
 #include "core/FavoriteManager.hpp"
 #include "core/DownloadProgressManager.hpp"
+#include "config/server_config.h"
 
 #ifdef IOS
 #include <SDL2/SDL_main.h>
@@ -82,8 +83,12 @@ int main(int argc, char* argv[]) {
         Intent::openHint();
     }
 
-    //check if user_id is set, if not register a new user
-    if (ProgramConfig::instance().getDeviceID().empty()) {
+    // Backend (registration/check-in) is only available when the app was built
+    // with a SERVER_URL (see README build instructions); skip it otherwise to
+    // avoid a pointless network error on every startup.
+    if (std::string(SERVER_URL_VALUE).empty()) {
+        brls::Logger::debug("SERVER_URL not configured, skipping user registration/check-in");
+    } else if (ProgramConfig::instance().getDeviceID().empty()) {
         brls::Logger::info("No user ID found, registering a new user...");
     
         CLIENT::register_user(

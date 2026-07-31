@@ -32,6 +32,7 @@
 #include "view/mpv_core.hpp"
 #include "view/contributors_view.hpp"
 #include "view/sponsors_view.hpp"
+#include "view/kofi_sponsors_view.hpp"
 
 void Register::initCustomView() {
     brls::Application::registerXMLView("AutoTabFrame", AutoTabFrame::create);
@@ -47,6 +48,7 @@ void Register::initCustomView() {
     brls::Application::registerXMLView("HintLabel", HintLabel::create);
     brls::Application::registerXMLView("ContributorsView", ContributorsView::create);
     brls::Application::registerXMLView("SponsorsView", SponsorsView::create);
+    brls::Application::registerXMLView("KofiSponsorsView", KofiSponsorsView::create);
 
     brls::Application::registerXMLView("UserInfoView", UserInfoView::create);
 

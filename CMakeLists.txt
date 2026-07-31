@@ -30,23 +30,28 @@ option(DEBUG_SANITIZER "Turn on sanitizers (only available in debug build)" OFF)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/GoogleAnalytics.cmake)
 
 # Server URL
-option(SERVER_URL "URL del server" "")
-if (NOT DEFINED SERVER_URL OR "${SERVER_URL}" STREQUAL "")
-    message(FATAL_ERROR "SERVER_URL not defined")
-else()
+# NOTE: use set(... CACHE STRING ...) instead of option(), which only supports
+# boolean ON/OFF values. Using option() for a string coerces the cache entry to
+# BOOL and silently normalizes any non-"ON" default to the literal string "OFF",
+# which then gets embedded as -DSERVER_URL="OFF" and breaks DNS resolution at
+# runtime ("Could not resolve host: OFF").
+set(SERVER_URL "" CACHE STRING "URL del server")
+if (SERVER_URL)
     list(APPEND APP_PLATFORM_OPTION -DSERVER_URL="${SERVER_URL}")
+else()
+    message(WARNING "SERVER_URL not defined - backend features (user registration/check, ads, remote update API) will be disabled")
 endif()
 
 # Server Token
-option(SERVER_TOKEN "Token del server" "")
-if (NOT DEFINED SERVER_TOKEN OR "${SERVER_TOKEN}" STREQUAL "")
-    message(FATAL_ERROR "SERVER_TOKEN not defined")
-else()
+set(SERVER_TOKEN "" CACHE STRING "Token del server")
+if (SERVER_TOKEN)
     list(APPEND APP_PLATFORM_OPTION -DSERVER_TOKEN="${SERVER_TOKEN}")
+else()
+    message(WARNING "SERVER_TOKEN not defined - backend features will be disabled")
 endif()
 
 # Default M3U8 URL
-option(M3U8_URL "Default M3U8 URL" "")
+set(M3U8_URL "" CACHE STRING "Default M3U8 URL")
 if (M3U8_URL)
     list(APPEND APP_PLATFORM_OPTION -DM3U8_URL="${M3U8_URL}")
 endif ()
@@ -101,8 +106,8 @@ add_definitions(-DFONS_HASH_LUT_SIZE=4096)
 # Project Info
 project(TsVitch)
 set(VERSION_MAJOR "0")
-set(VERSION_MINOR "3")
-set(VERSION_REVISION "1")
+set(VERSION_MINOR "4")
+set(VERSION_REVISION "0")
 if (NOT VERSION_BUILD)
     set(VERSION_BUILD "0")
 endif ()

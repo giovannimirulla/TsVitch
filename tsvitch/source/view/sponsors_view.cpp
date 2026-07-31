@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <chrono>
+#include <set>
 #include "utils/config_helper.hpp"
 #include "utils/image_helper.hpp"
 
@@ -16,6 +17,7 @@ SponsorsView::SponsorsView() {
     this->setWidth(brls::View::AUTO);
 
     this->registerStringXMLAttribute("owner", [this](const std::string& value) { this->setOwner(value); });
+    this->registerStringXMLAttribute("feedUrl", [this](const std::string& value) { this->feedUrl = value; });
 }
 
 brls::View* SponsorsView::create() { return new SponsorsView(); }
@@ -55,60 +57,105 @@ void SponsorsView::loadSponsors() {
     
     if (usedCache) return;
 
+    json combined = json::array();
+    std::set<std::string> seen;
+
     const char* token = std::getenv("GITHUB_TOKEN");
-    if (!token) {
+    if (token) {
+        try {
+            std::string query = R"(query($login:String!){ user(login:$login){ sponsors(first:100){ nodes { login url } } } })";
+            json body         = {
+                        {"query", query},
+                        {"variables", json{{"login", owner}}},
+            };
+
+            auto response = cpr::Post(cpr::Url{"https://api.github.com/graphql"},
+                                       cpr::Header{{"Authorization", std::string("bearer ") + token},
+                                                   {"User-Agent", "TsVitch"},
+                                                   {"Accept", "application/json"}},
+                                       cpr::Body{body.dump()},
+                                       cpr::Timeout{6000});
+
+            if (response.status_code == 200) {
+                auto j = json::parse(response.text, nullptr, false);
+                if (!j.is_discarded()) {
+                    auto nodes = j["data"]["user"]["sponsors"]["nodes"];
+                    if (nodes.is_array()) {
+                        for (const auto& node : nodes) {
+                            if (!node.is_object()) continue;
+                            std::string login = node.value("login", "");
+                            std::string avatarUrl = node.value("avatarUrl", "");
+                            std::string url = node.value("url", "");
+                            if (login.empty() && url.empty()) continue;
+
+                            std::string key = url.empty() ? login : url;
+                            if (seen.count(key)) continue;
+                            seen.insert(key);
+
+                            json item = {
+                                {"name", login},
+                                {"avatar", avatarUrl},
+                                {"url", url},
+                            };
+                            combined.push_back(item);
+                        }
+                    }
+                }
+            }
+        } catch (...) {
+        }
+    }
+
+    try {
+        auto response = cpr::Get(cpr::Url{feedUrl},
+                                 cpr::Header{{"User-Agent", "TsVitch"}, {"Accept", "application/json"}},
+                                 cpr::Timeout{6000});
+
+        if (response.status_code == 200) {
+            auto arr = json::parse(response.text, nullptr, false);
+            if (!arr.is_discarded() && arr.is_array()) {
+                for (const auto& node : arr) {
+                    if (!node.is_object()) continue;
+                    std::string name = node.value("name", node.value("login", ""));
+                    std::string avatar = node.value("avatar", node.value("avatar_url", ""));
+                    std::string url = node.value("url", "");
+                    if (name.empty() && url.empty()) continue;
+
+                    std::string key = url.empty() ? name : url;
+                    if (seen.count(key)) continue;
+                    seen.insert(key);
+
+                    json item = {
+                        {"name", name},
+                        {"avatar", avatar},
+                        {"url", url},
+                    };
+                    combined.push_back(item);
+                }
+            }
+        }
+    } catch (...) {
+    }
+
+    if (combined.empty()) {
         renderFallback();
         return;
     }
 
+    // Save cache
     try {
-        std::string query = R"(query($login:String!){ user(login:$login){ sponsors(first:100){ nodes { login url } } } })";
-        json body         = {
-                    {"query", query},
-                    {"variables", json{{"login", owner}}},
-        };
-
-        auto response = cpr::Post(cpr::Url{"https://api.github.com/graphql"},
-                                   cpr::Header{{"Authorization", std::string("bearer ") + token},
-                                               {"User-Agent", "TsVitch"},
-                                               {"Accept", "application/json"}},
-                                   cpr::Body{body.dump()},
-                                   cpr::Timeout{6000});
-
-        if (response.status_code != 200) {
-            renderFallback();
-            return;
+        json cached = {{"fetched_at", (long long)std::chrono::system_clock::to_time_t(
+                                         std::chrono::system_clock::now())},
+                       {"data", combined}};
+        std::ofstream out(cachePath);
+        if (out.good()) {
+            out << cached.dump();
+            out.close();
         }
-
-        auto j = json::parse(response.text, nullptr, false);
-        if (j.is_discarded()) {
-            renderFallback();
-            return;
-        }
-
-        auto nodes = j["data"]["user"]["sponsors"]["nodes"];
-        if (!nodes.is_array() || nodes.empty()) {
-            renderFallback();
-            return;
-        }
-
-        // Save cache
-        try {
-            json cached = {{"fetched_at", (long long)std::chrono::system_clock::to_time_t(
-                                             std::chrono::system_clock::now())},
-                           {"data", nodes}};
-            std::ofstream out(cachePath);
-            if (out.good()) {
-                out << cached.dump();
-                out.close();
-            }
-        } catch (...) {
-        }
-
-        renderList(nodes);
     } catch (...) {
-        renderFallback();
     }
+
+    renderList(combined);
 }
 
 void SponsorsView::renderList(const json& arr) {
@@ -129,9 +176,10 @@ void SponsorsView::renderList(const json& arr) {
 
     for (const auto& node : arr) {
         if (!node.is_object()) continue;
-        std::string login = node.value("login", "");
-        std::string avatarUrl = node.value("avatarUrl", "");
+        std::string name = node.value("name", node.value("login", ""));
+        std::string avatarUrl = node.value("avatar", node.value("avatarUrl", node.value("avatar_url", "")));
         std::string url = node.value("url", "");
+        if (name.empty() && url.empty()) continue;
 
         // Create a card for each sponsor
         auto* card = new brls::Box();
@@ -157,7 +205,7 @@ void SponsorsView::renderList(const json& arr) {
 
         // Sponsor name (single line with truncation)
         auto* nameLabel = new brls::Label();
-        nameLabel->setText(login);
+        nameLabel->setText(name.empty() ? url : name);
         nameLabel->setMarginTop(6);
         nameLabel->setFontSize(13);
         nameLabel->setMarginLeft(2);

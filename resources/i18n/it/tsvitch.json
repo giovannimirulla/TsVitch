@@ -158,7 +158,10 @@
       "contrib_text": "TsVitch è un progetto open-source: contributi, segnalazioni di bug e suggerimenti sono benvenuti. Se ti piace il progetto e vuoi sostenerlo, valuta di diventare sponsor. Trovi tutte le informazioni e le modalità nel repository GitHub.",
       "contributors_header": "Contributori",
       "sponsors_header": "Sponsor",
-      "sponsor_qr": "Diventa Sponsor"
+      "sponsor_qr": "Diventa Sponsor",
+      "kofi_header": "Sostenitori Ko-fi",
+      "kofi_qr": "Sostienici su Ko-fi",
+      "support_header": "Sostieni il progetto"
     },
     "opensource": {
       "tab": "Opensource"

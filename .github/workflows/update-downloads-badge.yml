@@ -61,6 +61,14 @@ jobs:
           }
           EOF
 
+      - name: Stage Ko-fi sponsors feed
+        run: |
+          # Copia il file mantenuto manualmente (docs/kofi_sponsors.json) fuori
+          # dall'albero versionato, cosi' sopravvive al successivo `git rm -rf .`
+          # eseguito sul branch orfano gh-pages.
+          mkdir -p kofi_data
+          cp docs/kofi_sponsors.json kofi_data/kofi_sponsors.json
+
       - name: Create orphan branch and deploy
         run: |
           # Configura git
@@ -73,15 +81,16 @@ jobs:
           # Rimuovi tutti i file dal working tree
           git rm -rf .
           
-          # Copia solo il file badge
+          # Copia il file badge e il feed Ko-fi
           cp badges/downloads.json downloads.json
+          cp kofi_data/kofi_sponsors.json kofi_sponsors.json
           
           # Crea .nojekyll per disabilitare Jekyll
           touch .nojekyll
           
           # Aggiungi e committa
-          git add downloads.json .nojekyll
-          git commit -m "Update downloads badge"
+          git add downloads.json kofi_sponsors.json .nojekyll
+          git commit -m "Update downloads badge and Ko-fi sponsors feed"
           
           # Push al branch gh-pages
           git push origin gh-pages-badges:gh-pages --force

@@ -7,7 +7,6 @@
 
 class CustomButton;
 class AutoTabFrame;
-class AutoSidebarItem;
 
 class MainActivity : public brls::Activity {
 public:
@@ -16,7 +15,6 @@ public:
     CONTENT_FROM_XML_RES("activity/main.xml");
 
     void onContentAvailable() override;
-    void willAppear(bool resetState) override;
 
     void resetSettingIcon();
 
@@ -24,10 +22,7 @@ public:
     
 
 private:
-    BRLS_BIND(AutoSidebarItem, settingBtn, "main/setting");
+    BRLS_BIND(CustomButton, settingBtn, "main/setting");
 
     BRLS_BIND(AutoTabFrame, tabFrame, "main/tabFrame");
-    
-    bool isReturningFromSettings = false;  // Flag per evitare loop infinito
-    bool skipNextSettingsFocus = false;    // Salta il prossimo focus sul tab settings
 };

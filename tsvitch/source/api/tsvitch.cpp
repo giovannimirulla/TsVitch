@@ -12,6 +12,11 @@ namespace tsvitch {
 
 void TsVitchClient::register_user(const std::function<void(const std::string&, int)>& callback,
                                   const ErrorCallback& error) {
+    if (std::string(SERVER_URL_VALUE).empty()) {
+        brls::Logger::debug("register_user: SERVER_URL not configured, skipping");
+        if (error) error("SERVER_URL not configured", -1);
+        return;
+    }
     std::string user_id = ProgramConfig::instance().getDeviceID();
     if (user_id.empty()) {
         // GA call for get_ad error
@@ -113,6 +118,11 @@ void TsVitchClient::register_user(const std::function<void(const std::string&, i
 
 void TsVitchClient::check_user_id(const std::function<void(const std::string&, int)>& callback,
                                   const ErrorCallback& error) {
+    if (std::string(SERVER_URL_VALUE).empty()) {
+        brls::Logger::debug("check_user_id: SERVER_URL not configured, skipping");
+        if (error) error("SERVER_URL not configured", -1);
+        return;
+    }
     std::string user_id = ProgramConfig::instance().getDeviceID();
     if (user_id.empty()) {
         // GA call for get_ad error
@@ -214,6 +224,11 @@ void TsVitchClient::check_user_id(const std::function<void(const std::string&, i
 }
 
 void TsVitchClient::get_ad(const std::function<void(const std::string&, int)>& callback, const ErrorCallback& error) {
+    if (std::string(SERVER_URL_VALUE).empty()) {
+        brls::Logger::debug("get_ad: SERVER_URL not configured, skipping");
+        if (error) error("SERVER_URL not configured", -1);
+        return;
+    }
     std::string user_id = ProgramConfig::instance().getDeviceID();
     if (user_id.empty()) {
         // GA call for get_ad error

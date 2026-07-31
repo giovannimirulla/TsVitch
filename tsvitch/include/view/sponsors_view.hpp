@@ -20,5 +20,6 @@ private:
     void renderFallback();
 
     std::string owner = "giovannimirulla";
+    std::string feedUrl = "https://giovannimirulla.github.io/TsVitch/kofi_sponsors.json";
     bool loaded       = false;
 };
