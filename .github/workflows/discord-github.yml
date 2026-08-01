@@ -1,0 +1,148 @@
+name: Discord – GitHub Activity
+
+on:
+  issues:
+    types: [opened, closed, reopened]
+  pull_request:
+    types: [opened, closed, reopened, ready_for_review]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Issue notification → #bug-reports
+        if: github.event_name == 'issues'
+        env:
+          WEBHOOK:  ${{ secrets.DISCORD_WEBHOOK_BUG_REPORTS }}
+          TITLE:    ${{ github.event.issue.title }}
+          URL:      ${{ github.event.issue.html_url }}
+          NUMBER:   ${{ github.event.issue.number }}
+          ACTION:   ${{ github.event.action }}
+          AUTHOR:   ${{ github.event.issue.user.login }}
+          AUTHOR_URL: ${{ github.event.issue.user.html_url }}
+          LABELS:   ${{ toJson(github.event.issue.labels.*.name) }}
+        run: |
+          python3 - <<'PYEOF'
+import json, os, subprocess, sys
+
+action     = os.environ["ACTION"]
+title      = os.environ["TITLE"]
+url        = os.environ["URL"]
+number     = os.environ["NUMBER"]
+author     = os.environ["AUTHOR"]
+author_url = os.environ["AUTHOR_URL"]
+webhook    = os.environ["WEBHOOK"]
+
+try:
+    labels = json.loads(os.environ.get("LABELS", "[]"))
+    label_str = ", ".join(labels) if labels else "—"
+except Exception:
+    label_str = "—"
+
+colors  = {"opened": 15548997, "reopened": 16744272, "closed": 5763719}
+icons   = {"opened": "🐛", "reopened": "🔄", "closed": "✅"}
+color   = colors.get(action, 9807270)
+icon    = icons.get(action, "📋")
+
+embed = {
+    "title": f"{icon} Issue #{number} {action}: {title}",
+    "url": url,
+    "color": color,
+    "fields": [
+        {"name": "Author", "value": f"[{author}]({author_url})", "inline": True},
+        {"name": "Labels", "value": label_str, "inline": True}
+    ],
+    "footer": {"text": "TsVitch Issues"},
+    "timestamp": __import__('datetime').datetime.utcnow().isoformat() + "Z"
+}
+payload = json.dumps({"embeds": [embed]})
+
+if not webhook:
+    print("DISCORD_WEBHOOK_BUG_REPORTS not set — skipping")
+    sys.exit(0)
+
+result = subprocess.run(
+    ["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
+     "-X", "POST", webhook, "-H", "Content-Type: application/json", "-d", payload],
+    capture_output=True, text=True
+)
+if not result.stdout.startswith("2"):
+    print(f"Webhook failed: {result.stdout}"); sys.exit(1)
+print("✅ Issue notification sent")
+PYEOF
+
+      - name: PR notification → #pull-requests
+        if: github.event_name == 'pull_request'
+        env:
+          WEBHOOK:    ${{ secrets.DISCORD_WEBHOOK_PULL_REQUESTS }}
+          TITLE:      ${{ github.event.pull_request.title }}
+          URL:        ${{ github.event.pull_request.html_url }}
+          NUMBER:     ${{ github.event.pull_request.number }}
+          ACTION:     ${{ github.event.action }}
+          AUTHOR:     ${{ github.event.pull_request.user.login }}
+          AUTHOR_URL: ${{ github.event.pull_request.user.html_url }}
+          MERGED:     ${{ github.event.pull_request.merged }}
+          BASE:       ${{ github.event.pull_request.base.ref }}
+          HEAD:       ${{ github.event.pull_request.head.ref }}
+        run: |
+          python3 - <<'PYEOF'
+import json, os, subprocess, sys
+
+action     = os.environ["ACTION"]
+merged     = os.environ["MERGED"] == "true"
+title      = os.environ["TITLE"]
+url        = os.environ["URL"]
+number     = os.environ["NUMBER"]
+author     = os.environ["AUTHOR"]
+author_url = os.environ["AUTHOR_URL"]
+base       = os.environ["BASE"]
+head       = os.environ["HEAD"]
+webhook    = os.environ["WEBHOOK"]
+
+if action == "closed" and merged:
+    display_action = "merged"
+    color = 5763719   # green
+    icon  = "🔀"
+elif action == "closed":
+    display_action = "closed"
+    color = 15548997  # red
+    icon  = "❌"
+elif action == "opened":
+    display_action = "opened"
+    color = 5832543   # purple
+    icon  = "📬"
+elif action == "ready_for_review":
+    display_action = "ready for review"
+    color = 16744272  # orange
+    icon  = "👀"
+else:
+    display_action = action
+    color = 9807270
+    icon  = "🔁"
+
+embed = {
+    "title": f"{icon} PR #{number} {display_action}: {title}",
+    "url": url,
+    "color": color,
+    "fields": [
+        {"name": "Author",  "value": f"[{author}]({author_url})", "inline": True},
+        {"name": "Branch",  "value": f"`{head}` → `{base}`",      "inline": True}
+    ],
+    "footer": {"text": "TsVitch Pull Requests"},
+    "timestamp": __import__('datetime').datetime.utcnow().isoformat() + "Z"
+}
+payload = json.dumps({"embeds": [embed]})
+
+if not webhook:
+    print("DISCORD_WEBHOOK_PULL_REQUESTS not set — skipping")
+    sys.exit(0)
+
+result = subprocess.run(
+    ["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
+     "-X", "POST", webhook, "-H", "Content-Type: application/json", "-d", payload],
+    capture_output=True, text=True
+)
+if not result.stdout.startswith("2"):
+    print(f"Webhook failed: {result.stdout}"); sys.exit(1)
+print("✅ PR notification sent")
+PYEOF

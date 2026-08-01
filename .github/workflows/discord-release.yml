@@ -1,0 +1,60 @@
+name: Discord – Release Announcement
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build payload and post to #announcements
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_ANNOUNCEMENTS }}
+          TAG:     ${{ github.event.release.tag_name }}
+          NAME:    ${{ github.event.release.name }}
+          URL:     ${{ github.event.release.html_url }}
+          BODY:    ${{ github.event.release.body }}
+          PREREL:  ${{ github.event.release.prerelease }}
+        run: |
+          # Truncate body to 2000 chars to stay within embed limits
+          SHORT_BODY=$(printf '%s' "$BODY" | head -c 2000)
+          LABEL="New Release"
+          COLOR=5832543   # #7c3aed purple
+          if [ "$PREREL" = "true" ]; then
+            LABEL="Pre-release"
+            COLOR=1356308  # #14b8a6 teal
+          fi
+
+          PAYLOAD=$(python3 - <<'PYEOF'
+import json, os, sys
+
+body  = os.environ.get("SHORT_BODY", "")
+tag   = os.environ.get("TAG", "")
+name  = os.environ.get("NAME", tag)
+url   = os.environ.get("URL", "")
+label = os.environ.get("LABEL", "New Release")
+color = int(os.environ.get("COLOR", "5832543"))
+
+embed = {
+    "title": f"🎉 TsVitch {tag} — {label}",
+    "url": url,
+    "description": body[:2000] if body else "See the release page for details.",
+    "color": color,
+    "fields": [
+        {"name": "Downloads", "value": f"[GitHub Release]({url})", "inline": True},
+        {"name": "Platforms", "value": "Nintendo Switch · macOS", "inline": True}
+    ],
+    "footer": {"text": "TsVitch · github.com/giovannimirulla/TsVitch"},
+    "timestamp": __import__('datetime').datetime.utcnow().isoformat() + "Z"
+}
+payload = {"embeds": [embed]}
+print(json.dumps(payload))
+PYEOF
+)
+
+          curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "$WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" | grep -qE "^2" || { echo "Discord webhook failed"; exit 1; }
+          echo "✅ Announcement posted"

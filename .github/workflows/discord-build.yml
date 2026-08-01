@@ -1,0 +1,159 @@
+name: Discord – Build Notification
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      is_release:
+        required: false
+        type: string
+        default: "false"
+      nro_artifact:
+        required: false
+        type: string
+        default: ""
+      release_url:
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      # ── Beta build: download NRO artifact, upload to catbox.moe ──────────
+      - name: Download NRO artifact
+        if: inputs.is_release != 'true' && inputs.nro_artifact != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.nro_artifact }}
+
+      - name: Upload to catbox.moe
+        if: inputs.is_release != 'true' && inputs.nro_artifact != ''
+        id: catbox
+        run: |
+          NRO_FILE=$(find . -name "*.nro" | head -1)
+          if [ -z "$NRO_FILE" ]; then echo "NRO not found"; exit 1; fi
+          echo "Uploading $NRO_FILE ($(du -sh "$NRO_FILE" | cut -f1))..."
+          URL=$(curl -s \
+            -F "reqtype=fileupload" \
+            -F "fileToUpload=@${NRO_FILE}" \
+            https://catbox.moe/user/api.php)
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Uploaded: $URL"
+
+      - name: Post beta build to #beta-builds
+        if: inputs.is_release != 'true'
+        env:
+          WEBHOOK:    ${{ secrets.DISCORD_WEBHOOK_BETA_BUILDS }}
+          VERSION:    ${{ inputs.version }}
+          BETA_ROLE:  ${{ secrets.DISCORD_ROLE_BETA_TESTER }}
+          MOD_ROLE:   ${{ secrets.DISCORD_ROLE_MODERATOR }}
+          DOWNLOAD:   ${{ steps.catbox.outputs.url }}
+          RUN_URL:    ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 - <<'PYEOF'
+import json, os, subprocess, sys
+
+webhook   = os.environ.get("WEBHOOK", "")
+version   = os.environ.get("VERSION", "dev")
+beta_role = os.environ.get("BETA_ROLE", "")
+mod_role  = os.environ.get("MOD_ROLE", "")
+download  = os.environ.get("DOWNLOAD", "")
+run_url   = os.environ.get("RUN_URL", "")
+
+if not webhook:
+    print("DISCORD_WEBHOOK_BETA_BUILDS not set — skipping"); sys.exit(0)
+
+mentions = ""
+if beta_role: mentions += f"<@&{beta_role}> "
+if mod_role:  mentions += f"<@&{mod_role}>"
+
+fields = [{"name": "Platform", "value": "Nintendo Switch", "inline": True}]
+if download:
+    fields.insert(0, {"name": "Download", "value": f"[TsVitch.nro]({download})", "inline": True})
+if run_url:
+    fields.append({"name": "CI Run", "value": f"[View logs]({run_url})", "inline": True})
+
+embed = {
+    "title": f"🧪 Beta Build — TsVitch {version}",
+    "description": (
+        "A new beta build is ready for testing on Nintendo Switch.\n"
+        "Place `TsVitch.nro` in `/switch/TsVitch/` on your SD card.\n"
+        "Report issues in <#bug-reports> with firmware version and steps to reproduce."
+    ),
+    "color": 1356308,
+    "fields": fields,
+    "footer": {"text": "TsVitch CI · beta"},
+    "timestamp": __import__('datetime').datetime.utcnow().isoformat() + "Z"
+}
+
+allowed = {"parse": []}
+if beta_role: allowed.setdefault("roles", []).append(beta_role)
+if mod_role:  allowed.setdefault("roles", []).append(mod_role)
+
+payload = {
+    "content": mentions.strip() or None,
+    "embeds": [embed],
+    "allowed_mentions": allowed
+}
+if payload["content"] is None:
+    del payload["content"]
+
+result = subprocess.run(
+    ["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
+     "-X", "POST", webhook, "-H", "Content-Type: application/json",
+     "-d", json.dumps(payload)],
+    capture_output=True, text=True
+)
+if not result.stdout.startswith("2"):
+    print(f"Webhook failed: {result.stdout}"); sys.exit(1)
+print("✅ Beta build posted to Discord")
+PYEOF
+
+      # ── Release build: post rich embed to #builds ─────────────────────────
+      - name: Post release build to #builds
+        if: inputs.is_release == 'true'
+        env:
+          WEBHOOK:     ${{ secrets.DISCORD_WEBHOOK_BUILDS }}
+          VERSION:     ${{ inputs.version }}
+          RELEASE_URL: ${{ inputs.release_url }}
+          RUN_URL:     ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 - <<'PYEOF'
+import json, os, subprocess, sys
+
+webhook     = os.environ.get("WEBHOOK", "")
+version     = os.environ.get("VERSION", "")
+release_url = os.environ.get("RELEASE_URL", "")
+run_url     = os.environ.get("RUN_URL", "")
+
+if not webhook:
+    print("DISCORD_WEBHOOK_BUILDS not set — skipping"); sys.exit(0)
+
+fields = [{"name": "Platform", "value": "Nintendo Switch · macOS", "inline": True}]
+if release_url:
+    fields.insert(0, {"name": "Release", "value": f"[v{version}]({release_url})", "inline": True})
+if run_url:
+    fields.append({"name": "CI Run", "value": f"[View logs]({run_url})", "inline": True})
+
+embed = {
+    "title": f"✅ Build succeeded — TsVitch v{version}",
+    "color": 5763719,
+    "fields": fields,
+    "footer": {"text": "TsVitch CI"},
+    "timestamp": __import__('datetime').datetime.utcnow().isoformat() + "Z"
+}
+
+result = subprocess.run(
+    ["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
+     "-X", "POST", webhook, "-H", "Content-Type: application/json",
+     "-d", json.dumps({"embeds": [embed]})],
+    capture_output=True, text=True
+)
+if not result.stdout.startswith("2"):
+    print(f"Webhook failed: {result.stdout}"); sys.exit(1)
+print("✅ Build notification posted to Discord")
+PYEOF

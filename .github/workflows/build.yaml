@@ -216,3 +216,14 @@ jobs:
         with:
           name: ${{ steps.name.outputs.DMG }}
           path: "${{ steps.name.outputs.DMG }}.dmg"
+
+  discord-notify:
+    needs: [version, build-switch, build-macos, release]
+    if: always() && needs.build-switch.result == 'success' && !cancelled()
+    uses: ./.github/workflows/discord-build.yml
+    secrets: inherit
+    with:
+      version:      ${{ needs.version.outputs.version }}
+      is_release:   ${{ github.event.inputs.release }}
+      nro_artifact: ${{ github.event.inputs.release != 'true' && needs.version.outputs.DIST_NRO || '' }}
+      release_url:  ${{ github.event.inputs.release == 'true' && format('https://github.com/giovannimirulla/TsVitch/releases/tag/v{0}', needs.version.outputs.version) || '' }}
