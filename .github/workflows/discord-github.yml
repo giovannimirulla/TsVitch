@@ -10,10 +10,10 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Issue notification → #bug-reports
+      - name: Issue notification → #dev
         if: github.event_name == 'issues'
         env:
-          WEBHOOK:  ${{ secrets.DISCORD_WEBHOOK_BUG_REPORTS }}
+          WEBHOOK:  ${{ secrets.DISCORD_WEBHOOK_DEV }}
           TITLE:    ${{ github.event.issue.title }}
           URL:      ${{ github.event.issue.html_url }}
           NUMBER:   ${{ github.event.issue.number }}
@@ -71,10 +71,10 @@ if not result.stdout.startswith("2"):
 print("✅ Issue notification sent")
 PYEOF
 
-      - name: PR notification → #pull-requests
+      - name: PR notification → #dev
         if: github.event_name == 'pull_request'
         env:
-          WEBHOOK:    ${{ secrets.DISCORD_WEBHOOK_PULL_REQUESTS }}
+          WEBHOOK:    ${{ secrets.DISCORD_WEBHOOK_DEV }}
           TITLE:      ${{ github.event.pull_request.title }}
           URL:        ${{ github.event.pull_request.html_url }}
           NUMBER:     ${{ github.event.pull_request.number }}
