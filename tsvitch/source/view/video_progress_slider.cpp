@@ -100,10 +100,7 @@ VideoProgressSlider::VideoProgressSlider() {
 
         pointerIcon->setDimensions(44, 44);
     pointerIcon->setImageFromSVGRes("svg/bpx-svg-sprite-thumb.svg");
-<<<<<<< HEAD
     pointerIcon->setTranslationY(-10.02f);
-=======
->>>>>>> library-updates
     
 
     pointer->setDimensions(60, 60);

@@ -72,30 +72,21 @@ enum class SettingItem {
     DLNA_NAME,
 
     M3U8_URL_ITEM,
-<<<<<<< HEAD
     PROXY_URL_ITEM,
-=======
->>>>>>> library-updates
     M3U8_TIMEOUT,
 
     TLS_VERIFY,
     UP_FILTER,
 
-<<<<<<< HEAD
     // IPTV Mode Selection
     IPTV_MODE,  // 0 = M3U8, 1 = Xtream
 
-=======
->>>>>>> library-updates
     // Xtream Codes IPTV Settings
     XTREAM_SERVER_URL,
     XTREAM_USERNAME,
     XTREAM_PASSWORD,
     XTREAM_ENABLED,
-<<<<<<< HEAD
     XTREAM_CONTENT_TYPE,
-=======
->>>>>>> library-updates
 
     GROUP_SELECTED_INDEX,
 };
@@ -235,13 +226,10 @@ public:
     bool getXtreamEnabled();
     void setXtreamEnabled(bool enabled);
 
-<<<<<<< HEAD
     std::string getProxyUrl();
 
     void setProxyUrl(const std::string& url);
 
-=======
->>>>>>> library-updates
     std::vector<CustomTheme> customThemes;
     nlohmann::json setting;
     std::string client;

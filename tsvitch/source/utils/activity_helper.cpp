@@ -9,13 +9,7 @@
 #include <pystring.h>
 
 #include "activity/live_player_activity.hpp"
-<<<<<<< HEAD
 #include "activity/settings_activity.hpp"
-=======
-
-#include "activity/settings_activity.hpp"
-
->>>>>>> library-updates
 #include "activity/main_activity.hpp"
 #include "activity/hint_activity.hpp"
 
@@ -233,7 +227,6 @@ static void showSeriesEpisodes(const tsvitch::LiveM3u8& seriesItem, std::functio
     }, cpr::Url{seriesInfoUrl}, cpr::Timeout{timeoutMs});
 }
 
-<<<<<<< HEAD
 void Intent::openLive(const std::vector<tsvitch::LiveM3u8>& channelList, size_t index, std::function<void()> onClose) {
     if (index < channelList.size() && pystring::startswith(channelList[index].url, "xtream-series://")) {
         showSeriesEpisodes(channelList[index], onClose);
@@ -244,8 +237,6 @@ void Intent::openLive(const std::vector<tsvitch::LiveM3u8>& channelList, size_t 
     }
 }
 
-=======
->>>>>>> library-updates
 void Intent::openSettings(std::function<void()> onClose) {
     auto activity = new SettingsActivity(onClose);
     brls::Application::pushActivity(activity);

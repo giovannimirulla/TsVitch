@@ -80,7 +80,6 @@ void MainActivity::onContentAvailable() {
         "Settings", brls::ControllerButton::BUTTON_BACK,
         [this](brls::View* view) -> bool {
             Intent::openSettings([this]() {
-<<<<<<< HEAD
                 // Check if settingBtn is still bound and valid
                 try {
                     if (this->settingBtn.getView() && !this->settingBtn->isFocused()) {
@@ -88,11 +87,6 @@ void MainActivity::onContentAvailable() {
                     }
                 } catch (...) {
                     // Ignore any exceptions from accessing destroyed objects
-=======
-                //if not focused
-                if (!this->settingBtn->isFocused()) {
-                    this->resetSettingIcon();
->>>>>>> library-updates
                 }
             });
             return true;
@@ -103,7 +97,6 @@ void MainActivity::onContentAvailable() {
         "Settings", brls::ControllerButton::BUTTON_START,
         [this](brls::View* view) -> bool {
             Intent::openSettings([this]() {
-<<<<<<< HEAD
                 // Check if settingBtn is still bound and valid
                 try {
                     if (this->settingBtn.getView() && !this->settingBtn->isFocused()) {
@@ -111,11 +104,6 @@ void MainActivity::onContentAvailable() {
                     }
                 } catch (...) {
                     // Ignore any exceptions from accessing destroyed objects
-=======
-                //if not focused
-                if (!this->settingBtn->isFocused()) {
-                    this->resetSettingIcon();
->>>>>>> library-updates
                 }
             });
             return true;
@@ -124,7 +112,6 @@ void MainActivity::onContentAvailable() {
 
     this->settingBtn->registerClickAction([this](brls::View* view) -> bool {
         Intent::openSettings([this]() {
-<<<<<<< HEAD
             // Check if settingBtn is still bound and valid
             try {
                 if (this->settingBtn.getView() && !this->settingBtn->isFocused()) {
@@ -132,11 +119,6 @@ void MainActivity::onContentAvailable() {
                 }
             } catch (...) {
                 // Ignore any exceptions from accessing destroyed objects
-=======
-            //if not focused
-            if (!this->settingBtn->isFocused()) {
-                this->resetSettingIcon();
->>>>>>> library-updates
             }
         });
         return true;

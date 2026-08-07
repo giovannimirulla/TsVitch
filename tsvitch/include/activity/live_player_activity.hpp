@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <functional>
 
 #include <borealis/core/activity.hpp>
@@ -45,13 +46,6 @@ public:
 
 protected:
     VideoView* video = nullptr;
-<<<<<<< HEAD
-=======
-    brls::Box* downloadProgressOverlay = nullptr;
-    brls::Label* downloadStatusLabel = nullptr;
-    brls::Label* downloadProgressText = nullptr;
-    brls::Slider* downloadProgressBar = nullptr;
->>>>>>> library-updates
 
     std::function<void()> onCloseCallback;
 
@@ -75,6 +69,8 @@ protected:
     // Download state
     std::string currentDownloadId;
     bool hasActiveDownload = false;
+
+    std::atomic<bool> destroyed{false};
 
 private:
    void getAdUrlFromServer(std::function<void(const std::string&)> callback = nullptr);

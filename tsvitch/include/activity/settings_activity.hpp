@@ -50,7 +50,6 @@ private:
     
     // M3U8 Controls
     BRLS_BIND(brls::InputCell, btnM3U8Input, "setting/tools/m3u8/input");
-<<<<<<< HEAD
     BRLS_BIND(brls::InputCell, btnProxyInput, "setting/tools/proxy/input");
     BRLS_BIND(TsVitchSelectorCell, selectorM3U8Timeout, "setting/tools/m3u8/timeout");
     
@@ -59,15 +58,6 @@ private:
     BRLS_BIND(brls::InputCell, btnXtreamUsername, "setting/iptv/xtream_username");
     BRLS_BIND(brls::InputCell, btnXtreamPassword, "setting/iptv/xtream_password");
     BRLS_BIND(brls::RadioCell, btnTestIptv, "setting/iptv/test_button");
-=======
-    BRLS_BIND(TsVitchSelectorCell, selectorM3U8Timeout, "setting/tools/m3u8/timeout");
-    
-    // IPTV Xtream Codes bindings
-    BRLS_BIND(brls::BooleanCell, btnXtreamEnabled, "setting/iptv/xtream_enabled");
-    BRLS_BIND(brls::InputCell, btnXtreamServer, "setting/iptv/xtream_server");
-    BRLS_BIND(brls::InputCell, btnXtreamUsername, "setting/iptv/xtream_username");
-    BRLS_BIND(brls::InputCell, btnXtreamPassword, "setting/iptv/xtream_password");
->>>>>>> library-updates
     
     BRLS_BIND(TsVitchSelectorCell, selectorLang, "setting/language");
     BRLS_BIND(TsVitchSelectorCell, selectorTheme, "setting/ui/theme");

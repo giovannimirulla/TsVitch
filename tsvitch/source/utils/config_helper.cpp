@@ -182,26 +182,18 @@ std::unordered_map<SettingItem, ProgramOption> ProgramConfig::SETTING_MAP = {
     {SettingItem::GROUP_SELECTED_INDEX, {"group_selected_index", {}, {}, 0}},
     {SettingItem::UP_FILTER, {"up_filter", {}, {}, 0}},
     {SettingItem::M3U8_URL_ITEM, {"m3u8_url", {}, {}, 0}},
-<<<<<<< HEAD
     {SettingItem::PROXY_URL_ITEM, {"proxy_url", {}, {}, 0}},
     {SettingItem::M3U8_TIMEOUT, {"m3u8_timeout", {"60", "120", "300", "600"}, {60000, 120000, 300000, 600000}, 2}}, // Default: 5 minuti
     
     // IPTV Mode Selection
     {SettingItem::IPTV_MODE, {"iptv_mode", {"M3U8 Playlist", "Xtream Codes"}, {0, 1}, 0}}, // Default: M3U8
     
-=======
-    {SettingItem::M3U8_TIMEOUT, {"m3u8_timeout", {"60", "120", "300", "600"}, {60000, 120000, 300000, 600000}, 2}}, // Default: 5 minuti
-    
->>>>>>> library-updates
     // Xtream Codes IPTV Settings
     {SettingItem::XTREAM_SERVER_URL, {"xtream_server_url", {}, {}, 0}},
     {SettingItem::XTREAM_USERNAME, {"xtream_username", {}, {}, 0}},
     {SettingItem::XTREAM_PASSWORD, {"xtream_password", {}, {}, 0}},
     {SettingItem::XTREAM_ENABLED, {"xtream_enabled", {}, {}, 0}}, // 0 = disabled, 1 = enabled
-<<<<<<< HEAD
     {SettingItem::XTREAM_CONTENT_TYPE, {"xtream_content_type", {}, {}, 0}},
-=======
->>>>>>> library-updates
 };
 
 ProgramConfig::ProgramConfig() = default;
@@ -824,7 +816,6 @@ void ProgramConfig::setM3U8Url(const std::string& url) {
     GA("m3u8_url", {{"url", m3u8Url}});
 }
 
-<<<<<<< HEAD
 std::string ProgramConfig::getProxyUrl() {
     return this->proxyUrl;
 }
@@ -842,8 +833,6 @@ void ProgramConfig::setProxyUrl(const std::string& url) {
     
     GA("proxy_url", {{"url", proxyUrl}});
 }
-=======
->>>>>>> library-updates
 // Xtream Codes IPTV getters and setters
 std::string ProgramConfig::getXtreamServerUrl() {
     return getSettingItem(SettingItem::XTREAM_SERVER_URL, std::string(""));

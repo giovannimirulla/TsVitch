@@ -128,7 +128,6 @@ void HomeFavorites::downloadVideo() {
     // Ottieni il canale
     tsvitch::LiveM3u8 channel = item->getChannel();
     
-<<<<<<< HEAD
     // Controlla se è una live stream in corso
     std::string url = channel.url;
     std::string title = channel.title;
@@ -161,8 +160,6 @@ void HomeFavorites::downloadVideo() {
         return;
     }
     
-=======
->>>>>>> library-updates
     // Avvia il download
     std::string downloadId = DownloadManager::instance().startDownload(
         channel.title, 

@@ -71,11 +71,7 @@ void Analytics::send() {
             {"api_secret", GA_KEY},
             {"measurement_id", GA_ID},
         },
-<<<<<<< HEAD
         CPR_SSL, tsvitch::HTTP::PROXIES, cpr::Url{GA_URL},
-=======
-        tsvitch::HTTP::VERIFY, tsvitch::HTTP::PROXIES, cpr::Url{GA_URL},
->>>>>>> library-updates
         cpr::Header{{"User-Agent", APP_NAME "/" + app_version}, {"Content-Type", "application/json"}},
         cpr::Cookies{{"_ga", client_id}}, cpr::Body{content_str}, cpr::Timeout{4000});
 }

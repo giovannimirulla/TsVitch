@@ -4,11 +4,8 @@
 #include "fragment/home_history.hpp"
 #include "fragment/home_favorites.hpp"
 #include "fragment/home_downloads.hpp"
-<<<<<<< HEAD
 #include "fragment/home_vod.hpp"
 #include "fragment/home_series.hpp"
-=======
->>>>>>> library-updates
 
 #include "utils/config_helper.hpp"
 
@@ -65,11 +62,8 @@ void Register::initCustomView() {
     brls::Application::registerXMLView("HomeHistory", HomeHistory::create);
     brls::Application::registerXMLView("HomeFavorites", HomeFavorites::create);
     brls::Application::registerXMLView("HomeDownloads", HomeDownloads::create);
-<<<<<<< HEAD
     brls::Application::registerXMLView("HomeVOD", HomeVOD::create);
     brls::Application::registerXMLView("HomeSeries", HomeSeries::create);
-=======
->>>>>>> library-updates
 }
 
 void Register::initCustomTheme() {

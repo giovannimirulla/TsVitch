@@ -1,5 +1,4 @@
 #include "core/DownloadManager.hpp"
-<<<<<<< HEAD
 #include "core/DownloadProgressManager.hpp"
 #include "utils/config_helper.hpp"
 #include <borealis/core/logger.hpp>
@@ -8,16 +7,10 @@
 #include <fstream>
 #include <cstdio>
 #include <filesystem>
-=======
-#include <borealis/core/logger.hpp>
-#include <fstream>
-#include <cstdio>
->>>>>>> library-updates
 #include <random>
 #include <sstream>
 #include <iomanip>
 #include <chrono>
-<<<<<<< HEAD
 #include <thread>
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
@@ -396,114 +389,6 @@ static int SimplifiedProgressCallback(void* clientp, curl_off_t dltotal, curl_of
         // Chiama il callback globale se presente
         if (data->manager->globalProgressCallback) {
             data->manager->globalProgressCallback(data->downloadId, progress, downloaded, total);
-=======
-#include <curl/curl.h>
-#include <nlohmann/json.hpp>
-
-using json = nlohmann::json;
-
-// Callback per scrivere i dati scaricati
-static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::ofstream* stream) {
-    size_t totalSize = size * nmemb;
-    stream->write(static_cast<char*>(contents), totalSize);
-    return totalSize;
-}
-
-// Callback per il progresso del download
-static int ProgressCallback(void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
-    struct ProgressData {
-        DownloadManager* manager;
-        std::string downloadId;
-        size_t existingFileSize; // Dimensione del file esistente per il resume
-        std::chrono::steady_clock::time_point lastCallbackTime; // Per throttling
-        float lastProgress = -1.0f; // Ultimo progresso inviato per evitare aggiornamenti inutili
-    };
-    
-    auto* data = static_cast<ProgressData*>(clientp);
-    if (!data || !data->manager) {
-        return 0; // Manager non valido, esci
-    }
-    
-    if (dltotal > 0) {
-        // Calcola il progresso considerando il file esistente per il resume
-        curl_off_t totalDownloaded = dlnow + data->existingFileSize;
-        curl_off_t totalExpected = dltotal + data->existingFileSize;
-        
-        // Se stiamo facendo un resume, dltotal potrebbe essere solo la parte rimanente
-        // In questo caso, cerchiamo di ottenere la dimensione totale dal download manager
-        {
-            std::lock_guard<std::mutex> lock(data->manager->downloadsMutex);
-            auto it = data->manager->findDownload(data->downloadId);
-            if (it != data->manager->downloads.end()) {
-                // Se abbiamo già una totalSize valida dal download manager, usala
-                if (it->totalSize > 0 && it->totalSize > totalExpected) {
-                    totalExpected = it->totalSize;
-                }
-            }
-        }
-        
-        float progress = static_cast<float>(totalDownloaded) / static_cast<float>(totalExpected) * 100.0f;
-        size_t downloaded = static_cast<size_t>(totalDownloaded);
-        size_t total = static_cast<size_t>(totalExpected);
-        
-        // Limita il progresso al 100%
-        if (progress > 100.0f) {
-            progress = 100.0f;
-        }
-        
-        // Throttling: aggiorna i callback solo se è passato abbastanza tempo O se il progresso è cambiato significativamente
-        auto now = std::chrono::steady_clock::now();
-        auto timeSinceLastCallback = std::chrono::duration_cast<std::chrono::milliseconds>(now - data->lastCallbackTime);
-        float progressDiff = std::abs(progress - data->lastProgress);
-        
-        bool shouldUpdate = (timeSinceLastCallback.count() >= 250) || // Massimo 4 volte al secondo
-                           (progressDiff >= 1.0f) || // Solo se il progresso è cambiato di almeno 1%
-                           (progress >= 100.0f && data->lastProgress < 100.0f); // Sempre aggiorna al completamento
-        
-        if (!shouldUpdate) {
-            return 0; // Skip questo aggiornamento
-        }
-        
-        data->lastCallbackTime = now;
-        data->lastProgress = progress;
-        
-        // Aggiorna l'item nel manager
-        {
-            std::lock_guard<std::mutex> lock(data->manager->downloadsMutex);
-            auto it = data->manager->findDownload(data->downloadId);
-            if (it != data->manager->downloads.end()) {
-                it->progress = progress;
-                it->downloadedSize = downloaded;
-                it->totalSize = total;
-            }
-        }
-        
-        // Chiama il callback specifico per questo download se presente (thread-safe)
-        DownloadManager::DownloadProgressCallback specificCallback = nullptr;
-        {
-            std::lock_guard<std::mutex> callbackLock(data->manager->downloadsMutex);
-            auto progressIt = data->manager->downloadProgressCallbacks.find(data->downloadId);
-            if (progressIt != data->manager->downloadProgressCallbacks.end()) {
-                specificCallback = progressIt->second; // Copia il callback
-            }
-        }
-        
-        if (specificCallback) {
-            specificCallback(data->downloadId, progress, downloaded, total);
-        }
-        
-        // Chiama il callback globale se presente
-        DownloadManager::GlobalProgressCallback globalCallback = nullptr;
-        {
-            std::lock_guard<std::mutex> callbackLock(data->manager->downloadsMutex);
-            if (data->manager->globalProgressCallback) {
-                globalCallback = data->manager->globalProgressCallback; // Copia il callback
-            }
-        } // Il lock viene rilasciato automaticamente qui
-        
-        if (globalCallback) {
-            globalCallback(data->downloadId, progress, downloaded, total);
->>>>>>> library-updates
         }
     }
     return 0;
@@ -556,7 +441,6 @@ std::string DownloadManager::startDownload(const std::string& title, const std::
     
     std::lock_guard<std::mutex> lock(downloadsMutex);
     
-<<<<<<< HEAD
     // Controlla se esiste già un download per lo stesso titolo e URL
     for (const auto& existingDownload : downloads) {
         if (existingDownload.title == title && existingDownload.url == cleanUrl) {
@@ -634,9 +518,6 @@ std::string DownloadManager::startDownload(const std::string& title, const std::
     
     std::string id = generateDownloadId();
     brls::Logger::info("DownloadManager: Generated ID {} for new download '{}'", id, title);
-=======
-    std::string id = generateDownloadId();
->>>>>>> library-updates
     DownloadItem item;
     item.id = id;
     item.title = title;
@@ -645,7 +526,6 @@ std::string DownloadManager::startDownload(const std::string& title, const std::
     item.status = DownloadStatus::PENDING;
     item.progress = 0.0f;
     
-<<<<<<< HEAD
     // Genera il path locale - la directory verrà creata automaticamente quando necessario
     std::string downloadFilename = title + "_" + id + ".mp4"; // Assumiamo formato MP4
     
@@ -690,16 +570,6 @@ std::string DownloadManager::startDownload(const std::string& title, const std::
         
         item.imagePath = getDownloadDirectory() + "/" + imageFilename;
     }
-=======
-    // Genera il path locale
-    ensureDownloadDirectory();
-    std::string filename = title + "_" + id + ".mp4"; // Assumiamo formato MP4
-    // Rimuovi caratteri non validi dal filename
-    std::replace_if(filename.begin(), filename.end(), [](char c) {
-        return c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|';
-    }, '_');
-    item.localPath = getDownloadDirectory() + "/" + filename;
->>>>>>> library-updates
     
     downloads.push_back(item);
     
@@ -738,7 +608,6 @@ void DownloadManager::resumeDownload(const std::string& id) {
     auto it = findDownload(id);
     if (it != downloads.end() && it->status == DownloadStatus::PAUSED) {
         it->status = DownloadStatus::DOWNLOADING;
-<<<<<<< HEAD
         
         // Reset retry count when manually resuming
         {
@@ -749,11 +618,6 @@ void DownloadManager::resumeDownload(const std::string& id) {
         // Avvia un nuovo thread per il download
         downloadThreads.emplace_back(&DownloadManager::downloadWorker, this, id);
         brls::Logger::info("DownloadManager: Resumed download {} (retry count reset)", id);
-=======
-        // Avvia un nuovo thread per il download
-        downloadThreads.emplace_back(&DownloadManager::downloadWorker, this, id);
-        brls::Logger::info("DownloadManager: Resumed download {}", id);
->>>>>>> library-updates
         saveDownloads();
     }
 }
@@ -775,7 +639,6 @@ void DownloadManager::cancelDownload(const std::string& id) {
         
         // Rimuovi il download dalla lista invece di impostarlo come cancellato
         downloads.erase(it);
-<<<<<<< HEAD
         
         // Clean up retry count
         {
@@ -789,8 +652,6 @@ void DownloadManager::cancelDownload(const std::string& id) {
             completedDownloads.erase(id);
         }
         
-=======
->>>>>>> library-updates
         brls::Logger::info("DownloadManager: Cancelled and removed download {}", id);
         saveDownloads();
     }
@@ -811,7 +672,6 @@ void DownloadManager::deleteDownload(const std::string& id) {
             }
         }
         downloads.erase(it);
-<<<<<<< HEAD
         
         // Clean up retry count
         {
@@ -825,14 +685,11 @@ void DownloadManager::deleteDownload(const std::string& id) {
             completedDownloads.erase(id);
         }
         
-=======
->>>>>>> library-updates
         brls::Logger::info("DownloadManager: Deleted download {}", id);
         saveDownloads();
     }
 }
 
-<<<<<<< HEAD
 void DownloadManager::cleanupStaleDownloads() {
     std::lock_guard<std::mutex> lock(downloadsMutex);
     
@@ -908,8 +765,6 @@ void DownloadManager::forceRestartDownload(const std::string& id) {
     }).detach();
 }
 
-=======
->>>>>>> library-updates
 std::vector<DownloadItem> DownloadManager::getAllDownloads() const {
     std::lock_guard<std::mutex> lock(downloadsMutex);
     brls::Logger::debug("DownloadManager::getAllDownloads - returning {} downloads", downloads.size());
@@ -929,7 +784,6 @@ DownloadItem DownloadManager::getDownload(const std::string& id) const {
 }
 
 std::string DownloadManager::getDownloadDirectory() const {
-<<<<<<< HEAD
     const std::string configDir = ProgramConfig::instance().getConfigDir();
     return configDir + "/downloads";
 }
@@ -941,18 +795,6 @@ void DownloadManager::downloadWorker(const std::string& id) {
         return;
     }
     
-=======
-    // Su macOS usa la directory Documents
-    #ifdef __APPLE__
-        return std::string(getenv("HOME")) + "/Documents/TsVitch/Downloads";
-    #else
-        // Su altre piattaforme usa una directory nella home
-        return std::string(getenv("HOME")) + "/.tsvitch/downloads";
-    #endif
-}
-
-void DownloadManager::downloadWorker(const std::string& id) {
->>>>>>> library-updates
     // Verifica che il download esista ancora
     {
         std::lock_guard<std::mutex> lock(downloadsMutex);
@@ -962,7 +804,6 @@ void DownloadManager::downloadWorker(const std::string& id) {
             return;
         }
         it->status = DownloadStatus::DOWNLOADING;
-<<<<<<< HEAD
         it->startTime = std::chrono::steady_clock::now(); // Aggiorna il timestamp di inizio
     }
     
@@ -993,10 +834,6 @@ void DownloadManager::downloadWorker(const std::string& id) {
     }
 #endif
     
-=======
-    }
-    
->>>>>>> library-updates
     CURL* curl = curl_easy_init();
     if (!curl) {
         {
@@ -1062,7 +899,6 @@ void DownloadManager::downloadWorker(const std::string& id) {
         }
     }
     
-<<<<<<< HEAD
     // Crea la directory di download se non esiste
     try {
         std::string dirPath = getDownloadDirectory();
@@ -1125,27 +961,12 @@ void DownloadManager::downloadWorker(const std::string& id) {
         brls::Logger::error("DownloadManager: Failed to open file: {}", item.localPath);
         brls::Logger::error("DownloadManager: errno: {} ({})", errno, strerror(errno));
         
-=======
-    // Apri il file in modalità appropriata
-    std::ofstream outFile;
-    if (resumeDownload) {
-        outFile.open(item.localPath, std::ios::binary | std::ios::app);
-    } else {
-        outFile.open(item.localPath, std::ios::binary);
-    }
-    
-    if (!outFile.is_open()) {
->>>>>>> library-updates
         {
             std::lock_guard<std::mutex> lock(downloadsMutex);
             auto it = findDownload(id);
             if (it != downloads.end()) {
                 it->status = DownloadStatus::FAILED;
-<<<<<<< HEAD
                 it->error = "Failed to open output file: " + std::string(strerror(errno));
-=======
-                it->error = "Failed to open output file";
->>>>>>> library-updates
             }
         }
         
@@ -1183,10 +1004,6 @@ void DownloadManager::downloadWorker(const std::string& id) {
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &outFile);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-<<<<<<< HEAD
-=======
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 3600L); // Timeout di 1 ora
->>>>>>> library-updates
     curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
     curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, ProgressCallback);
     curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &progressData);
@@ -1230,7 +1047,6 @@ void DownloadManager::downloadWorker(const std::string& id) {
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     
-<<<<<<< HEAD
     // Add buffer size optimizations - different for Switch
 #ifdef __SWITCH__
     // Nintendo Switch: very small buffers and ultra-conservative settings for maximum stability
@@ -1376,17 +1192,6 @@ void DownloadManager::downloadWorker(const std::string& id) {
     brls::Logger::info("DownloadManager: Download session completed for ID: {}, CURL result: {} ({}), duration: {}s", 
                       id, static_cast<int>(res), curl_easy_strerror(res), duration.count());
     
-=======
-    // Aggiungi logging dettagliato
-    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L); // Disabilita per ora il verbose
-    
-    brls::Logger::info("DownloadManager: Starting download from URL: {}", item.url);
-    brls::Logger::info("DownloadManager: Target file: {}", item.localPath);
-    
-    CURLcode res = curl_easy_perform(curl);
-    outFile.close();
-    
->>>>>>> library-updates
     // Controlla il codice di risposta HTTP
     long httpCode = 0;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
@@ -1404,7 +1209,6 @@ void DownloadManager::downloadWorker(const std::string& id) {
     
     brls::Logger::info("DownloadManager: Downloaded {} bytes (session: {}, total: {})", totalDownloaded, downloadSize, totalDownloaded);
     
-<<<<<<< HEAD
     // Ottieni informazioni aggiuntive su cosa è successo
     curl_off_t contentLength = 0;
     curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &contentLength);
@@ -1482,12 +1286,6 @@ void DownloadManager::downloadWorker(const std::string& id) {
         }
 #endif
     }
-=======
-    // Ottieni la dimensione del contenuto dal server (se disponibile)
-    curl_off_t contentLength = 0;
-    curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &contentLength);
-    brls::Logger::info("DownloadManager: Content-Length: {} bytes", contentLength);
->>>>>>> library-updates
     
     {
         std::lock_guard<std::mutex> lock(downloadsMutex);
@@ -1498,7 +1296,6 @@ void DownloadManager::downloadWorker(const std::string& id) {
             
             if (httpCode >= 200 && httpCode < 300) {
                 if (res == CURLE_OK) {
-<<<<<<< HEAD
                     // Download completed without errors
                     downloadSuccessful = true;
                 } else if (res == CURLE_WRITE_ERROR) {
@@ -1618,60 +1415,6 @@ void DownloadManager::downloadWorker(const std::string& id) {
                 } else if (res == CURLE_PARTIAL_FILE) {
                     // Partial download without known total size: treat as success
                     downloadSuccessful = true;
-=======
-                    // Download completato senza errori
-                    downloadSuccessful = true;
-                } else if (res == CURLE_PARTIAL_FILE && totalDownloaded > 0) {
-                    // Download parziale ma con dati - verifica se è accettabile
-                    if (contentLength > 0) {
-                        // Se abbiamo Content-Length, verifica che sia ragionevolmente completo
-                        float completionRatio = static_cast<float>(totalDownloaded) / static_cast<float>(contentLength);
-                        
-                        // Considera il download valido se:
-                        // 1. È completamente scaricato (100%)
-                        // 2. È sostanzialmente completo (>98%) per file piccoli (<100MB)
-                        // 3. Ha scaricato almeno il 95% per file grandi (>100MB) - potrebbe essere stato interrotto naturalmente
-                        bool isLargeFile = contentLength > (100 * 1024 * 1024); // 100MB
-                        float minRatio = isLargeFile ? 0.95f : 0.98f;
-                        
-                        downloadSuccessful = (completionRatio >= minRatio);
-                        
-                        brls::Logger::info("DownloadManager: Partial download check - downloaded: {}, expected: {}, ratio: {:.2f}%, min required: {:.1f}%, large file: {}, success: {}", 
-                                         totalDownloaded, contentLength, completionRatio * 100.0f, minRatio * 100.0f, isLargeFile, downloadSuccessful);
-                        
-                        // Se non è considerato successo, imposta come paused per permettere il resume
-                        if (!downloadSuccessful && completionRatio > 0.1f) {
-                            brls::Logger::info("DownloadManager: Setting partial download as PAUSED for potential resume");
-                            it->status = DownloadStatus::PAUSED;
-                            it->progress = completionRatio * 100.0f;
-                            it->downloadedSize = totalDownloaded;
-                            it->totalSize = contentLength;
-                            it->error = "Download interrupted at " + std::to_string(static_cast<int>(completionRatio * 100.0f)) + "% - can be resumed";
-                            
-                            // Non chiamare callback di errore per download interrotti che possono essere ripresi
-                            saveDownloads();
-                            
-                            // Pulisci i callback per questo download
-                            {
-                                std::lock_guard<std::mutex> callbackLock(downloadsMutex);
-                                downloadProgressCallbacks.erase(id);
-                                downloadCompleteCallbacks.erase(id);
-                                downloadErrorCallbacks.erase(id);
-                            }
-                            
-                            // Pulisci headers e CURL
-                            if (headers) {
-                                curl_slist_free_all(headers);
-                            }
-                            curl_easy_cleanup(curl);
-                            return;
-                        }
-                    } else {
-                        // Se non abbiamo Content-Length, accetta se abbiamo ricevuto dati
-                        downloadSuccessful = true;
-                        brls::Logger::info("DownloadManager: Partial download without Content-Length - accepting as valid");
-                    }
->>>>>>> library-updates
                 }
             }
             
@@ -1694,7 +1437,6 @@ void DownloadManager::downloadWorker(const std::string& id) {
                     it->error = "No data downloaded (HTTP " + std::to_string(httpCode) + ")";
                 } else {
                     brls::Logger::info("DownloadManager: Download {} completed successfully ({} bytes)", id, it->downloadedSize);
-<<<<<<< HEAD
                     
                     // Reset retry count for successful download
                     {
@@ -1707,8 +1449,6 @@ void DownloadManager::downloadWorker(const std::string& id) {
                         brls::Logger::info("DownloadManager: Starting cover image download for {}", id);
                         downloadCoverImage(id, it->imageUrl, it->imagePath);
                     }
-=======
->>>>>>> library-updates
                 }
                 
                 saveDownloads();
@@ -1840,7 +1580,6 @@ std::string DownloadManager::generateDownloadId() const {
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(0, 15);
     
-<<<<<<< HEAD
     std::string id;
     int maxAttempts = 100; // Limite per evitare loop infiniti
     int attempts = 0;
@@ -1865,13 +1604,6 @@ std::string DownloadManager::generateDownloadId() const {
     
     brls::Logger::debug("DownloadManager: Generated unique ID: {}", id);
     return id;
-=======
-    std::stringstream ss;
-    for (int i = 0; i < 8; ++i) {
-        ss << std::hex << dis(gen);
-    }
-    return ss.str();
->>>>>>> library-updates
 }
 
 std::vector<DownloadItem>::iterator DownloadManager::findDownload(const std::string& id) {
@@ -1884,41 +1616,13 @@ std::vector<DownloadItem>::const_iterator DownloadManager::findDownload(const st
                        [&id](const DownloadItem& item) { return item.id == id; });
 }
 
-<<<<<<< HEAD
-=======
-void DownloadManager::ensureDownloadDirectory() {
-    std::string downloadDir = getDownloadDirectory();
-    
-    // Verifica se la directory esiste provando ad aprire un file temporaneo
-    std::string testPath = downloadDir + "/.test";
-    std::ofstream testFile(testPath);
-    if (!testFile.good()) {
-        // La directory non esiste, prova a crearla usando system call
-        std::string command = "mkdir -p \"" + downloadDir + "\"";
-        int result = system(command.c_str());
-        if (result == 0) {
-            brls::Logger::info("DownloadManager: Created download directory: {}", downloadDir);
-        } else {
-            brls::Logger::error("DownloadManager: Failed to create download directory: {}", downloadDir);
-        }
-    } else {
-        // Rimuovi il file di test
-        testFile.close();
-        std::remove(testPath.c_str());
-    }
-}
-
->>>>>>> library-updates
 std::string DownloadManager::getDownloadsStatePath() const {
     return getDownloadDirectory() + "/downloads.json";
 }
 
 void DownloadManager::saveDownloads() {
     try {
-<<<<<<< HEAD
         // La directory verrà creata automaticamente se necessario dal file system
-=======
->>>>>>> library-updates
         json j = json::array();
         for (const auto& download : downloads) {
             json item;
@@ -1932,7 +1636,6 @@ void DownloadManager::saveDownloads() {
             item["downloadedSize"] = download.downloadedSize;
             item["error"] = download.error;
             item["imageUrl"] = download.imageUrl;
-<<<<<<< HEAD
             item["imagePath"] = download.imagePath;
             
             // Salva informazioni sui chunk per Switch
@@ -1951,8 +1654,6 @@ void DownloadManager::saveDownloads() {
                 item["chunks"] = chunks;
             }
             
-=======
->>>>>>> library-updates
             j.push_back(item);
         }
         
@@ -2015,7 +1716,6 @@ void DownloadManager::loadDownloads() {
                 download.imageUrl = ""; // Default to empty string for backward compatibility
             }
             
-<<<<<<< HEAD
             // Handle imagePath field (might not exist in older saves)
             if (item.contains("imagePath")) {
                 download.imagePath = item["imagePath"];
@@ -2044,8 +1744,6 @@ void DownloadManager::loadDownloads() {
                 }
             }
             
-=======
->>>>>>> library-updates
             // Reset status dei download in corso al riavvio
             if (download.status == DownloadStatus::DOWNLOADING) {
                 download.status = DownloadStatus::PAUSED;
@@ -2055,19 +1753,15 @@ void DownloadManager::loadDownloads() {
         }
         
         brls::Logger::info("DownloadManager: Loaded {} downloads from state", downloads.size());
-<<<<<<< HEAD
         
 #ifdef __SWITCH__
         // Nintendo Switch: auto-resume paused downloads after app restart
         autoResumeDownloadsOnSwitch();
 #endif
-=======
->>>>>>> library-updates
     } catch (const std::exception& e) {
         brls::Logger::error("DownloadManager: Failed to load downloads state: {}", e.what());
     }
 }
-<<<<<<< HEAD
 DownloadManager::DownloadManager() {
     // NON impostare un callback di default - lascia che l'UI imposti i suoi callback
     // globalProgressCallback sarà nullptr inizialmente, il che è corretto
@@ -2097,14 +1791,10 @@ DownloadManager::DownloadManager() {
     });
     hasExitSubscription = true;
 }
-=======
-
->>>>>>> library-updates
 DownloadManager::~DownloadManager() {
     brls::Logger::debug("DownloadManager: Starting destruction");
     shouldStop = true;
     
-<<<<<<< HEAD
     // Unsubscribe from exit event if subscribed
     if (hasExitSubscription) {
         brls::Application::getExitEvent()->unsubscribe(exitEventSubscription);
@@ -2142,20 +1832,6 @@ DownloadManager::~DownloadManager() {
                 brls::Logger::warning("DownloadManager: Thread join timeout during shutdown");
                 thread.detach(); // Detach se il join impiega troppo tempo
             }
-=======
-    // Pulisci tutti i callback prima di aspettare i thread
-    {
-        std::lock_guard<std::mutex> lock(downloadsMutex);
-        downloadProgressCallbacks.clear();
-        downloadCompleteCallbacks.clear();
-        downloadErrorCallbacks.clear();
-    }
-    
-    // Aspetta che tutti i thread finiscano
-    for (auto& thread : downloadThreads) {
-        if (thread.joinable()) {
-            thread.join();
->>>>>>> library-updates
         }
     }
     
@@ -2163,7 +1839,6 @@ DownloadManager::~DownloadManager() {
     brls::Logger::debug("DownloadManager: Destroyed");
 }
 
-<<<<<<< HEAD
 void DownloadManager::setGlobalProgressCallback(GlobalProgressCallback callback) {
     std::lock_guard<std::mutex> lock(downloadsMutex);
     if (callback) {
@@ -2177,61 +1852,6 @@ void DownloadManager::setGlobalProgressCallback(GlobalProgressCallback callback)
         };
         brls::Logger::info("DownloadManager: Global progress callback reset to default (logging only)");
     }
-=======
-void DownloadManager::addTestDownloads() {
-    std::lock_guard<std::mutex> lock(downloadsMutex);
-    
-    // Aggiungi solo se la lista è vuota
-    if (!downloads.empty()) {
-        brls::Logger::debug("DownloadManager::addTestDownloads() - downloads already exist, skipping");
-        return;
-    }
-    
-    brls::Logger::info("DownloadManager::addTestDownloads() - adding test downloads");
-    
-    // Crea alcuni download di test
-    DownloadItem test1;
-    test1.id = "test-download-1";
-    test1.title = "Test Video 1";
-    test1.url = "https://example.com/video1.mp4";
-    test1.status = DownloadStatus::COMPLETED;
-    test1.progress = 100.0f;
-    test1.downloadedSize = 1024 * 1024 * 50; // 50MB
-    test1.totalSize = 1024 * 1024 * 50;
-    test1.localPath = "/tmp/video1.mp4";
-    
-    DownloadItem test2;
-    test2.id = "test-download-2";
-    test2.title = "Test Video 2";
-    test2.url = "https://example.com/video2.mp4";
-    test2.status = DownloadStatus::DOWNLOADING;
-    test2.progress = 45.0f;
-    test2.downloadedSize = 1024 * 1024 * 22; // 22MB
-    test2.totalSize = 1024 * 1024 * 50; // 50MB
-    test2.localPath = "/tmp/video2.mp4";
-    
-    DownloadItem test3;
-    test3.id = "test-download-3";
-    test3.title = "Test Video 3";
-    test3.url = "https://example.com/video3.mp4";
-    test3.status = DownloadStatus::PAUSED;
-    test3.progress = 75.0f;
-    test3.downloadedSize = 1024 * 1024 * 37; // 37MB
-    test3.totalSize = 1024 * 1024 * 50; // 50MB
-    test3.localPath = "/tmp/video3.mp4";
-    
-    downloads.push_back(test1);
-    downloads.push_back(test2);
-    downloads.push_back(test3);
-    
-    brls::Logger::info("DownloadManager::addTestDownloads() - added {} test downloads", downloads.size());
-}
-
-void DownloadManager::setGlobalProgressCallback(GlobalProgressCallback callback) {
-    std::lock_guard<std::mutex> lock(downloadsMutex);
-    globalProgressCallback = callback;
-    brls::Logger::info("DownloadManager: Global progress callback set");
->>>>>>> library-updates
 }
 
 void DownloadManager::setGlobalCompleteCallback(GlobalCompleteCallback callback) {
@@ -2239,7 +1859,6 @@ void DownloadManager::setGlobalCompleteCallback(GlobalCompleteCallback callback)
     globalCompleteCallback = callback;
     brls::Logger::info("DownloadManager: Global complete callback set");
 }
-<<<<<<< HEAD
 
 bool DownloadManager::hasGlobalProgressCallback() const {
     std::lock_guard<std::mutex> lock(downloadsMutex);
@@ -3202,5 +2821,3 @@ void DownloadManager::downloadCoverImage(const std::string& id, const std::strin
         }
     }
 }
-=======
->>>>>>> library-updates

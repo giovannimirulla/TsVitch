@@ -46,7 +46,6 @@ struct XtreamAuthInfo {
     std::string allowed_output_formats;
 };
 
-<<<<<<< HEAD
 struct XtreamVODCategory {
     std::string category_id;
     std::string category_name;
@@ -120,21 +119,16 @@ struct XtreamSeries {
     std::string category_id;
 };
 
-=======
->>>>>>> library-updates
 class XtreamAPI : public brls::Singleton<XtreamAPI> {
 public:
     using ChannelsCallback = std::function<void(const std::vector<XtreamChannel>&, bool success, const std::string& error)>;
     using CategoriesCallback = std::function<void(const std::vector<XtreamCategory>&, bool success, const std::string& error)>;
     using AuthCallback = std::function<void(const XtreamAuthInfo&, bool success, const std::string& error)>;
-<<<<<<< HEAD
     using VODCategoriesCallback = std::function<void(const std::vector<XtreamVODCategory>&, bool success, const std::string& error)>;
     using VODStreamsCallback = std::function<void(const std::vector<XtreamVODStream>&, bool success, const std::string& error)>;
     using SeriesCategoriesCallback = std::function<void(const std::vector<XtreamSeriesCategory>&, bool success, const std::string& error)>;
     using SeriesListCallback = std::function<void(const std::vector<XtreamSeries>&, bool success, const std::string& error)>;
     using SeriesInfoCallback = std::function<void(const XtreamSeriesInfo&, bool success, const std::string& error)>;
-=======
->>>>>>> library-updates
 
     XtreamAPI() = default;
     ~XtreamAPI() = default;
@@ -145,7 +139,6 @@ public:
     // Verifica l'autenticazione
     void authenticate(AuthCallback callback);
     
-<<<<<<< HEAD
     // LIVE TV
     void getLiveTVCategories(CategoriesCallback callback);
     void getLiveTVChannels(const std::string& categoryId, ChannelsCallback callback);
@@ -165,19 +158,6 @@ public:
     std::string getVODUrl(const std::string& streamId, const std::string& extension = "mkv") const;
     std::string getSeriesUrl(const std::string& seriesId, const std::string& seasonNumber, const std::string& episodeNumber, const std::string& extension = "mkv") const;
     std::string getSeriesEpisodeUrl(const std::string& episodeId, const std::string& extension = "mkv") const;
-=======
-    // Ottieni le categorie live TV
-    void getLiveTVCategories(CategoriesCallback callback);
-    
-    // Ottieni i canali live TV per categoria
-    void getLiveTVChannels(const std::string& categoryId, ChannelsCallback callback);
-    
-    // Ottieni tutti i canali live TV
-    void getAllLiveTVChannels(ChannelsCallback callback);
-    
-    // Genera l'URL dello stream per un canale
-    std::string getStreamUrl(const std::string& streamId, const std::string& extension = "ts") const;
->>>>>>> library-updates
     
     // Verifica se le credenziali sono configurate
     bool isConfigured() const;
@@ -196,7 +176,6 @@ private:
     // Parsing helper functions
     std::vector<XtreamChannel> parseChannels(const json& data);
     std::vector<XtreamCategory> parseCategories(const json& data);
-<<<<<<< HEAD
     std::vector<XtreamVODCategory> parseVODCategories(const json& data);
     std::vector<XtreamVODStream> parseVODStreams(const json& data);
     std::vector<XtreamSeriesCategory> parseSeriesCategories(const json& data);
@@ -204,8 +183,6 @@ private:
     XtreamSeriesInfo parseSeriesInfo(const json& data);
     std::vector<XtreamSeason> parseSeasons(const json& data);
     std::vector<XtreamSeason> parseEpisodes(const json& data);
-=======
->>>>>>> library-updates
     XtreamAuthInfo parseAuthInfo(const json& data);
 };
 

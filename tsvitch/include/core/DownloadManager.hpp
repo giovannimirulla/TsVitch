@@ -8,11 +8,8 @@
 #include <thread>
 #include <mutex>
 #include <unordered_map>
-<<<<<<< HEAD
 #include <set>
 #include <chrono>
-=======
->>>>>>> library-updates
 #include <borealis/core/singleton.hpp>
 #include <borealis/core/event.hpp>
 
@@ -25,7 +22,6 @@ enum class DownloadStatus {
     CANCELLED
 };
 
-<<<<<<< HEAD
 // Struttura per tracciare i chunk dei download (specifico per Switch)
 struct DownloadChunk {
     size_t start;
@@ -36,24 +32,18 @@ struct DownloadChunk {
     DownloadChunk(size_t s, size_t e) : start(s), end(e), completed(false) {}
 };
 
-=======
->>>>>>> library-updates
 struct DownloadItem {
     std::string id;
     std::string title;
     std::string url;
     std::string localPath;
     std::string imageUrl;  // URL dell'immagine del film
-<<<<<<< HEAD
     std::string imagePath; // Path locale dell'immagine scaricata
-=======
->>>>>>> library-updates
     DownloadStatus status;
     float progress;
     size_t totalSize;
     size_t downloadedSize;
     std::string error;
-<<<<<<< HEAD
     std::chrono::steady_clock::time_point startTime; // Timestamp di inizio download
     
     // Supporto per download a chunk (Switch)
@@ -65,11 +55,6 @@ struct DownloadItem {
                      totalSize(0), downloadedSize(0), error(),
                      startTime(std::chrono::steady_clock::now()),
                      useChunkedDownload(false), chunkSize(0) {}
-=======
-    
-    DownloadItem() : status(DownloadStatus::PENDING), progress(0.0f), 
-                     totalSize(0), downloadedSize(0) {}
->>>>>>> library-updates
 };
 
 class DownloadManager : public brls::Singleton<DownloadManager> {
@@ -80,13 +65,10 @@ public:
     using GlobalProgressCallback = std::function<void(const std::string& id, float progress, size_t downloaded, size_t total)>;
     using GlobalCompleteCallback = std::function<void(const std::string& id, bool success)>;
     
-<<<<<<< HEAD
     // Costruttore e distruttore
     DownloadManager();
     ~DownloadManager();
     
-=======
->>>>>>> library-updates
     // Avvia un download (versione semplice senza callback)
     std::string startDownload(const std::string& title, const std::string& url);
     
@@ -117,15 +99,12 @@ public:
     // Elimina un download completato
     void deleteDownload(const std::string& id);
     
-<<<<<<< HEAD
     // Pulisce i download problematici (bloccati, errori, ecc.)
     void cleanupStaleDownloads();
     
     // Forza il riavvio di un download bloccato
     void forceRestartDownload(const std::string& id);
     
-=======
->>>>>>> library-updates
     // Ottiene tutti i download
     std::vector<DownloadItem> getAllDownloads() const;
     
@@ -139,21 +118,10 @@ public:
     // Ottiene la directory dei download
     std::string getDownloadDirectory() const;
     
-<<<<<<< HEAD
     // Callback globali per tutti i download
     void setGlobalProgressCallback(GlobalProgressCallback callback);
     void setGlobalCompleteCallback(GlobalCompleteCallback callback);
     bool hasGlobalProgressCallback() const;
-=======
-    // Aggiunge download di test per debug
-    void addTestDownloads();
-    
-    // Callback globali per tutti i download
-    void setGlobalProgressCallback(GlobalProgressCallback callback);
-    void setGlobalCompleteCallback(GlobalCompleteCallback callback);
-    
-    ~DownloadManager();
->>>>>>> library-updates
 
     // Membri pubblici per il callback di progresso
     std::vector<DownloadItem> downloads;
@@ -172,7 +140,6 @@ public:
     GlobalProgressCallback globalProgressCallback;
     GlobalCompleteCallback globalCompleteCallback;
     
-<<<<<<< HEAD
     // Flag di shutdown accessibile dai callback
     std::atomic<bool> shouldStop{false};
     
@@ -187,17 +154,10 @@ public:
 private:
     
     std::vector<std::thread> downloadThreads;
-=======
-private:
-    
-    std::vector<std::thread> downloadThreads;
-    std::atomic<bool> shouldStop{false};
->>>>>>> library-updates
     
     // Thread worker per il download
     void downloadWorker(const std::string& id);
     
-<<<<<<< HEAD
     // Metodo per scaricare l'immagine/copertina
     void downloadCoverImage(const std::string& id, const std::string& imageUrl, const std::string& imagePath);
     
@@ -214,15 +174,12 @@ private:
     void downloadSimplified(const std::string& id, const std::string& url, const std::string& localPath, size_t downloadedSize);
 #endif
     
-=======
->>>>>>> library-updates
     // Genera un ID unico per il download
     std::string generateDownloadId() const;
     
     // Trova un download per ID (versione const)
     std::vector<DownloadItem>::const_iterator findDownload(const std::string& id) const;
     
-<<<<<<< HEAD
     // Ottiene il path del file di stato
     std::string getDownloadsStatePath() const;
     
@@ -230,11 +187,4 @@ private:
     // Auto-riprende i download su Switch dopo il riavvio
     void autoResumeDownloadsOnSwitch();
 #endif
-=======
-    // Crea la directory di download se non esiste
-    void ensureDownloadDirectory();
-    
-    // Ottiene il path del file di stato
-    std::string getDownloadsStatePath() const;
->>>>>>> library-updates
 };

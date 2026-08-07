@@ -4,10 +4,7 @@
 #include <curl/curl.h>
 #include <thread>
 #include <sstream>
-<<<<<<< HEAD
 #include <algorithm>
-=======
->>>>>>> library-updates
 
 using namespace tsvitch;
 
@@ -17,7 +14,6 @@ static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::stri
     return size * nmemb;
 }
 
-<<<<<<< HEAD
 static std::string jsonToString(const json& obj, const std::string& key, const std::string& fallback = "") {
     if (!obj.contains(key))
         return fallback;
@@ -44,8 +40,6 @@ static std::string jsonToString(const json& obj, const std::string& key, const s
     return v.dump();
 }
 
-=======
->>>>>>> library-updates
 void XtreamAPI::setCredentials(const std::string& serverUrl, const std::string& username, const std::string& password) {
     this->serverUrl = serverUrl;
     this->username = username;
@@ -86,7 +80,6 @@ std::string XtreamAPI::getStreamUrl(const std::string& streamId, const std::stri
     return url.str();
 }
 
-<<<<<<< HEAD
 std::string XtreamAPI::getVODUrl(const std::string& streamId, const std::string& extension) const {
     if (!isConfigured()) {
         return "";
@@ -120,8 +113,6 @@ std::string XtreamAPI::getSeriesEpisodeUrl(const std::string& episodeId, const s
     return url.str();
 }
 
-=======
->>>>>>> library-updates
 void XtreamAPI::makeRequest(const std::string& url, std::function<void(const json&, bool, const std::string&)> callback) {
     // Esegui la richiesta in un thread separato per non bloccare la UI
     std::thread([url, callback]() {
@@ -229,15 +220,9 @@ void XtreamAPI::getLiveTVCategories(CategoriesCallback callback) {
             if (response.is_array()) {
                 for (const auto& item : response) {
                     XtreamCategory category;
-<<<<<<< HEAD
                     category.category_id = jsonToString(item, "category_id");
                     category.category_name = jsonToString(item, "category_name");
                     category.parent_id = jsonToString(item, "parent_id");
-=======
-                    category.category_id = item.value("category_id", "");
-                    category.category_name = item.value("category_name", "");
-                    category.parent_id = item.value("parent_id", "");
->>>>>>> library-updates
                     categories.push_back(category);
                 }
             }
@@ -275,7 +260,6 @@ void XtreamAPI::getLiveTVChannels(const std::string& categoryId, ChannelsCallbac
             if (response.is_array()) {
                 for (const auto& item : response) {
                     XtreamChannel channel;
-<<<<<<< HEAD
                     channel.num = jsonToString(item, "num");
                     channel.name = jsonToString(item, "name");
                     channel.stream_type = jsonToString(item, "stream_type");
@@ -292,24 +276,6 @@ void XtreamAPI::getLiveTVChannels(const std::string& categoryId, ChannelsCallbac
                     channel.tv_archive = jsonToString(item, "tv_archive");
                     channel.direct_source = jsonToString(item, "direct_source");
                     channel.tv_archive_duration = jsonToString(item, "tv_archive_duration");
-=======
-                    channel.num = item.value("num", "");
-                    channel.name = item.value("name", "");
-                    channel.stream_type = item.value("stream_type", "");
-                    channel.stream_id = item.value("stream_id", "");
-                    channel.stream_icon = item.value("stream_icon", "");
-                    channel.epg_channel_id = item.value("epg_channel_id", "");
-                    channel.added = item.value("added", "");
-                    channel.category_name = item.value("category_name", "");
-                    channel.category_id = item.value("category_id", "");
-                    channel.series_no = item.value("series_no", "");
-                    channel.live = item.value("live", "");
-                    channel.container_extension = item.value("container_extension", "");
-                    channel.custom_sid = item.value("custom_sid", "");
-                    channel.tv_archive = item.value("tv_archive", "");
-                    channel.direct_source = item.value("direct_source", "");
-                    channel.tv_archive_duration = item.value("tv_archive_duration", "");
->>>>>>> library-updates
                     channels.push_back(channel);
                 }
             }
@@ -325,7 +291,6 @@ void XtreamAPI::getLiveTVChannels(const std::string& categoryId, ChannelsCallbac
 void XtreamAPI::getAllLiveTVChannels(ChannelsCallback callback) {
     getLiveTVChannels("", callback); // Empty category ID gets all channels
 }
-<<<<<<< HEAD
 
 void XtreamAPI::getVODCategories(VODCategoriesCallback callback) {
     if (!isConfigured()) {
@@ -638,5 +603,3 @@ std::vector<XtreamSeason> XtreamAPI::parseEpisodes(const json& data) {
     }
     return seasons;
 }
-=======
->>>>>>> library-updates

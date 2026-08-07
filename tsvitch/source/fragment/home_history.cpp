@@ -12,10 +12,7 @@
 #include "core/HistoryManager.hpp"
 #include "core/FavoriteManager.hpp"
 #include "core/DownloadManager.hpp"
-<<<<<<< HEAD
 #include "utils/stream_helper.hpp"
-=======
->>>>>>> library-updates
 
 using namespace brls::literals;
 
@@ -113,7 +110,6 @@ void HomeHistory::downloadVideo() {
     // Ottieni il canale
     tsvitch::LiveM3u8 channel = item->getChannel();
     
-<<<<<<< HEAD
     // Controlla se è una live stream in corso
     if (tsvitch::isLiveStream(channel.url, channel.title)) {
         brls::Logger::warning("HomeHistory: Cannot download live streams");
@@ -121,8 +117,6 @@ void HomeHistory::downloadVideo() {
         return;
     }
     
-=======
->>>>>>> library-updates
     // Avvia il download
     std::string downloadId = DownloadManager::instance().startDownload(
         channel.title, 
