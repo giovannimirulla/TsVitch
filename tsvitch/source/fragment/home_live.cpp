@@ -235,6 +235,19 @@ HomeLive::HomeLive() {
 
     upRecyclingGrid->registerCell("Cell", []() { return DynamicGroupChannels::create(); });
 
+    // Registra il handler del tasto B nel costruttore (sempre attivo)
+    this->registerAction("hints/back"_i18n, brls::BUTTON_B, [this](...) {
+        if (isSearchActive) {
+            this->cancelSearch();
+        } else {
+            auto dialog = new brls::Dialog("hints/exit_hint"_i18n);
+            dialog->addButton("hints/cancel"_i18n, []() {});
+            dialog->addButton("hints/ok"_i18n, []() { brls::Application::quit(); });
+            dialog->open();
+        }
+        return true;
+    });
+
     // Sottoscrivi all'evento di cambio M3U8
     OnM3U8UrlChanged.subscribe([this]() {
         brls::Logger::debug("OnM3U8UrlChanged: showing skeleton and requesting channel list");
@@ -437,18 +450,6 @@ void HomeLive::onLiveList(tsvitch::LiveM3u8ListResult result, bool firstLoad) {
         upRecyclingGrid->setVisibility(brls::Visibility::GONE);
         return;
     }
-
-    this->registerAction("hints/back"_i18n, brls::BUTTON_B, [this](...) {
-        if (isSearchActive) {
-            this->cancelSearch();
-        } else {
-            auto dialog = new brls::Dialog("hints/exit_hint"_i18n);
-            dialog->addButton("hints/cancel"_i18n, []() {});
-            dialog->addButton("hints/ok"_i18n, []() { brls::Application::quit(); });
-            dialog->open();
-        }
-        return true;
-    });
 
     this->registerAction("hints/search"_i18n, brls::BUTTON_Y, [this](...) {
         this->search();
