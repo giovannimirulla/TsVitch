@@ -1,0 +1,35 @@
+- generic [ref=f12e5]:
+  - generic [ref=f12e11]:
+    - generic [ref=f12e14]:
+      - button "Inbox" [ref=f12e17] [cursor=pointer]
+      - link [ref=f12e20] [cursor=pointer]:
+        - /url: https://support.discord.com
+        - button "Help" [ref=f12e21]
+    - generic [ref=f12e25]:
+      - generic [ref=f12e26]:
+        - navigation "Servers sidebar" [ref=f12e27]:
+          - tree [ref=f12e28]:
+            - generic [ref=f12e29]:
+              - group "Servers"
+              - treeitem "Add a Server" [level=1] [ref=f12e38] [cursor=pointer]
+              - treeitem "Discover" [level=1] [ref=f12e49] [cursor=pointer]
+              - treeitem "Download Apps" [level=1] [ref=f12e60] [cursor=pointer]
+        - navigation "(server)" [ref=f12e64]
+        - separator "Resize Sidebar" [ref=f12e105]
+        - region "User status and settings" [ref=f12e106]
+      - img "Loading" [ref=f12e112]
+  - generic [ref=f12e118]:
+    - generic [ref=f12e121]:
+      - generic [ref=f12e122]: Did you know
+      - generic [ref=f12e123]:
+        - generic [ref=f12e124]:
+          - img "Shift" [ref=f12e126]: ⇧
+          - img "Escape" [ref=f12e128]: Esc
+        - text: to mark an entire server as read.
+    - generic [ref=f12e129]:
+      - generic [ref=f12e130]: Connection problems? Let us know!
+      - generic [ref=f12e131]:
+        - link "Tweet Us" [ref=f12e132] [cursor=pointer]:
+          - /url: https://twitter.com/discord_support
+        - link "Server Status" [ref=f12e135] [cursor=pointer]:
+          - /url: https://discordstatus.com

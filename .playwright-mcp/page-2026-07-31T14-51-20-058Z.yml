@@ -1,0 +1,33 @@
+- generic [ref=f11e5]:
+  - generic [ref=f11e11]:
+    - generic [ref=f11e14]:
+      - button "Inbox" [ref=f11e17] [cursor=pointer]
+      - link [ref=f11e20] [cursor=pointer]:
+        - /url: https://support.discord.com
+        - button "Help" [ref=f11e21]
+    - generic [ref=f11e25]:
+      - generic [ref=f11e26]:
+        - navigation "Servers sidebar" [ref=f11e27]:
+          - tree [ref=f11e28]:
+            - generic [ref=f11e29]:
+              - group "Servers"
+              - treeitem "Add a Server" [level=1] [ref=f11e38] [cursor=pointer]
+              - treeitem "Discover" [level=1] [ref=f11e49] [cursor=pointer]
+              - treeitem "Download Apps" [level=1] [ref=f11e60] [cursor=pointer]
+        - navigation "(server)" [ref=f11e64]
+        - separator "Resize Sidebar" [ref=f11e105]
+        - region "User status and settings" [ref=f11e106]
+      - generic [ref=f11e112]:
+        - heading "No Text Channels" [level=2] [ref=f11e113]
+        - generic [ref=f11e114]: You find yourself in a strange place. You don't have access to any text channels, or there are none in this server.
+  - generic [ref=f11e115]:
+    - generic [ref=f11e118]:
+      - generic [ref=f11e119]: Did you know
+      - generic [ref=f11e120]: There are a bunch of hidden "Easter Eggs" in the app that happen when you click certain things...
+    - generic [ref=f11e121]:
+      - generic [ref=f11e122]: Connection problems? Let us know!
+      - generic [ref=f11e123]:
+        - link "Tweet Us" [ref=f11e124] [cursor=pointer]:
+          - /url: https://twitter.com/discord_support
+        - link "Server Status" [ref=f11e127] [cursor=pointer]:
+          - /url: https://discordstatus.com

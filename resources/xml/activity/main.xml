@@ -24,20 +24,6 @@
 
             <Tab label=""
                  fontSize="18"
-                 icon="@res/svg/ico-vod.svg"
-                 iconActivate="@res/svg/ico-vod-activate.svg">
-                <HomeVOD/>
-            </Tab>
-
-            <Tab label=""
-                 fontSize="18"
-                 icon="@res/svg/ico-series.svg"
-                 iconActivate="@res/svg/ico-series-activate.svg">
-                <HomeSeries/>
-            </Tab>
-
-            <Tab label=""
-                 fontSize="18"
                  icon="@res/svg/ico-favorites.svg"
                  iconActivate="@res/svg/ico-favorites-activate.svg">
                 <HomeFavorites/>

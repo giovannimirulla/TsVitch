@@ -1,0 +1,33 @@
+- generic [ref=f9e5]:
+  - generic [ref=f9e11]:
+    - generic [ref=f9e14]:
+      - button "Inbox" [ref=f9e17] [cursor=pointer]
+      - link [ref=f9e20] [cursor=pointer]:
+        - /url: https://support.discord.com
+        - button "Help" [ref=f9e21]
+    - generic [ref=f9e25]:
+      - generic [ref=f9e26]:
+        - navigation "Servers sidebar" [ref=f9e27]:
+          - tree [ref=f9e28]:
+            - generic [ref=f9e29]:
+              - group "Servers"
+              - treeitem "Add a Server" [level=1] [ref=f9e38] [cursor=pointer]
+              - treeitem "Discover" [level=1] [ref=f9e49] [cursor=pointer]
+              - treeitem "Download Apps" [level=1] [ref=f9e60] [cursor=pointer]
+        - navigation "(server)" [ref=f9e64]
+        - separator "Resize Sidebar" [ref=f9e105]
+        - region "User status and settings" [ref=f9e106]
+      - generic [ref=f9e112]:
+        - heading "No Text Channels" [level=2] [ref=f9e113]
+        - generic [ref=f9e114]: You find yourself in a strange place. You don't have access to any text channels, or there are none in this server.
+  - generic [ref=f9e115]:
+    - generic [ref=f9e118]:
+      - generic [ref=f9e119]: Did you know
+      - generic [ref=f9e120]: Drag and drop servers on top of each other to create server folders.
+    - generic [ref=f9e121]:
+      - generic [ref=f9e122]: Connection problems? Let us know!
+      - generic [ref=f9e123]:
+        - link "Tweet Us" [ref=f9e124] [cursor=pointer]:
+          - /url: https://twitter.com/discord_support
+        - link "Server Status" [ref=f9e127] [cursor=pointer]:
+          - /url: https://discordstatus.com

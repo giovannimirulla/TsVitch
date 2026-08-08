@@ -1,0 +1,31 @@
+- generic [ref=f13e5]:
+  - generic [ref=f13e11]:
+    - generic [ref=f13e14]:
+      - button "Inbox" [ref=f13e17] [cursor=pointer]
+      - link [ref=f13e20] [cursor=pointer]:
+        - /url: https://support.discord.com
+        - button "Help" [ref=f13e21]
+    - generic [ref=f13e25]:
+      - generic [ref=f13e26]:
+        - navigation "Servers sidebar" [ref=f13e27]:
+          - tree [ref=f13e28]:
+            - generic [ref=f13e29]:
+              - group "Servers"
+              - treeitem "Add a Server" [level=1] [ref=f13e38] [cursor=pointer]
+              - treeitem "Discover" [level=1] [ref=f13e49] [cursor=pointer]
+              - treeitem "Download Apps" [level=1] [ref=f13e60] [cursor=pointer]
+        - navigation "(server)" [ref=f13e64]
+        - separator "Resize Sidebar" [ref=f13e105]
+        - region "User status and settings" [ref=f13e106]
+      - img "Loading" [ref=f13e112]
+  - generic [ref=f13e118]:
+    - generic [ref=f13e121]:
+      - generic [ref=f13e122]: Did you know
+      - generic [ref=f13e123]: You can type /tableflip and /unflip to spice up your messages.
+    - generic [ref=f13e124]:
+      - generic [ref=f13e125]: Connection problems? Let us know!
+      - generic [ref=f13e126]:
+        - link "Tweet Us" [ref=f13e127] [cursor=pointer]:
+          - /url: https://twitter.com/discord_support
+        - link "Server Status" [ref=f13e130] [cursor=pointer]:
+          - /url: https://discordstatus.com

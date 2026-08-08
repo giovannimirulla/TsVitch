@@ -1,0 +1,51 @@
+- generic [ref=f7e5]:
+  - generic [ref=f7e11]:
+    - generic [ref=f7e14]:
+      - button "Inbox" [ref=f7e17] [cursor=pointer]
+      - link [ref=f7e20] [cursor=pointer]:
+        - /url: https://support.discord.com
+        - button "Help" [ref=f7e21]
+    - generic [ref=f7e25]:
+      - generic [ref=f7e26]:
+        - navigation "Servers sidebar" [ref=f7e27]:
+          - tree [ref=f7e28]:
+            - generic [ref=f7e29]:
+              - group "Servers"
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - treeitem "Add a Server" [level=1]
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - treeitem "Discover" [level=1]
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - treeitem "Download Apps" [level=1]
+        - status [ref=f7e31]
+        - separator "Resize Sidebar" [ref=f7e74]
+        - region "User status and settings" [ref=f7e75]
+      - status [ref=f7e77]
+  - generic [ref=f7e83]:
+    - generic [ref=f7e85]:
+      - generic [ref=f7e86]: Did you know
+      - generic [ref=f7e87]:
+        - generic [ref=f7e88]:
+          - img "Option" [ref=f7e90]: ⌥
+          - generic [ref=f7e91]: click
+        - text: a message to mark it as unread.
+    - generic [ref=f7e92]:
+      - generic [ref=f7e93]: Connection problems? Let us know!
+      - generic [ref=f7e94]:
+        - link "Tweet Us" [ref=f7e95] [cursor=pointer]:
+          - /url: https://twitter.com/discord_support
+        - link "Server Status" [ref=f7e98] [cursor=pointer]:
+          - /url: https://discordstatus.com
