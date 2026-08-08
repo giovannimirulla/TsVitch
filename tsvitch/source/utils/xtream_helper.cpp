@@ -2,7 +2,6 @@
 #include <borealis/core/logger.hpp>
 #include <borealis/core/thread.hpp>
 #include <curl/curl.h>
-#include <thread>
 #include <sstream>
 #include <algorithm>
 
@@ -114,8 +113,8 @@ std::string XtreamAPI::getSeriesEpisodeUrl(const std::string& episodeId, const s
 }
 
 void XtreamAPI::makeRequest(const std::string& url, std::function<void(const json&, bool, const std::string&)> callback) {
-    // Esegui la richiesta in un thread separato per non bloccare la UI
-    std::thread([url, callback]() {
+    // Usa brls::Threading::async (compatibile con Switch) invece di std::thread
+    brls::Threading::async([url, callback]() {
         CURL* curl = curl_easy_init();
         if (!curl) {
             brls::sync([callback]() {
@@ -155,7 +154,7 @@ void XtreamAPI::makeRequest(const std::string& url, std::function<void(const jso
                 callback(json{}, false, error);
             }
         });
-    }).detach();
+    });
 }
 
 void XtreamAPI::authenticate(AuthCallback callback) {

@@ -27,7 +27,6 @@
 #endif
 
 int main(int argc, char* argv[]) {
-#ifdef __ANDROID__
     // Install terminate handler to log unhandled C++ exceptions before crash
     std::set_terminate([]() {
         try {
@@ -39,7 +38,6 @@ int main(int argc, char* argv[]) {
         }
         std::abort();
     });
-#endif
     for (int i = 1; i < argc; i++) {
         if (std::strcmp(argv[i], "-d") == 0) {
             brls::Logger::setLogLevel(brls::LogLevel::LOG_DEBUG);
