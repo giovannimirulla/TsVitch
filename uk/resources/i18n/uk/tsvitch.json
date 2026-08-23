@@ -85,6 +85,7 @@
           "portuguese_br": "Brazilian Portuguese"
         },
         "opencc": "Automatically convert Simplified Chinese (restart required)",
+        "tracking": "Share anonymous usage analytics",
         "keymap": {
           "header": "Key mapping style",
           "xbox": "Xbox",
