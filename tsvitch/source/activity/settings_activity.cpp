@@ -447,6 +447,10 @@ void SettingsActivity::onContentAvailable() {
                             DialogHelper::quitApp();
                         });
 
+    btnTracking->init("tsvitch/setting/app/others/tracking"_i18n, conf.isTrackingEnabled(), [](bool value) {
+        ProgramConfig::instance().setSettingItem(SettingItem::TRACKING_ENABLED, value);
+    });
+
     static int langIndex = conf.getStringOptionIndex(SettingItem::APP_LANG);
     selectorLang->init(
         "tsvitch/setting/app/others/language/header"_i18n,

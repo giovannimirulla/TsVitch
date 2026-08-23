@@ -22,12 +22,20 @@ void Analytics::report(const std::string& event) { this->report(Event{event}); }
 void Analytics::report(const std::string& event, const Params& params) { this->report(Event{event, params}); }
 
 void Analytics::report(const Event& event) {
+    if (!ProgramConfig::instance().isTrackingEnabled()) return;
+
     events_mutex.lock();
     events.emplace_back(event);
     events_mutex.unlock();
 }
 
 void Analytics::send() {
+    if (!ProgramConfig::instance().isTrackingEnabled()) {
+        std::lock_guard<std::mutex> lock(events_mutex);
+        events.clear();
+        return;
+    }
+
     Package package;
     events_mutex.lock();
     if (events.size() > REPORT_MAX_NUM) {
@@ -39,6 +47,10 @@ void Analytics::send() {
     }
     events_mutex.unlock();
     if (package.events.empty()) return;
+
+    if (this->client_id.empty()) {
+        this->client_id = "GA1.3." + ProgramConfig::instance().getClientID();
+    }
 
     package.client_id        = this->client_id;
     package.user_id          = ProgramConfig::instance().getDeviceID();
@@ -79,7 +91,6 @@ void Analytics::send() {
 Analytics::Analytics() {
     brls::Logger::debug("Analytics url: {}", GA_URL);
     this->app_version = APPVersion::instance().getVersionStr();
-    this->client_id   = "GA1.3." + ProgramConfig::instance().getClientID();
 
     reportTimer.setCallback([]() { brls::Threading::async([]() { Analytics::instance().send(); }); });
     reportTimer.start(10000);

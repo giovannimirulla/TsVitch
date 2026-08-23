@@ -1,9 +1,18 @@
 #include <borealis.hpp>
+#include <chrono>
 #include <filesystem>
 
 #ifdef __SWITCH__
 #include <switch.h>
 #include <sys/socket.h>
+
+extern "C" long sysconf(int name) {
+    // libdav1d may query the number of online processors on Switch builds.
+    // libnx/newlib does not provide sysconf(), so return the Switch CPU count
+    // for that query and a conservative default for any other value.
+    (void)name;
+    return 4;
+}
 #endif
 
 #include "tsvitch.h"
@@ -27,6 +36,7 @@
 #endif
 
 int main(int argc, char* argv[]) {
+    bool nxlinkLog = false;
     // Install terminate handler to log unhandled C++ exceptions before crash
     std::set_terminate([]() {
         try {
@@ -41,20 +51,32 @@ int main(int argc, char* argv[]) {
     for (int i = 1; i < argc; i++) {
         if (std::strcmp(argv[i], "-d") == 0) {
             brls::Logger::setLogLevel(brls::LogLevel::LOG_DEBUG);
+            nxlinkLog = true;
         } else if (std::strcmp(argv[i], "-v") == 0) {
             brls::Logger::setLogLevel(brls::LogLevel::LOG_VERBOSE);
+            nxlinkLog = true;
         } else if (std::strcmp(argv[i], "-dv") == 0) {
             brls::Application::enableDebuggingView(true);
         } else if (std::strcmp(argv[i], "-t") == 0) {
             MPVCore::TERMINAL = true;
         } else if (std::strcmp(argv[i], "-o") == 0) {
             const char* path = (i + 1 < argc) ? argv[++i] : APP_NAME ".log";
-            brls::Logger::setLogOutput(std::fopen(path, "w+"));
+            if (FILE* logFile = std::fopen(path, "w+")) {
+                std::setvbuf(logFile, nullptr, _IONBF, 0);
+                brls::Logger::setLogOutput(logFile);
+            }
         }
     }
 
 #if __SWITCH__
-    if (brls::Logger::getLogLevel() >= brls::LogLevel::LOG_DEBUG) {
+    if (!nxlinkLog) {
+        if (FILE* switchLog = std::fopen("sdmc:/switch/TsVitch.log", "w+")) {
+            std::setvbuf(switchLog, nullptr, _IONBF, 0);
+            brls::Logger::setLogOutput(switchLog);
+            brls::Logger::setLogLevel(brls::LogLevel::LOG_DEBUG);
+        }
+    }
+    if (nxlinkLog && brls::Logger::getLogLevel() >= brls::LogLevel::LOG_DEBUG) {
         socketInitializeDefault();
         nxlinkStdio();
     }
@@ -138,9 +160,30 @@ int main(int argc, char* argv[]) {
                     {"language", brls::Application::getLocale()},
                     {"window", fmt::format("{}x{}", brls::Application::windowWidth, brls::Application::windowHeight)}})
 
-    APPVersion::instance().checkUpdate();
+#ifdef __SWITCH__
+        brls::Logger::info("Switch: update check disabled during crash isolation");
+        brls::Logger::info("Switch debug build marker: switch_download_actions_disabled_20260814_0120");
+#else
+        APPVersion::instance().checkUpdate();
+#endif
+
+#ifdef __SWITCH__
+    uint64_t loopFrames = 0;
+    auto lastHeartbeat  = std::chrono::steady_clock::now();
+#endif
 
     while (brls::Application::mainLoop()) {
+#ifdef __SWITCH__
+        loopFrames++;
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastHeartbeat);
+        if (elapsed.count() >= 500) {
+            brls::Logger::info("Switch heartbeat: frames={} elapsed={}ms focus='{}'",
+                               loopFrames, elapsed.count(),
+                               brls::Application::getCurrentFocus() ? brls::Application::getCurrentFocus()->describe() : "none");
+            lastHeartbeat = now;
+        }
+#endif
     }
 
     brls::Logger::info("mainLoop done");
@@ -155,7 +198,7 @@ int main(int argc, char* argv[]) {
 
 #ifdef __SWITCH__
     if (canUseLed) hidsysExit();
-    if (brls::Logger::getLogLevel() >= brls::LogLevel::LOG_DEBUG) {
+    if (nxlinkLog && brls::Logger::getLogLevel() >= brls::LogLevel::LOG_DEBUG) {
         socketExit();
         nxlinkStdio();
     }

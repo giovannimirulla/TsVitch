@@ -85,6 +85,7 @@
           "portuguese_br": "Portoghese Brasiliano"
         },
         "opencc": "Converti automaticamente il cinese semplificato (riavvio richiesto)",
+        "tracking": "Condividi statistiche d'uso anonime",
         "keymap": {
           "header": "Stile mappatura tasti",
           "xbox": "Xbox",

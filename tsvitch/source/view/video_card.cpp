@@ -20,12 +20,17 @@ RecyclingGridItemLiveVideoCard::RecyclingGridItemLiveVideoCard() {
 
 RecyclingGridItemLiveVideoCard::~RecyclingGridItemLiveVideoCard() { ImageHelper::clear(this->picture); }
 
-void RecyclingGridItemLiveVideoCard::setChannel(tsvitch::LiveM3u8 liveData) {
+void RecyclingGridItemLiveVideoCard::setChannel(tsvitch::LiveM3u8 liveData, size_t index) {
     this->liveData = liveData;
     this->labelGroup->setText(liveData.groupTitle);
     this->labelTitle->setIsWrapping(false);
     this->labelTitle->setText(liveData.title);
+#ifdef __SWITCH__
+    (void)index;
+    this->picture->setImageFromRes("pictures/video-card-bg.png");
+#else
     ImageHelper::with(this->picture)->load(liveData.logo);
+#endif
 
     bool isFavorite = FavoriteManager::get()->isFavorite(liveData.url);
 

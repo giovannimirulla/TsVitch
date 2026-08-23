@@ -6,7 +6,21 @@ RecyclingGridItem::RecyclingGridItem() {
     this->setFocusable(true);
     this->registerClickAction([this](View* view) {
         auto* recycler = dynamic_cast<RecyclingGrid*>(getParent()->getParent());
-        if (recycler) recycler->getDataSource()->onItemSelected(recycler, index);
+        if (!recycler) {
+            brls::Logger::warning("RecyclingGridItem: click index={} without parent recycler", index);
+            return true;
+        }
+
+        auto* dataSource = recycler->getDataSource();
+        brls::Logger::info("RecyclingGridItem: click index={} itemCount={} dataSource={}",
+                           index, recycler->getItemCount(), static_cast<void*>(dataSource));
+
+        if (!dataSource) {
+            brls::Logger::warning("RecyclingGridItem: click ignored because dataSource is null");
+            return true;
+        }
+
+        dataSource->onItemSelected(recycler, index);
         return true;
     });
     this->addGestureRecognizer(new brls::TapGestureRecognizer(this));
@@ -808,4 +822,3 @@ RecyclingGridItem* RecyclingGrid::getFocusedItem() {
     }
     return nullptr;
 }
-

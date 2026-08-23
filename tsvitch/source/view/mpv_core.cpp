@@ -280,15 +280,6 @@ MPVCore::MPVCore() {
 }
 
 void MPVCore::init() {
-#ifdef __ANDROID__
-    // On Android, skip mpv initialization to avoid heap corruption
-    // mpv's memory allocations conflict with nanovg's heap on Android
-    // TODO: investigate proper mpv initialization for Android
-    brls::Logger::info("Android: skipping mpv initialization");
-    this->mpv = nullptr;
-    this->mpv_context = nullptr;
-    return;
-#endif
     setlocale(LC_NUMERIC, "C");
     this->mpv = mpvCreate();
     if (!mpv) {
@@ -349,15 +340,12 @@ void MPVCore::init() {
     }
 
 #if defined(__ANDROID__)
-    // On Android, force software decoding to avoid MediaCodec crashes
-    // Hardware decoding via MediaCodec requires additional JNI setup
+    // Hardware decoding via MediaCodec requires additional JNI setup.
+    // Keep software decoding for now, but render through the existing GLES context.
     mpvSetOptionString(mpv, "hwdec", "no");
     mpvSetOptionString(mpv, "vd-lavc-dr", "no");
     mpvSetOptionString(mpv, "vd-lavc-threads", "4");
     brls::Logger::info("Android: forced software decoding");
-    // Use null video output to avoid mpv render context issues on Android
-    // TODO: implement proper OpenGL ES rendering for Android
-    mpvSetOptionString(mpv, "vo", "null");
 #elif defined(__SWITCH__)
     mpvSetOptionString(mpv, "vd-lavc-dr", "no");
     mpvSetOptionString(mpv, "vd-lavc-threads", "4");
@@ -414,7 +402,7 @@ void MPVCore::init() {
     auto switchPlatform = (brls::SwitchVideoContext *)brls::Application::getPlatform()->getVideoContext();
     mpv_deko3d_init_params deko_init_params{switchPlatform->getDeko3dDevice()};
     mpv_render_param params[]{{MPV_RENDER_PARAM_API_TYPE, const_cast<char *>(MPV_RENDER_API_TYPE_DEKO3D)},
-                              {MPV_RENDER_PARAM_DEKO3D_INIT_PARAMS, &deko_init_params},
+                              {TSVITCH_MPV_RENDER_PARAM_DEKO3D_INIT_PARAMS, &deko_init_params},
                               {MPV_RENDER_PARAM_ADVANCED_CONTROL, &advanced_control},
                               {MPV_RENDER_PARAM_INVALID, nullptr}};
 #elif defined(BOREALIS_USE_D3D11)
@@ -433,13 +421,6 @@ void MPVCore::init() {
                               {MPV_RENDER_PARAM_INVALID, nullptr}};
 #endif
 
-#ifdef __ANDROID__
-    // On Android, skip mpv render context creation to avoid heap corruption
-    // mpv is used for audio-only playback on Android for now
-    // TODO: implement proper OpenGL ES render context for Android
-    mpv_context = nullptr;
-    brls::Logger::info("Android: skipping mpvRenderContextCreate (audio-only mode)");
-#else
     int render_status = mpvRenderContextCreate(&mpv_context, mpv, params);
     if (render_status < 0) {
         brls::Logger::error("mpvRenderContextCreate failed with error: {}", mpvErrorString(render_status));
@@ -454,7 +435,6 @@ void MPVCore::init() {
 #ifdef BOREALIS_USE_D3D11
     tsvitch::initCrashDump();
 #endif
-#endif // __ANDROID__
     brls::Logger::info("MPV Version: {}", mpvGetPropertyString(mpv, "mpv-version"));
     brls::Logger::info("FFMPEG Version: {}", mpvGetPropertyString(mpv, "ffmpeg-version"));
     command_async("set", "audio-client-name", APPVersion::getPackageName());
@@ -462,9 +442,7 @@ void MPVCore::init() {
 
     mpvSetWakeupCallback(mpv, on_wakeup, this);
 
-#ifndef __ANDROID__
     mpvRenderContextSetUpdateCallback(mpv_context, on_update, this);
-#endif
 
     focusSubscription = brls::Application::getWindowFocusChangedEvent()->subscribe([this](bool focus) {
         static bool playing = false;

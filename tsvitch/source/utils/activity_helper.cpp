@@ -15,6 +15,7 @@
 
 #include "utils/activity_helper.hpp"
 #include "utils/config_helper.hpp"
+#include "utils/download_helper.hpp"
 #include "view/grid_dropdown.hpp"
 
 static void showSeriesEpisodes(const tsvitch::LiveM3u8& seriesItem, std::function<void()> onClose) {
@@ -201,7 +202,16 @@ static void showSeriesEpisodes(const tsvitch::LiveM3u8& seriesItem, std::functio
                             BaseDropdown::text(
                                 seasonNames[seasonIdx], epTitles,
                                 [eps, onClose](int epIdx) {
+#ifdef __SWITCH__
+                                    brls::Logger::info("Series episode selected on Switch: no-op during crash isolation");
+                                    if (epIdx >= 0 && static_cast<size_t>(epIdx) < eps.size()) {
+                                        brls::Logger::info("Series episode no-op valid index: {}", epIdx);
+                                    } else {
+                                        brls::Logger::warning("Series episode selection out of range: {}", epIdx);
+                                    }
+#else
                                     Intent::openLive(eps, epIdx, onClose);
+#endif
                                 },
                                 0
                             );

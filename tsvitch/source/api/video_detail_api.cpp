@@ -1,9 +1,9 @@
 #include <nlohmann/json.hpp>
+#include <regex>
 #include <sstream>
 #include <utility>
 #include <vector>
 #include <algorithm>
-#include <regex>
 #include <thread>
 #include <chrono>
 
@@ -27,6 +27,12 @@ static std::string safeGetString(const nlohmann::json& json, const std::string& 
         return json[key].get<std::string>();
     }
     return defaultValue;
+}
+
+static std::string redactXtreamUrlForLog(std::string url) {
+    url = std::regex_replace(url, std::regex("username=[^&]*"), "username=***");
+    url = std::regex_replace(url, std::regex("password=[^&]*"), "password=***");
+    return url;
 }
 
 // Helper function to sanitize text for safe font rendering
@@ -418,7 +424,7 @@ void TsVitchClient::get_xtream_channels_with_retry(const std::function<void(Live
     std::string categoryUrl = xtreamBase + "player_api.php?username=" + username + "&password=" + password + "&action=" + actionCategory;
     std::string xtreamUrl = xtreamBase + "player_api.php?username=" + username + "&password=" + password + "&action=" + actionStream;
     
-    brls::Logger::debug("Fetching Xtream categories from: {}", categoryUrl);
+    brls::Logger::debug("Fetching Xtream categories from: {}", redactXtreamUrlForLog(categoryUrl));
     
     auto timeoutMs = ProgramConfig::instance().getIntOption(SettingItem::M3U8_TIMEOUT);
     if (timeoutMs < 45000) timeoutMs = 45000; // Minimum 45 seconds for Xtream
@@ -446,7 +452,7 @@ void TsVitchClient::get_xtream_channels_with_retry(const std::function<void(Live
                 brls::Logger::warning("Failed to fetch Xtream categories, status code: {}. Continuing without category map.", rCat.status_code);
             }
             
-            brls::Logger::debug("Fetching Xtream channels from: {} (retries left: {})", xtreamUrl, maxRetries);
+            brls::Logger::debug("Fetching Xtream channels from: {} (retries left: {})", redactXtreamUrlForLog(xtreamUrl), maxRetries);
             
             cpr::GetCallback(
                 [callback, error, maxRetries, xtreamUrl, timeoutMs, serverUrl, username, password, contentType, categoryMap](const cpr::Response& r) {
@@ -520,11 +526,25 @@ void TsVitchClient::get_xtream_channels_with_retry(const std::function<void(Live
                                     return;
                                 }
                                 
+                                size_t parseLimit = json_result.size();
+#ifdef __SWITCH__
+                                if (contentType > 0 && parseLimit > 2000) {
+                                    brls::Logger::warning("Xtream VOD/Series Switch safe mode: limiting parse from {} to 2000 items", parseLimit);
+                                    parseLimit = 2000;
+                                }
+#endif
+
                                 LiveM3u8ListResult result;
-                                result.reserve(json_result.size()); // Pre-allocazione per prestazioni
+                                result.reserve(parseLimit); // Pre-allocazione per prestazioni
                                 
                                 size_t processed = 0, skipped = 0;
-                                for (size_t i = 0; i < json_result.size(); i++) {
+                                for (size_t i = 0; i < parseLimit; i++) {
+#ifdef __SWITCH__
+                                    if (i > 0 && i % 250 == 0) {
+                                        brls::Logger::info("Xtream parse progress: index={} processed={} skipped={} total={}", i, processed, skipped, json_result.size());
+                                        std::this_thread::yield();
+                                    }
+#endif
                                     const auto& item = json_result[i];
                                     if (!item.is_object()) {
                                         skipped++;

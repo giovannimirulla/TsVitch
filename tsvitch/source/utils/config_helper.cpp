@@ -120,6 +120,7 @@ std::unordered_map<SettingItem, ProgramOption> ProgramConfig::SETTING_MAP = {
     {SettingItem::PLAYER_EXIT_FULLSCREEN_ON_END, {"player_exit_fullscreen_on_end", {}, {}, 1}},
     {SettingItem::PLAYER_OSD_TV_MODE, {"player_osd_tv_mode", {}, {}, 0}},
     {SettingItem::OPENCC_ON, {"opencc", {}, {}, 1}},
+    {SettingItem::TRACKING_ENABLED, {"tracking_enabled", {}, {}, 0}},
 
     {SettingItem::SEARCH_TV_MODE, {"search_tv_mode", {}, {}, 1}},
     {SettingItem::TLS_VERIFY,
@@ -217,7 +218,13 @@ void ProgramConfig::setProgramConfig(const ProgramConfig& conf) {
     this->setting = conf.setting;
     this->client  = conf.client;
     this->device  = conf.device;
-    brls::Logger::info("setting: {}", conf.setting.dump());
+    auto safeSetting = conf.setting;
+    for (const char* key : {"xtream_password", "xtream_username", "xtream_server_url", "m3u8_url", "proxy_url"}) {
+        if (safeSetting.contains(key) && safeSetting[key].is_string() && !safeSetting[key].get<std::string>().empty()) {
+            safeSetting[key] = "***";
+        }
+    }
+    brls::Logger::info("setting: {}", safeSetting.dump());
 }
 
 std::string ProgramConfig::getClientID() {
@@ -868,6 +875,10 @@ bool ProgramConfig::getXtreamEnabled() {
 void ProgramConfig::setXtreamEnabled(bool enabled) {
     setSettingItem(SettingItem::XTREAM_ENABLED, enabled ? 1 : 0);
     brls::Logger::info("setXtreamEnabled: {}", enabled);
+}
+
+bool ProgramConfig::isTrackingEnabled() {
+    return getBoolOption(SettingItem::TRACKING_ENABLED);
 }
 
 void ProgramConfig::toggleFullscreen() {

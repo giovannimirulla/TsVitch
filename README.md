@@ -41,6 +41,7 @@ This app turns your Nintendo Switch into a powerful multimedia streaming device.
 - **Flexible Playlists & Sources**: Supports both standard M3U/M3U8 playlists and full integration with the **Xtream Codes API**, enabling streaming of live TV, movies, and on-demand series.
 - **Optimized Interface**: A clean, intuitive design tailored for Nintendo Switch's touchscreen and Joy-Con controls.
 - **Multilanguage Support**: Offers subtitles, multiple audio tracks, and language options for a global audience.
+- **Privacy control**: Anonymous usage analytics can be enabled or disabled from the app settings.
 
 <br>
 
@@ -56,7 +57,7 @@ TsVitch supports two IPTV configuration modes, which can be selected and configu
   3. Go back to the main screen to automatically parse and load your channels.
 
 ### 2. Xtream Codes API Mode
-* **Overview**: Full integration with your Xtream Codes IPTV provider. This mode dynamically fetches and organizes your content into three dedicated tabs: Live TV, VOD (Movies), and TV Series (with season and episode navigation).
+* **Overview**: Full integration with your Xtream Codes IPTV provider. This mode dynamically fetches and organizes live TV, VOD (Movies), and TV Series content in the main channel experience.
 * **How to set up**:
   1. Navigate to **Settings** > **IPTV Mode** and select `Xtream`.
   2. Configure the connection settings:

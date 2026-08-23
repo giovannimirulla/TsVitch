@@ -15,6 +15,7 @@
 #include "core/FavoriteManager.hpp"
 #include "core/HistoryManager.hpp"
 #include "core/DownloadManager.hpp"
+#include "utils/stream_helper.hpp"
 #include "api/tsvitch/result/home_live_result.h"
 
 using namespace brls::literals;
@@ -63,10 +64,12 @@ HomeFavorites::HomeFavorites() {
         return true;
     });
 
+#ifndef __SWITCH__
     this->registerAction("Scarica video", brls::BUTTON_RT, [this](...) {
         this->downloadVideo();
         return true;
     });
+#endif
 }
 
 
@@ -127,36 +130,16 @@ void HomeFavorites::downloadVideo() {
 
     // Ottieni il canale
     tsvitch::LiveM3u8 channel = item->getChannel();
-    
-    // Controlla se è una live stream in corso
-    std::string url = channel.url;
-    std::string title = channel.title;
-    
-    // Converte tutto in minuscolo per confronto case-insensitive
-    std::string urlLower = url;
-    std::string titleLower = title;
-    std::transform(urlLower.begin(), urlLower.end(), urlLower.begin(), ::tolower);
-    std::transform(titleLower.begin(), titleLower.end(), titleLower.begin(), ::tolower);
-    
-    // Determina se è una live stream
-    bool isLiveStream = false;
-    
-    // Indicatori di live stream negli URL e titoli
-    if (urlLower.find("live") != std::string::npos || 
-        urlLower.find("stream") != std::string::npos ||
-        urlLower.find(".m3u8") != std::string::npos ||
-        urlLower.find(".ts") != std::string::npos ||
-        titleLower.find("live") != std::string::npos ||
-        titleLower.find("diretta") != std::string::npos) {
-        isLiveStream = true;
+
+    if (tsvitch::isXtreamSeriesPlaceholder(channel.url)) {
+        brls::Logger::warning("HomeFavorites: Cannot download Xtream series placeholder directly");
+        tsvitch::showSeriesDownloadHint();
+        return;
     }
     
-    // Se è una live stream, mostra errore e blocca il download
-    if (isLiveStream) {
+    if (tsvitch::isLiveStream(channel.url, channel.title)) {
         brls::Logger::warning("HomeFavorites: Cannot download live streams");
-        brls::Dialog* dialog = new brls::Dialog("Impossibile scaricare una diretta in corso.\nIl download è disponibile solo per i contenuti on-demand.");
-        dialog->addButton("OK", []() {});
-        dialog->open();
+        tsvitch::showLiveStreamDownloadError();
         return;
     }
     

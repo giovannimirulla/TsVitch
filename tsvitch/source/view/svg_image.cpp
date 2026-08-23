@@ -27,11 +27,6 @@ SVGImage::SVGImage() {
 }
 
 void SVGImage::setImageFromSVGRes(const std::string& value) {
-#ifdef __ANDROID__
-    // On Android, defer SVG loading to avoid heap corruption during inflate
-    filePath = "@res/" + value;
-    return;
-#endif
 #ifdef USE_LIBROMFS
     filePath = "@res/" + value;
     if (checkCache(filePath) > 0) return;

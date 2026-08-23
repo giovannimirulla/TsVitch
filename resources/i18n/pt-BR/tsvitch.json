@@ -85,6 +85,7 @@
           "portuguese_br": "Português Brasileiro"
         },
         "opencc": "Converter automaticamente o chinês simplificado (reinício necessário)",
+        "tracking": "Compartilhar analises de uso anonimas",
         "keymap": {
           "header": "Estilo de mapeamento de teclas",
           "xbox": "Xbox",

@@ -24,11 +24,11 @@ public:
 
     ~RecyclingGridItemLiveVideoCard() override;
 
-    void setChannel(tsvitch::LiveM3u8 liveData);
+    void setChannel(tsvitch::LiveM3u8 liveData, size_t index = 0);
 
    tsvitch::LiveM3u8 getChannel();
 
-                                             void setFavoriteIcon(bool isFavorite);
+    void setFavoriteIcon(bool isFavorite);
 
     static RecyclingGridItemLiveVideoCard* create();
 

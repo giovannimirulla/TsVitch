@@ -10,7 +10,7 @@ on:
       release:
         description: "Push a new release"
         required: false
-        default: "true"
+        default: "false"
       version:
         description: "Version"
         required: false
@@ -38,6 +38,7 @@ jobs:
       DIST_INTEL_DMG: ${{ steps.info.outputs.DIST_INTEL_DMG }}
       DIST_ARM_DMG: ${{ steps.info.outputs.DIST_ARM_DMG }}
       DIST_UNIVERSAL_DMG: ${{ steps.info.outputs.DIST_UNIVERSAL_DMG }}
+      DIST_ANDROID_APK: ${{ steps.info.outputs.DIST_ANDROID_APK }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -64,6 +65,7 @@ jobs:
           echo "DIST_INTEL_DMG=TsVitch-macOS-IntelChip-${VERSION}" >> $GITHUB_OUTPUT
           echo "DIST_ARM_DMG=TsVitch-macOS-AppleSilicon-${VERSION}" >> $GITHUB_OUTPUT
           echo "DIST_UNIVERSAL_DMG=TsVitch-macOS-Universal-${VERSION}" >> $GITHUB_OUTPUT
+          echo "DIST_ANDROID_APK=TsVitch-Android-arm64-v8a-${VERSION}" >> $GITHUB_OUTPUT
           echo $VERSION
           echo "${{  github.event.inputs.version }}"
 
@@ -79,7 +81,8 @@ jobs:
           fi
 
   release:
-    needs: [build-switch, build-macos, version]
+    needs: [build-switch, build-macos, build-android, version]
+    if: github.event.inputs.release == 'true' && !cancelled()
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -107,6 +110,7 @@ jobs:
             ${{ needs.version.outputs.DIST_INTEL_DMG }}/${{ needs.version.outputs.DIST_INTEL_DMG }}.dmg
             ${{ needs.version.outputs.DIST_ARM_DMG }}/${{ needs.version.outputs.DIST_ARM_DMG }}.dmg
             ${{ needs.version.outputs.DIST_UNIVERSAL_DMG }}/${{ needs.version.outputs.DIST_UNIVERSAL_DMG }}.dmg
+            ${{ needs.version.outputs.DIST_ANDROID_APK }}/${{ needs.version.outputs.DIST_ANDROID_APK }}.apk
           draft: true
           prerelease: false
           body_path: "CHANGELOG.md"
@@ -217,8 +221,76 @@ jobs:
           name: ${{ steps.name.outputs.DMG }}
           path: "${{ steps.name.outputs.DMG }}.dmg"
 
+  build-android:
+    needs: [version]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq ninja-build unzip
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build tools
+        run: |
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" "cmake;3.22.1" "ndk;22.1.7171670"
+
+      - name: Download mpv-android native libraries
+        run: |
+          mkdir -p android-project/app/libs/arm64-v8a android-project/app/libs/armeabi-v7a
+
+          RELEASE_JSON="$(mktemp)"
+          curl -fsSL https://api.github.com/repos/mpv-android/mpv-android/releases/latest > "${RELEASE_JSON}"
+
+          ARM64_APK_URL="$(jq -r '.assets[].browser_download_url | select(test("arm64-v8a.*\\.apk$")) | select((test("api29") | not))' "${RELEASE_JSON}" | head -n 1)"
+          ARMV7_APK_URL="$(jq -r '.assets[].browser_download_url | select(test("armeabi-v7a.*\\.apk$")) | select((test("api29") | not))' "${RELEASE_JSON}" | head -n 1)"
+
+          if [ -z "${ARM64_APK_URL}" ] || [ -z "${ARMV7_APK_URL}" ]; then
+            echo "Could not resolve mpv-android APK URLs from latest release." >&2
+            jq -r '.assets[].name' "${RELEASE_JSON}" >&2
+            exit 1
+          fi
+
+          curl -fsSL "${ARM64_APK_URL}" -o /tmp/mpv-android-arm64-v8a.apk
+          curl -fsSL "${ARMV7_APK_URL}" -o /tmp/mpv-android-armeabi-v7a.apk
+
+          unzip -j /tmp/mpv-android-arm64-v8a.apk 'lib/arm64-v8a/*.so' -d android-project/app/libs/arm64-v8a
+          unzip -j /tmp/mpv-android-armeabi-v7a.apk 'lib/armeabi-v7a/*.so' -d android-project/app/libs/armeabi-v7a
+
+      - name: Build APK
+        env:
+          BUILD_TYPE: Debug
+        run: |
+          SERVER_URL="${SERVER_URL:-https://example.invalid}" \
+          SERVER_TOKEN="${SERVER_TOKEN:-disabled}" \
+          bash scripts/build_android.sh
+
+      - name: Name APK
+        run: |
+          cp android-project/app/build/outputs/apk/debug/app-debug.apk "${{ needs.version.outputs.DIST_ANDROID_APK }}.apk"
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ needs.version.outputs.DIST_ANDROID_APK }}
+          path: "${{ needs.version.outputs.DIST_ANDROID_APK }}.apk"
+
   discord-notify:
-    needs: [version, build-switch, build-macos, release]
+    needs: [version, build-switch, build-macos, build-android, release]
     if: always() && needs.build-switch.result == 'success' && !cancelled()
     uses: ./.github/workflows/discord-build.yml
     secrets: inherit

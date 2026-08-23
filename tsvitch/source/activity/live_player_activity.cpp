@@ -96,6 +96,14 @@ void LiveActivity::onContentAvailable() {
         return true;
     });
 
+#ifndef __SWITCH__
+    this->video->registerAction("Scarica video", brls::BUTTON_RT, [this](...) {
+        brls::Logger::info("LiveActivity: BUTTON_RT download action");
+        this->startDownload();
+        return true;
+    });
+#endif
+
     //Button R go to next channel
     this->video->registerAction("hints/next_channel"_i18n, brls::BUTTON_RB, [this](...) {
         if (!this->isAd) {
@@ -386,6 +394,12 @@ void LiveActivity::startDownload() {
     
     if (hasActiveDownload) {
         brls::Logger::debug("LiveActivity: Download already in progress");
+        return;
+    }
+
+    if (tsvitch::isXtreamSeriesPlaceholder(this->liveData.url)) {
+        brls::Logger::warning("LiveActivity: Cannot download Xtream series placeholder directly");
+        tsvitch::showSeriesDownloadHint();
         return;
     }
     

@@ -4,6 +4,8 @@ plugins {
 
 android {
     namespace = "com.giovannimirulla.tsvitch"
+    def analyticsEnabled = project.findProperty("GA_ID")?.trim() && project.findProperty("GA_KEY")?.trim()
+
     compileSdkVersion 34
     defaultConfig {
         minSdkVersion 21
@@ -22,9 +24,9 @@ android {
                           "-DSERVER_URL=${SERVER_URL}",
                           "-DSERVER_TOKEN=${SERVER_TOKEN}",
                           "-DM3U8_URL=${M3U8_URL}",
-                          "-DANALYTICS=ON",
-                          "-DANALYTICS_ID=${GA_ID}",
-                          "-DANALYTICS_KEY=${GA_KEY}",
+                          "-DANALYTICS=${analyticsEnabled ? 'ON' : 'OFF'}",
+                          "-DANALYTICS_ID=${project.findProperty('GA_ID') ?: ''}",
+                          "-DANALYTICS_KEY=${project.findProperty('GA_KEY') ?: ''}",
                           "-DSDL_CCACHE=OFF",
                           "-DCURL_USE_LIBIDN2=OFF",
                           "-DUSE_LIBIDN2=OFF",

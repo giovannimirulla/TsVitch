@@ -57,6 +57,7 @@ enum class SettingItem {
     VIDEO_QUALITY,
     TEXTURE_CACHE_NUM,
     OPENCC_ON,
+    TRACKING_ENABLED,
     CUSTOM_UPDATE_API,
     IMAGE_REQUEST_THREADS,
     
@@ -225,6 +226,7 @@ public:
     void setXtreamPassword(const std::string& password);
     bool getXtreamEnabled();
     void setXtreamEnabled(bool enabled);
+    bool isTrackingEnabled();
 
     std::string getProxyUrl();
 

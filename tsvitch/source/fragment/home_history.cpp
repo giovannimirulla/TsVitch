@@ -58,10 +58,12 @@ HomeHistory::HomeHistory() {
         return true;
     });
     
+#ifndef __SWITCH__
     this->registerAction("Scarica video", brls::BUTTON_RT, [this](...) {
         this->downloadVideo();
         return true;
     });
+#endif
     
 }
 
@@ -109,6 +111,12 @@ void HomeHistory::downloadVideo() {
 
     // Ottieni il canale
     tsvitch::LiveM3u8 channel = item->getChannel();
+
+    if (tsvitch::isXtreamSeriesPlaceholder(channel.url)) {
+        brls::Logger::warning("HomeHistory: Cannot download Xtream series placeholder directly");
+        tsvitch::showSeriesDownloadHint();
+        return;
+    }
     
     // Controlla se è una live stream in corso
     if (tsvitch::isLiveStream(channel.url, channel.title)) {

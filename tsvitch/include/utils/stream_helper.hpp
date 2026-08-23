@@ -3,6 +3,7 @@
 #include <string>
 #include <algorithm>
 #include <borealis/core/i18n.hpp>
+#include <borealis/core/application.hpp>
 #include <borealis/views/dialog.hpp>
 
 namespace tsvitch {
@@ -20,17 +21,33 @@ inline bool isLiveStream(const std::string& url, const std::string& title) {
     std::transform(urlLower.begin(), urlLower.end(), urlLower.begin(), ::tolower);
     std::transform(titleLower.begin(), titleLower.end(), titleLower.begin(), ::tolower);
     
-    // Indicatori di live stream negli URL e titoli
-    if (urlLower.find("live") != std::string::npos || 
-        urlLower.find("stream") != std::string::npos ||
+    // Indicatori di live stream negli URL e titoli. Keep this conservative:
+    // Xtream VOD URLs may be served from domains containing "stream".
+    if (urlLower.find("/live/") != std::string::npos ||
         urlLower.find(".m3u8") != std::string::npos ||
-        urlLower.find(".ts") != std::string::npos ||
+        (urlLower.size() >= 3 && urlLower.rfind(".ts") == urlLower.size() - 3) ||
+        urlLower.find(".ts?") != std::string::npos ||
         titleLower.find("live") != std::string::npos ||
         titleLower.find("diretta") != std::string::npos) {
         return true;
     }
     
     return false;
+}
+
+inline bool isXtreamSeriesPlaceholder(const std::string& url) {
+    return url.rfind("xtream-series://", 0) == 0;
+}
+
+inline void showSeriesDownloadHint() {
+#ifdef __SWITCH__
+    brls::Application::notify("Apri la serie e scegli un episodio per scaricare");
+#else
+    brls::Dialog* dialog = new brls::Dialog(
+        "Serie Xtream\n\nApri la serie e scegli un episodio: il download è disponibile sui singoli episodi.");
+    dialog->addButton(brls::getStr("brls/hints/ok"), []() {});
+    dialog->open();
+#endif
 }
 
 /**

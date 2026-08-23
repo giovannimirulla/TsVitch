@@ -357,6 +357,9 @@
                                                         <brls:BooleanCell
                                                                 id="setting/opencc" />
 
+                                                        <brls:BooleanCell
+                                                                id="setting/tracking" />
+
                                                         <SelectorCell
                                                                 id="setting/language" />
                                                 </brls:Box>

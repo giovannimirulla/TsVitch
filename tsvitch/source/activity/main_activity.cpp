@@ -33,37 +33,8 @@ MainActivity::~MainActivity() { brls::Logger::debug("del MainActivity"); }
 void MainActivity::onContentAvailable() {
     brls::Logger::info("MainActivity::onContentAvailable() called");
 
-    // Nascondi i tab VOD e Serie quando si usa la sola playlist M3U8 (IPTV_MODE == 0)
     int iptvMode = ProgramConfig::instance().getSettingItem(SettingItem::IPTV_MODE, 0);
     brls::Logger::info("MainActivity: IPTV_MODE = {}", iptvMode);
-
-    if (iptvMode == 0) {
-        if (!this->tabFrame.getView()) {
-            brls::Logger::warning("MainActivity: tabFrame not bound yet");
-        } else {
-            auto* sidebar = this->tabFrame->getSidebar();
-            if (!sidebar) {
-                brls::Logger::error("MainActivity: sidebar is null");
-            } else {
-                auto& children = sidebar->getChildren();
-                brls::Logger::info("MainActivity: sidebar has {} children", children.size());
-
-                // Nascondi VOD (indice 1) e Series (indice 2)
-                if (children.size() > 1) {
-                    brls::Logger::info("MainActivity: hiding VOD tab (index 1)");
-                    children[1]->setVisibility(brls::Visibility::GONE);
-                }
-                if (children.size() > 2) {
-                    brls::Logger::info("MainActivity: hiding Series tab (index 2)");
-                    children[2]->setVisibility(brls::Visibility::GONE);
-                }
-
-                brls::Logger::info("MainActivity: VOD and Series tabs hidden for M3U8 mode");
-            }
-        }
-    } else {
-        brls::Logger::info("MainActivity: Xtream mode active, showing all tabs");
-    }
 
     // Controlla la connettività internet
     bool hasInternet = brls::Application::getPlatform()->hasEthernetConnection() || 

@@ -15,6 +15,13 @@
 #if defined(MPV_SW_RENDER)
 #elif defined(BOREALIS_USE_DEKO3D)
 #include <mpv/render_dk3d.h>
+static constexpr mpv_render_param_type TSVITCH_MPV_RENDER_PARAM_DEKO3D_INIT_PARAMS =
+    static_cast<mpv_render_param_type>(21);
+static constexpr mpv_render_param_type TSVITCH_MPV_RENDER_PARAM_DEKO3D_FBO =
+    static_cast<mpv_render_param_type>(22);
+#ifndef MPV_RENDER_API_TYPE_DEKO3D
+#define MPV_RENDER_API_TYPE_DEKO3D "deko3d"
+#endif
 #elif defined(BOREALIS_USE_D3D11)
 #include <mpv/render_dxgi.h>
 #elif defined(BOREALIS_USE_OPENGL)
@@ -321,7 +328,7 @@ private:
         nullptr, &readyFence, &doneFence, 1280, 720, DkImageFormat_RGBA8_Unorm,
     };
     mpv_render_param mpv_params[3] = {
-        {MPV_RENDER_PARAM_DEKO3D_FBO, &mpv_fbo},
+        {TSVITCH_MPV_RENDER_PARAM_DEKO3D_FBO, &mpv_fbo},
         {MPV_RENDER_PARAM_INVALID, nullptr},
     };
 #elif defined(BOREALIS_USE_D3D11)

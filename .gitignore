@@ -17,6 +17,7 @@ repo/
 .xmake
 .vs
 .DS_Store
+.playwright-mcp/
 /winrt/AppxManifest.xml
 libromfs-generator
 build-*

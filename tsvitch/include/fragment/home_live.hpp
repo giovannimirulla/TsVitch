@@ -48,6 +48,8 @@ public:
     static View *create();
 
 private:
+    void handleXtreamContentTypeSelection(int selection);
+
     int selectedGroupIndex = 0;
     bool isSearchActive    = false;
     bool isInitialLoadInProgress = false;

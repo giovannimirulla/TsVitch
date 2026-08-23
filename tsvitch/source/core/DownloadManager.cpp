@@ -25,6 +25,8 @@
 #include <cstdlib>
 #include <sys/stat.h>
 #include <climits>
+#include <cctype>
+#include <vector>
 
 #ifdef __SWITCH__
     #include <switch.h>
@@ -32,6 +34,29 @@
     #include <sys/statvfs.h>
     #include <sys/socket.h>
 #endif
+
+static std::string getVideoExtensionFromUrl(const std::string& url) {
+    std::string clean = url;
+    size_t queryPos = clean.find_first_of("?#");
+    if (queryPos != std::string::npos) clean = clean.substr(0, queryPos);
+
+    size_t slashPos = clean.find_last_of('/');
+    size_t dotPos = clean.find_last_of('.');
+    if (dotPos == std::string::npos || (slashPos != std::string::npos && dotPos < slashPos)) {
+        return ".mp4";
+    }
+
+    std::string ext = clean.substr(dotPos);
+    std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+
+    static const std::vector<std::string> allowed = {
+        ".mp4", ".mkv", ".avi", ".mov", ".webm", ".m4v", ".ts"
+    };
+
+    return std::find(allowed.begin(), allowed.end(), ext) != allowed.end() ? ext : ".mp4";
+}
 
 #ifdef _WIN32
     #include <direct.h>
@@ -65,16 +90,16 @@ static std::mutex retryCountMutex;
 
 // Timeout configuration constants
 // These values are optimized for different scenarios and platforms
-static constexpr long DEFAULT_CONNECT_TIMEOUT = 30;      // seconds to connect
-static constexpr long DEFAULT_LOW_SPEED_LIMIT = 512;     // bytes/sec minimum
-static constexpr long DEFAULT_LOW_SPEED_TIME = 120;      // seconds at low speed before timeout
-static constexpr long SWITCH_CONNECT_TIMEOUT = 90;       // Nintendo Switch: more lenient
-static constexpr long SWITCH_LOW_SPEED_LIMIT = 32;       // Nintendo Switch: accept very slow speed
-static constexpr long SWITCH_LOW_SPEED_TIME = 300;       // Nintendo Switch: allow 5 minutes low speed
+[[maybe_unused]] static constexpr long DEFAULT_CONNECT_TIMEOUT = 30;      // seconds to connect
+[[maybe_unused]] static constexpr long DEFAULT_LOW_SPEED_LIMIT = 512;     // bytes/sec minimum
+[[maybe_unused]] static constexpr long DEFAULT_LOW_SPEED_TIME = 120;      // seconds at low speed before timeout
+[[maybe_unused]] static constexpr long SWITCH_CONNECT_TIMEOUT = 90;       // Nintendo Switch: more lenient
+[[maybe_unused]] static constexpr long SWITCH_LOW_SPEED_LIMIT = 32;       // Nintendo Switch: accept very slow speed
+[[maybe_unused]] static constexpr long SWITCH_LOW_SPEED_TIME = 300;       // Nintendo Switch: allow 5 minutes low speed
 
 // Retry configuration
-static constexpr int MAX_RETRIES_LARGE_FILE = 5;         // More retries for large files
-static constexpr int MAX_RETRIES_SMALL_FILE = 3;         // Fewer retries for small files
+[[maybe_unused]] static constexpr int MAX_RETRIES_LARGE_FILE = 5;         // More retries for large files
+[[maybe_unused]] static constexpr int MAX_RETRIES_SMALL_FILE = 3;         // Fewer retries for small files
 static constexpr int EXPONENTIAL_BACKOFF_BASE = 1000;    // milliseconds
 static constexpr int MAX_BACKOFF_DELAY = 30000;          // 30 seconds max backoff
 
@@ -409,6 +434,16 @@ std::string DownloadManager::startDownload(const std::string& title, const std::
     return startDownload(title, url, "", progressCallback, completeCallback, errorCallback);
 }
 
+void DownloadManager::startDownloadWorkerThread(const std::string& id) {
+#ifdef __SWITCH__
+    brls::Logger::info("DownloadManager: Switch synchronous download worker starting for {}", id);
+    downloadWorker(id);
+    brls::Logger::info("DownloadManager: Switch synchronous download worker returned for {}", id);
+#else
+    downloadThreads.emplace_back(&DownloadManager::downloadWorker, this, id);
+#endif
+}
+
 std::string DownloadManager::startDownload(const std::string& title, const std::string& url, const std::string& imageUrl,
                                           DownloadProgressCallback progressCallback,
                                           DownloadCompleteCallback completeCallback,
@@ -439,7 +474,7 @@ std::string DownloadManager::startDownload(const std::string& title, const std::
     
     brls::Logger::debug("DownloadManager: Starting download with cleaned URL: '{}'", cleanUrl);
     
-    std::lock_guard<std::mutex> lock(downloadsMutex);
+    std::unique_lock<std::mutex> lock(downloadsMutex);
     
     // Controlla se esiste già un download per lo stesso titolo e URL
     for (const auto& existingDownload : downloads) {
@@ -460,10 +495,12 @@ std::string DownloadManager::startDownload(const std::string& title, const std::
             }
         }
     }
-    
+
+    std::string videoExtension = getVideoExtensionFromUrl(cleanUrl);
+
     // Controlla se il file esiste già sul disco
-    std::string filename = title + ".mp4"; // Assumiamo formato MP4
-    
+    std::string filename = title + videoExtension;
+
     // Rimuovi caratteri non validi dal filename e limita la lunghezza
     std::replace_if(filename.begin(), filename.end(), [](char c) {
         // Caratteri non validi per i nomi file su diversi sistemi operativi
@@ -474,9 +511,8 @@ std::string DownloadManager::startDownload(const std::string& title, const std::
     // Limita la lunghezza del nome file per evitare problemi
     if (filename.length() > 200) {
         // Mantieni l'estensione
-        std::string extension = ".mp4";
-        std::string titlePart = title.substr(0, 200 - extension.length());
-        filename = titlePart + extension;
+        std::string titlePart = title.substr(0, 200 - videoExtension.length());
+        filename = titlePart + videoExtension;
     }
     
     std::string potentialPath = getDownloadDirectory() + "/" + filename;
@@ -527,7 +563,7 @@ std::string DownloadManager::startDownload(const std::string& title, const std::
     item.progress = 0.0f;
     
     // Genera il path locale - la directory verrà creata automaticamente quando necessario
-    std::string downloadFilename = title + "_" + id + ".mp4"; // Assumiamo formato MP4
+    std::string downloadFilename = title + "_" + id + videoExtension;
     
     // Rimuovi caratteri non validi dal downloadFilename e limita la lunghezza
     std::replace_if(downloadFilename.begin(), downloadFilename.end(), [](char c) {
@@ -539,11 +575,10 @@ std::string DownloadManager::startDownload(const std::string& title, const std::
     // Limita la lunghezza del nome file per evitare problemi
     if (downloadFilename.length() > 200) {
         // Mantieni l'estensione e l'ID
-        std::string extension = ".mp4";
         std::string idPart = "_" + id;
-        size_t maxTitleLength = 200 - extension.length() - idPart.length();
+        size_t maxTitleLength = 200 - videoExtension.length() - idPart.length();
         std::string titlePart = title.substr(0, maxTitleLength);
-        downloadFilename = titlePart + idPart + extension;
+        downloadFilename = titlePart + idPart + videoExtension;
     }
     
     item.localPath = getDownloadDirectory() + "/" + downloadFilename;
@@ -584,8 +619,10 @@ std::string DownloadManager::startDownload(const std::string& title, const std::
         downloadErrorCallbacks[id] = errorCallback;
     }
     
+    lock.unlock();
+
     // Avvia il thread di download
-    downloadThreads.emplace_back(&DownloadManager::downloadWorker, this, id);
+    startDownloadWorkerThread(id);
     
     brls::Logger::info("DownloadManager: Started download {} for {}", id, title);
     saveDownloads();
@@ -604,7 +641,7 @@ void DownloadManager::pauseDownload(const std::string& id) {
 }
 
 void DownloadManager::resumeDownload(const std::string& id) {
-    std::lock_guard<std::mutex> lock(downloadsMutex);
+    std::unique_lock<std::mutex> lock(downloadsMutex);
     auto it = findDownload(id);
     if (it != downloads.end() && it->status == DownloadStatus::PAUSED) {
         it->status = DownloadStatus::DOWNLOADING;
@@ -615,8 +652,10 @@ void DownloadManager::resumeDownload(const std::string& id) {
             globalRetryCount.erase(id);
         }
         
+        lock.unlock();
+
         // Avvia un nuovo thread per il download
-        downloadThreads.emplace_back(&DownloadManager::downloadWorker, this, id);
+        startDownloadWorkerThread(id);
         brls::Logger::info("DownloadManager: Resumed download {} (retry count reset)", id);
         saveDownloads();
     }
@@ -1216,10 +1255,10 @@ void DownloadManager::downloadWorker(const std::string& id) {
     double totalTime = 0;
     curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &totalTime);
     
-    double downloadSpeed = 0;
-    curl_easy_getinfo(curl, CURLINFO_SPEED_DOWNLOAD, &downloadSpeed);
+    curl_off_t downloadSpeed = 0;
+    curl_easy_getinfo(curl, CURLINFO_SPEED_DOWNLOAD_T, &downloadSpeed);
     
-    brls::Logger::info("DownloadManager: Content-Length: {} bytes, Total time: {:.1f}s, Speed: {:.1f} bytes/s", 
+    brls::Logger::info("DownloadManager: Content-Length: {} bytes, Total time: {:.1f}s, Speed: {} bytes/s",
                       contentLength, totalTime, downloadSpeed);
     
     // Aggiungi informazioni specifiche per debugging interruzioni
@@ -1870,7 +1909,8 @@ bool DownloadManager::hasGlobalProgressCallback() const {
 #ifdef __SWITCH__
 void DownloadManager::autoResumeDownloadsOnSwitch() {
     // Auto-resume downloads that were paused due to network interruptions
-    std::lock_guard<std::mutex> lock(downloadsMutex);
+    std::vector<std::string> resumedIds;
+    std::unique_lock<std::mutex> lock(downloadsMutex);
     
     int resumedCount = 0;
     for (auto& download : downloads) {
@@ -1889,10 +1929,16 @@ void DownloadManager::autoResumeDownloadsOnSwitch() {
                 globalRetryCount.erase(download.id);
             }
             
-            // Start download thread
-            downloadThreads.emplace_back(&DownloadManager::downloadWorker, this, download.id);
+            resumedIds.push_back(download.id);
             resumedCount++;
         }
+    }
+
+    lock.unlock();
+
+    for (const auto& downloadId : resumedIds) {
+        // Start download thread
+        startDownloadWorkerThread(downloadId);
     }
     
     if (resumedCount > 0) {
@@ -2261,15 +2307,21 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
         return;
     }
     
+#ifndef __SWITCH__
     // Disabilita lo screen dimming durante il download
     brls::Application::getPlatform()->disableScreenDimming(true, "Download in corso", "TsVitch");
     brls::Logger::info("DownloadManager: Screen dimming disabled for download");
+#else
+    brls::Logger::info("DownloadManager: Switch simplified path: screen dimming unchanged");
+#endif
     
     CURL* curl = curl_easy_init();
     if (!curl) {
         brls::Logger::error("DownloadManager: Failed to initialize curl");
+#ifndef __SWITCH__
         // Riabilita lo screen dimming in caso di errore
         brls::Application::getPlatform()->disableScreenDimming(false, "Download failed", "TsVitch");
+#endif
         return;
     }
     brls::Logger::info("DownloadManager: Step 2 - CURL initialized");
@@ -2329,34 +2381,11 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
     // Verbose per debug
     curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
     
-    // Prova prima una richiesta HEAD per verificare se il server è raggiungibile
-    brls::Logger::info("DownloadManager: Step 4.1 - Testing server connectivity with HEAD request");
-    
-    curl_easy_setopt(curl, CURLOPT_NOBODY, 1L); // HEAD request
-    CURLcode head_res = curl_easy_perform(curl);
-    
-    long head_http_code = 0;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &head_http_code);
-    
-    // Cerca di ottenere la dimensione del file dalla HEAD response
     curl_off_t contentLength = 0;
-    curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &contentLength);
     size_t expectedSize = 0;
-    if (contentLength > 0) {
-        expectedSize = static_cast<size_t>(contentLength);
-        brls::Logger::info("DownloadManager: Step 4.2.1 - Expected file size from HEAD: {} bytes", expectedSize);
-    }
-    
-    brls::Logger::info("DownloadManager: Step 4.2 - HEAD request result: {}, HTTP: {}", 
-                      static_cast<int>(head_res), head_http_code);
-    
-    if (head_res != CURLE_OK) {
-        brls::Logger::error("DownloadManager: HEAD request failed: {}", curl_easy_strerror(head_res));
-    }
-    
-    // Reset per il download vero e proprio
-    curl_easy_setopt(curl, CURLOPT_NOBODY, 0L); // Torna a GET
-    curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L); // Assicurati che sia GET
+    brls::Logger::info("DownloadManager: Step 4.1 - Switch simplified path: skipping HEAD, starting GET directly");
+    curl_easy_setopt(curl, CURLOPT_NOBODY, 0L);
+    curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
     
     // ORA configura il write callback personalizzato e progresso per il download vero
     // Usa variabili locali invece di static per evitare conflitti tra download
@@ -2435,20 +2464,20 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
         }
         
         // Ottieni info su quanto scaricheremo
-        double downloadedContentLength = 0;
+        curl_off_t downloadedContentLength = 0;
         curl_easy_setopt(curl, CURLOPT_HEADER, 0L); // No headers nel output
         
         res = curl_easy_perform(curl);
         
         // Ottieni statistiche del download
-        curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &downloadedContentLength);
-        double downloadSpeed = 0;
-        curl_easy_getinfo(curl, CURLINFO_SPEED_DOWNLOAD, &downloadSpeed);
+        curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &downloadedContentLength);
+        curl_off_t downloadSpeed = 0;
+        curl_easy_getinfo(curl, CURLINFO_SPEED_DOWNLOAD_T, &downloadSpeed);
         double totalTime = 0;
         curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &totalTime);
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode); // Usa la variabile già dichiarata
         
-        brls::Logger::info("DownloadManager: Step 6.{} - Download result: {}, HTTP: {}, ContentLength: {:.0f}, Speed: {:.0f} B/s, Time: {:.1f}s", 
+        brls::Logger::info("DownloadManager: Step 6.{} - Download result: {}, HTTP: {}, ContentLength: {}, Speed: {} B/s, Time: {:.1f}s",
                           retryCount, static_cast<int>(res), httpCode, downloadedContentLength, downloadSpeed, totalTime);
         
         // Controlla se il download è completo
@@ -2634,9 +2663,13 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
         brls::Logger::info("DownloadManager: Saved download state to JSON file");
     }
     
+#ifndef __SWITCH__
     // Riabilita lo screen dimming alla fine del download
     brls::Application::getPlatform()->disableScreenDimming(false, "Download completato", "TsVitch");
     brls::Logger::info("DownloadManager: Screen dimming re-enabled");
+#else
+    brls::Logger::info("DownloadManager: Switch simplified path: screen dimming restore skipped");
+#endif
     
     // Chiama i callback appropriati fuori dal lock per evitare deadlock
     bool isCompleted = false;
@@ -2657,6 +2690,9 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
         }
     }
     
+#ifdef __SWITCH__
+    brls::Logger::info("DownloadManager: Switch simplified path: skipping completion/error callbacks");
+#else
     // Chiama i callback appropriati
     if (isCompleted) {
         brls::Logger::info("DownloadManager: Calling completion callbacks for {}", id);
@@ -2724,6 +2760,7 @@ void DownloadManager::downloadSimplified(const std::string& id, const std::strin
         brls::Logger::info("DownloadManager: Download {} paused for auto-retry, not calling error callbacks", id);
         // Non chiamare callback di errore per pause temporanee
     }
+#endif
     
     // Pulisci i callback per questo download SOLO se completato o fallito (non per pause)
     if (isCompleted || isFailed) {

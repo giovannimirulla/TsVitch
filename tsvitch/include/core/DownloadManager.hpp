@@ -155,6 +155,9 @@ private:
     
     std::vector<std::thread> downloadThreads;
     
+    // Avvia il worker preservando la gestione thread desktop e usando detach su Switch
+    void startDownloadWorkerThread(const std::string& id);
+    
     // Thread worker per il download
     void downloadWorker(const std::string& id);
     
